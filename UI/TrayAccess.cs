@@ -374,7 +374,7 @@ namespace Taskmaster.UI
 
 				try
 				{
-					mainwindow?.UnloseWindowRequest(this, EventArgs.Empty); // null reference crash sometimes
+					mainwindow?.UnloseWindowRequest(); // null reference crash sometimes
 				}
 				catch (Exception ex)
 				{

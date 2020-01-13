@@ -57,22 +57,20 @@ namespace Taskmaster.UI
 				AutoSize = true,
 			};
 
-			var Title = new Extensions.Label() { Text = "Changes since " };
+			var Title = new Extensions.Label { Text = "Changes since " };
 
-			layout.Controls.Add(Title);
-			layout.SetColumnSpan(Title, 2);
 
 			LogBox.Text = "";
-			layout.Controls.Add(LogBox);
-			layout.SetColumnSpan(LogBox, 2);
 
 			ShowFullLogButton.Anchor = AnchorStyles.Top | AnchorStyles.Left;
 			ShowFullLogButton.Click += ShowFullLogButton_Click;
-			layout.Controls.Add(ShowFullLogButton);
 
 			OKButton.Anchor = AnchorStyles.Top | AnchorStyles.Right;
 			OKButton.Click += OKButton_Click;
-			layout.Controls.Add(OKButton);
+
+			layout.Controls.AddRange(new Control[] { Title, LogBox, ShowFullLogButton, OKButton });
+			layout.SetColumnSpan(Title, 2);
+			layout.SetColumnSpan(LogBox, 2);
 
 			Controls.Add(layout);
 
