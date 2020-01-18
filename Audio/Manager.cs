@@ -264,7 +264,7 @@ namespace Taskmaster.Audio
 		{
 			Logging.DebugMsg("CloseNotificationClient");
 
-			ExecuteOnMainThread(new Action(() =>
+			hiddenwindow?.InvokeAsync(new Action(() =>
 			{
 				Enumerator?.UnregisterEndpointNotificationCallback(notificationClient);
 			}));

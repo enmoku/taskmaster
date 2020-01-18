@@ -142,6 +142,8 @@ namespace Taskmaster.UI
 
 		internal void LoadEvent(object? sender, LoadEventArgs ea)
 		{
+			if (!IsHandleCreated || IsDisposed) return;
+
 			Logging.DebugMsg("[" + Loaded.ToString() + "/" + MaxLoad.ToString() + "] " + ea.Message);
 
 			if (ea.MaxSubProgress > 0) MaxSubLoad = ea.MaxSubProgress;

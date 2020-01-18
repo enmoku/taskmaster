@@ -200,7 +200,7 @@ namespace Taskmaster.UI
 				InfoList = InfoList.OrderBy(info => info.Name).ThenBy(info => info.Id).ToList();
 				var output = InfoList.ConvertAll(info => $"{System.IO.Path.GetFileName(info.Path ?? info.Name)} #{info.Id}{(info.PriorityProtected ? " [Protected]" : "")}");
 
-				if (IsDisposed) return;
+				if (!IsHandleCreated || IsDisposed) return;
 
 				BeginInvoke(new Action(() =>
 				{
@@ -217,7 +217,11 @@ namespace Taskmaster.UI
 			{
 				Logging.Stacktrace(ex);
 				DialogResult = DialogResult.Abort;
-				BeginInvoke(new Action(() => Close()));
+
+				if (InvokeRequired)
+					BeginInvoke(new Action(() => Close()));
+				else
+					Close();
 			}
 		}
 

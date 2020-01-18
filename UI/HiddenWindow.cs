@@ -26,16 +26,23 @@
 
 namespace Taskmaster
 {
-	using static Application;
+    using System;
+    using System.Threading.Tasks;
+
+	public static partial class Application
+	{
+		public static HiddenWindow hiddenwindow;
+	}
 
 	/// <summary>
 	/// Core window for TM.
 	/// </summary>
-	public class HiddenWindow : System.Windows.Forms.Form
+	sealed public class HiddenWindow : System.Windows.Forms.Form
 	{
 		public HiddenWindow()
 		{
-			_ = Handle; // HACK
+			CreateHandle(); // HACK
+			_ = Handle; // just to make sure the above happens
 			TopLevel = true;
 
 			//Text = $"<{{[ {Taskmaster.Name} ]}}>";
@@ -43,15 +50,28 @@ namespace Taskmaster
 			Logging.DebugMsg("HiddenWindow initialized");
 		}
 
-		static Finalizer finalizer = new Finalizer();
-
-		sealed class Finalizer
+		public async Task InvokeAsync(Action action)
 		{
-			~Finalizer()
+			await Task.Delay(5).ConfigureAwait(false);
+
+			try
 			{
-				Logging.DebugMsg("HiddenWindow static finalizer");
-				hiddenwindow.Dispose();
+				if (InvokeRequired)
+					BeginInvoke(action);
+				else
+					action();
 			}
-		};
+			catch (Exception ex)
+			{
+				Logging.Stacktrace(ex);
+			}
+		}
+
+		~HiddenWindow()
+		{
+			Logging.DebugMsg("HiddenWindow finalizer");
+			System.GC.SuppressFinalize(this);
+			Dispose(true);
+		}
 	}
 }

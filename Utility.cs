@@ -78,66 +78,57 @@ namespace Taskmaster
 			{
 				if (Application.NoLogging) return;
 
-				try
+				if (!System.IO.Directory.Exists(Application.LogPath)) System.IO.Directory.CreateDirectory(Application.LogPath);
+
+				string logfilename = Application.UniqueCrashLogs ? $"crash-{DateTime.Now.ToString("yyyyMMdd-HHmmss-fff")}.log" : "crash.log";
+				var logfile = System.IO.Path.Combine(Application.LogPath, logfilename);
+
+				var now = DateTime.Now;
+
+				file = file.Replace(Properties.Resources.ProjectDirectory.Trim(), HumanReadable.Generic.Ellipsis + System.IO.Path.DirectorySeparatorChar);
+
+				var sbs = new StringBuilder(1024);
+				sbs.Append("Datetime:     ").Append(now.ToLongDateString()).Append(' ').AppendLine(now.ToLongTimeString())
+					.Append("Caught at: ").Append(method).Append(':').Append(lineNo).Append(" [").Append(file).AppendLine("]")
+					.Append("Site: ").AppendLine(ex.TargetSite?.ToString() ?? string.Empty)
+					.AppendLine()
+					.Append("Command line: ").AppendLine(Environment.CommandLine)
+					.AppendLine()
+					.Append("Message: ").AppendLine(ex.Message);
+
+#if DEBUG
+				var exceptionsbs = new StringBuilder(512);
+#endif
+
+				AppendStacktace(ex, ref sbs);
+#if DEBUG
+				AppendStacktace(ex, ref exceptionsbs);
+#endif
+				if (ex.InnerException != null)
 				{
-					if (!System.IO.Directory.Exists(Application.LogPath)) System.IO.Directory.CreateDirectory(Application.LogPath);
-
-					string logfilename = Application.UniqueCrashLogs ? $"crash-{DateTime.Now.ToString("yyyyMMdd-HHmmss-fff")}.log" : "crash.log";
-					var logfile = System.IO.Path.Combine(Application.LogPath, logfilename);
-
-					var now = DateTime.Now;
-
-					file = file.Replace(Properties.Resources.ProjectDirectory.Trim(), HumanReadable.Generic.Ellipsis + System.IO.Path.DirectorySeparatorChar);
-
-					var sbs = new StringBuilder(1024);
-					sbs.Append("Datetime:     ").Append(now.ToLongDateString()).Append(' ').AppendLine(now.ToLongTimeString())
-						.Append("Caught at: ").Append(method).Append(':').Append(lineNo).Append(" [").Append(file).AppendLine("]")
-						.Append("Site: ").AppendLine(ex.TargetSite?.ToString() ?? string.Empty)
-						.AppendLine()
-						.Append("Command line: ").AppendLine(Environment.CommandLine)
-						.AppendLine()
-						.Append("Message: ").AppendLine(ex.Message);
-
+					sbs.AppendLine().AppendLine("--- Inner Exception ---");
+					AppendStacktace(ex.InnerException, ref sbs);
 #if DEBUG
-					var exceptionsbs = new StringBuilder(512);
+					AppendStacktace(ex.InnerException, ref exceptionsbs);
 #endif
-
-					AppendStacktace(ex, ref sbs);
-#if DEBUG
-					AppendStacktace(ex, ref exceptionsbs);
-#endif
-					if (ex.InnerException != null)
-					{
-						sbs.AppendLine().AppendLine("--- Inner Exception ---");
-						AppendStacktace(ex.InnerException, ref sbs);
-#if DEBUG
-						AppendStacktace(ex.InnerException, ref exceptionsbs);
-#endif
-					}
-
-#if DEBUG
-					if (ex is InitFailure iex && (iex.InnerExceptions?.Length ?? 0) > 1)
-					{
-						for (int i = 1; i < iex.InnerExceptions.Length; i++)
-						{
-							if (iex.InnerExceptions[i] != null) // this is weird
-								AppendStacktace(iex.InnerExceptions[i], ref exceptionsbs);
-						}
-					}
-#endif
-
-					System.IO.File.WriteAllText(logfile, sbs.ToString(), Encoding.Unicode);
-					DebugMsg("Crash log written to " + logfile);
-#if DEBUG
-					Debug.WriteLine(exceptionsbs.ToString());
-#endif
-
 				}
-				catch (OutOfMemoryException) { throw; }
-				catch
+
+#if DEBUG
+				if (ex is InitFailure iex && (iex.InnerExceptions?.Length ?? 0) > 1)
 				{
-					throw; // nothing to be done, we're already crashing and burning by this point
+					for (int i = 1; i < iex.InnerExceptions.Length; i++)
+					{
+						if (iex.InnerExceptions[i] != null) // this is weird
+							AppendStacktace(iex.InnerExceptions[i], ref exceptionsbs);
+					}
 				}
+#endif
+
+				System.IO.File.WriteAllText(logfile, sbs.ToString(), Encoding.Unicode);
+				DebugMsg("Crash log written to " + logfile);
+#if DEBUG
+				Debug.WriteLine(exceptionsbs.ToString());
+#endif
 			}
 		}
 	}

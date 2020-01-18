@@ -56,8 +56,6 @@ namespace Taskmaster
 		/// </summary>
 		internal static Stack<IDisposable> DisposalChute = new Stack<IDisposable>();
 
-		public static HiddenWindow hiddenwindow;
-
 		static Runstate State = Runstate.Normal;
 
 		public static void ConfirmExit(bool restart = false, bool admin = false, string message = null, bool alwaysconfirm = false)
@@ -429,6 +427,8 @@ namespace Taskmaster
 			}
 			catch (Exception ex)
 			{
+				Logging.DebugMsg(ex.Message);
+				Logging.DebugMsg(ex.StackTrace);
 				Logging.Stacktrace(ex, crashsafe: true);
 
 				return 1; // should trigger finally block
@@ -469,11 +469,15 @@ namespace Taskmaster
 
 			try
 			{
-				hiddenwindow?.BeginInvoke(new Action(async () =>
+				hiddenwindow?.InvokeAsync(new Action(async () =>
 				{
 					await trayaccess.EnsureVisible().ConfigureAwait(true);
 				}));
 				Config.Flush();
+			}
+			catch (InvalidOperationException ex) // Should only happen if hidden window handle is missing.
+			{
+				Log.Error("<Core> Exception: " + ex.Message);
 			}
 			catch (Exception ex)
 			{
@@ -532,21 +536,6 @@ namespace Taskmaster
 			catch (Exception ex) when (!(ex is OutOfMemoryException))
 			{
 				Logging.Stacktrace(ex, crashsafe: true);
-			}
-		}
-
-		internal static void ExecuteOnMainThread(Action action) // HACK: Why is there no simpler way to do this?
-		{
-			try
-			{
-				if (hiddenwindow?.InvokeRequired ?? false)
-					hiddenwindow.BeginInvoke(action);
-				else
-					action();
-			}
-			catch (Exception ex)
-			{
-				Logging.Stacktrace(ex);
 			}
 		}
 

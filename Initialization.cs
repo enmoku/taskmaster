@@ -57,10 +57,11 @@ namespace Taskmaster
 
 			AppDomain.CurrentDomain.UnhandledException += UnhandledException;
 
-			hiddenwindow = new HiddenWindow();
+			hiddenwindow = new HiddenWindow(); // the above fail if this is done earlier
 
 			TryPortableMode();
 			LogPath = System.IO.Path.Combine(DataPath, LogFolder);
+			Logging.DebugMsg("Logging path: " + LogPath);
 
 			if (Array.Exists(args, arg => arg == "--trace"))
 			{

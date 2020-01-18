@@ -947,6 +947,8 @@ namespace Taskmaster.UI.Config
 
 		void FlashTextBox(TextBox box)
 		{
+			if (!IsHandleCreated || IsDisposed) return;
+
 			// FLASH HACK
 			var bgc = box.BackColor;
 			box.BackColor = System.Drawing.Color.OrangeRed;

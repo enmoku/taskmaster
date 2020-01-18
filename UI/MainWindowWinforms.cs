@@ -945,7 +945,7 @@ namespace Taskmaster.UI
 			// UI Log
 			// -1 = contents, -2 = heading
 			EventLogList.Columns.Add("Event Log", -2, HorizontalAlignment.Left); // 2
-			
+
 			//ResizeEnd += ResizeLogList;
 			//Resize += ResizeLogList;
 
@@ -1235,7 +1235,7 @@ namespace Taskmaster.UI
 
 		void OnShown(object _, EventArgs _ea)
 		{
-			if (!IsHandleCreated || disposed) return;
+			if (!IsHandleCreated || Disposed) return;
 
 			Logging.DebugMsg("<Main Window> Showing");
 
@@ -1288,11 +1288,11 @@ namespace Taskmaster.UI
 		{
 			if (Trace) Log.Verbose("Making sure main window is not lost.");
 
-			if (!IsHandleCreated || disposed) return;
+			if (!IsHandleCreated || Disposed) return;
 
 			BeginInvoke(new Action(() =>
 			{
-				if (!IsHandleCreated || disposed) return;
+				if (!IsHandleCreated || Disposed) return;
 
 				Reveal(activate: true);
 				CenterToScreen();
@@ -1301,14 +1301,14 @@ namespace Taskmaster.UI
 
 		public void Reveal(bool activate = false)
 		{
-			if (!IsHandleCreated || disposed) return;
+			if (!IsHandleCreated || Disposed) return;
 
 			BeginInvoke(new Action(() => Reveal_Invoke(activate)));
 		}
 
 		void Reveal_Invoke(bool activate)
 		{
-			if (!IsHandleCreated || disposed) return;
+			if (!IsHandleCreated || Disposed) return;
 
 			WindowState = FormWindowState.Normal;
 
@@ -1326,7 +1326,7 @@ namespace Taskmaster.UI
 
 		void ShowLastLog()
 		{
-			if (!IsHandleCreated || disposed) return;
+			if (!IsHandleCreated || Disposed) return;
 
 			try
 			{
@@ -1364,14 +1364,14 @@ namespace Taskmaster.UI
 
 		void SetDefaultCommDevice()
 		{
-			if (!IsHandleCreated || disposed) return;
+			if (!IsHandleCreated || Disposed) return;
 
 			BeginInvoke(new Action(SetDefaultCommDevice_Invoke));
 		}
 
 		void SetDefaultCommDevice_Invoke()
 		{
-			if (!IsHandleCreated || disposed) return;
+			if (!IsHandleCreated || Disposed) return;
 
 			try
 			{
@@ -1438,7 +1438,7 @@ namespace Taskmaster.UI
 
 		void UpdateAudioInputs()
 		{
-			if (!IsHandleCreated || disposed) return;
+			if (!IsHandleCreated || Disposed) return;
 
 			if (micmanager is null) return;
 
@@ -1486,7 +1486,7 @@ namespace Taskmaster.UI
 
 				BeginInvoke(new Action(() =>
 				{
-					if (disposed || !IsHandleCreated) return;
+					if (Disposed || !IsHandleCreated) return;
 
 					try
 					{
@@ -1516,7 +1516,7 @@ namespace Taskmaster.UI
 
 		void AudioDeviceAdded(object sender, Audio.DeviceEventArgs ea)
 		{
-			if (disposed || !IsHandleCreated) return;
+			if (Disposed || !IsHandleCreated) return;
 
 			switch (ea.Device.Flow)
 			{
@@ -1532,7 +1532,7 @@ namespace Taskmaster.UI
 
 		void AudioDeviceRemoved(object sender, Audio.DeviceEventArgs ea)
 		{
-			if (IsDisposed || !IsHandleCreated) return;
+			if (Disposed || !IsHandleCreated) return;
 
 			if (micmanager is null) return;
 
@@ -1542,7 +1542,7 @@ namespace Taskmaster.UI
 
 		void MicrophoneDefaultChanged(object sender, Audio.DefaultDeviceEventArgs ea)
 		{
-			if (IsDisposed || !IsHandleCreated) return;
+			if (!IsHandleCreated || Disposed) return;
 
 			DefaultAudioInput = ea.Device;
 
@@ -1551,7 +1551,7 @@ namespace Taskmaster.UI
 
 		void MicrophoneDefaultChanged_Update()
 		{
-			if (IsDisposed || !IsHandleCreated) return;
+			if (Disposed || !IsHandleCreated) return;
 
 			try
 			{
@@ -1581,14 +1581,14 @@ namespace Taskmaster.UI
 
 		void AudioDeviceStateChanged(object sender, Audio.DeviceStateEventArgs ea)
 		{
-			if (IsDisposed || !IsHandleCreated) return;
+			if (!IsHandleCreated || Disposed) return;
 
 			BeginInvoke(new Action(() => AudioDeviceStateChanged_Update(ea)));
 		}
 
 		void AudioDeviceStateChanged_Update(Audio.DeviceStateEventArgs ea)
 		{
-			if (IsDisposed || !IsHandleCreated) return;
+			if (Disposed || !IsHandleCreated) return;
 
 			if (MicGuidToAudioInputs.TryGetValue(ea.GUID, out ListViewItem li))
 				li.SubItems[5].Text = ea.State.ToString();
@@ -1602,14 +1602,14 @@ namespace Taskmaster.UI
 
 		void VolumeChangeDetected(object _, VolumeChangedEventArgs ea)
 		{
-			if (!IsHandleCreated || disposed) return;
+			if (!IsHandleCreated || Disposed) return;
 
 			BeginInvoke(new Action(() => VolumeChangeDetected_Update(ea)));
 		}
 
 		void VolumeChangeDetected_Update(VolumeChangedEventArgs ea)
 		{
-			if (!IsHandleCreated || disposed) return;
+			if (!IsHandleCreated || Disposed) return;
 
 			AudioInputVolume.Value = Convert.ToInt32(ea.New); // this could throw ArgumentOutOfRangeException, but we trust the source
 			corCountLabel.Text = ea.Corrections.ToString();
@@ -1618,14 +1618,14 @@ namespace Taskmaster.UI
 
 		public void ProcessTouchEvent(Process.ModificationInfo mi)
 		{
-			if (!IsHandleCreated || disposed) return;
+			if (!IsHandleCreated || Disposed) return;
 
 			BeginInvoke(new Action(() => ProcessTouchEvent_Update(mi)));
 		}
 
 		void ProcessTouchEvent_Update(Process.ModificationInfo pmi)
 		{
-			if (!IsHandleCreated || disposed) return;
+			if (!IsHandleCreated || Disposed) return;
 
 			//adjustcounter.Text = Statistics.TouchCount.ToString();
 
@@ -1661,7 +1661,8 @@ namespace Taskmaster.UI
 
 		public void OnActiveWindowChanged(object _, Process.WindowChangedArgs windowchangeev)
 		{
-			if (!IsHandleCreated || disposed) return;
+			if (!IsHandleCreated || Disposed) return;
+
 			if (windowchangeev.Process is null) return;
 
 			BeginInvoke(new Action(() =>
@@ -1735,11 +1736,11 @@ namespace Taskmaster.UI
 
 		void UpdateWatchlist(object _, EventArgs _ea)
 		{
-			if (!IsHandleCreated || disposed) return;
+			if (!IsHandleCreated || Disposed) return;
 
 			BeginInvoke(new Action(() =>
 			{
-				if (!IsHandleCreated || disposed) return;
+				if (!IsHandleCreated || Disposed) return;
 
 				foreach (var li in WatchlistMap)
 				{
@@ -1852,14 +1853,14 @@ namespace Taskmaster.UI
 
 		void FormatWatchlist(ListViewItem litem, Process.Controller prc)
 		{
-			if (!IsHandleCreated || disposed) return;
+			if (!IsHandleCreated || Disposed) return;
 
 			BeginInvoke(new Action(() => FormatWatchlist_Invoke(litem, prc)));
 		}
 
 		void FormatWatchlist_Invoke(ListViewItem litem, Process.Controller prc)
 		{
-			if (!IsHandleCreated || disposed) return;
+			if (!IsHandleCreated || Disposed) return;
 
 			litem.SubItems[PrefColumn].Text = prc.OrderPreference.ToString();
 			litem.SubItems[NameColumn].Text = prc.FriendlyName;
@@ -1882,7 +1883,7 @@ namespace Taskmaster.UI
 
 		void UpdateWatchlistRule(Process.Controller prc)
 		{
-			if (!IsHandleCreated || disposed) return;
+			if (!IsHandleCreated || Disposed) return;
 
 			if (WatchlistMap.TryGetValue(prc, out ListViewItem litem))
 				BeginInvoke(new Action(() => UpdateWatchlistRule_Invoke(litem, prc)));
@@ -1890,7 +1891,7 @@ namespace Taskmaster.UI
 
 		void UpdateWatchlistRule_Invoke(ListViewItem litem, Process.Controller prc)
 		{
-			if (!IsHandleCreated || disposed) return;
+			if (!IsHandleCreated || Disposed) return;
 
 			FormatWatchlist(litem, prc);
 
@@ -1928,7 +1929,7 @@ namespace Taskmaster.UI
 
 		async void PathCacheUpdate(object _, EventArgs _ea)
 		{
-			if (!IsHandleCreated || disposed) return;
+			if (!IsHandleCreated || Disposed) return;
 
 			if (!PathCacheUpdateLock.TryLock()) return;
 			using var plock = PathCacheUpdateLock.ScopedUnlock();
@@ -1962,7 +1963,7 @@ namespace Taskmaster.UI
 
 		void StartUIUpdates(object sender, EventArgs _ea)
 		{
-			if (disposed || !IsHandleCreated) StopUIUpdates(this, EventArgs.Empty);
+			if (Disposed || !IsHandleCreated) StopUIUpdates(this, EventArgs.Empty);
 			else if (!UItimer.Enabled)
 			{
 				UpdateMemoryStats(sender, EventArgs.Empty);
@@ -1989,7 +1990,7 @@ namespace Taskmaster.UI
 
 		void UpdateRescanCountdown(object _, EventArgs _ea)
 		{
-			if (disposed || !IsHandleCreated) return;
+			if (Disposed || !IsHandleCreated) return;
 
 			if (processmanager is null) return; // not yet assigned
 
@@ -2002,7 +2003,7 @@ namespace Taskmaster.UI
 
 		void UpdateNetwork(object _, EventArgs _ea)
 		{
-			if (disposed || !IsHandleCreated) return;
+			if (Disposed || !IsHandleCreated) return;
 
 			if (netmonitor is null) return;
 
@@ -2073,9 +2074,9 @@ namespace Taskmaster.UI
 		readonly ToolStripMenuItem
 			menu_debug, menu_debug_loglevel,
 			menu_debug_inaction, menu_debug_agency, menu_debug_scanning,
-			#if DEBUG
+#if DEBUG
 			menu_debug_loglevel_trace,
-			#endif
+#endif
 			menu_debug_loglevel_info,
 			menu_debug_loglevel_debug;
 
@@ -2233,7 +2234,7 @@ namespace Taskmaster.UI
 
 		void UpdateTrackingCounter(object _, EventArgs _ea)
 		{
-			if (disposed || !IsHandleCreated) return;
+			if (Disposed || !IsHandleCreated) return;
 
 			processingcount.Text = processmanager?.Handling.ToString() ?? "n/a";
 			trackingcount.Text = processmanager?.RunningCount.ToString() ?? "n/a";
@@ -2812,7 +2813,7 @@ namespace Taskmaster.UI
 
 		void WatchlistSearchTimer_Tick(object sender, EventArgs e)
 		{
-			if (disposed || !IsHandleCreated) return;
+			if (Disposed || !IsHandleCreated) return;
 
 			bool foundprimary = false, found = false;
 
@@ -2852,7 +2853,7 @@ namespace Taskmaster.UI
 
 		public void CPULoadEvent(object _, Hardware.CPUSensorEventArgs ea)
 		{
-			if (disposed || !IsHandleCreated) return;
+			if (!IsHandleCreated || Disposed) return;
 
 			BeginInvoke(new Action(() =>
 			{
@@ -2862,14 +2863,14 @@ namespace Taskmaster.UI
 
 		public void GPULoadEvent(object _, Hardware.GPUSensorEventArgs ea)
 		{
-			if (!IsHandleCreated || disposed) return;
+			if (!IsHandleCreated || Disposed) return;
 
 			BeginInvoke(new Action(() => GPULoadEvent_Invoke(ea)));
 		}
 
 		void GPULoadEvent_Invoke(Hardware.GPUSensorEventArgs ea)
 		{
-			if (!IsHandleCreated || disposed) return;
+			if (!IsHandleCreated || Disposed) return;
 
 			try
 			{
@@ -2884,7 +2885,7 @@ namespace Taskmaster.UI
 
 		void GPULoadPoller(object sender, EventArgs e)
 		{
-			if (disposed || !IsHandleCreated) return;
+			if (Disposed || !IsHandleCreated) return;
 
 			if (hardwaremonitor is null)
 			{
@@ -3065,7 +3066,7 @@ namespace Taskmaster.UI
 
 		void ProcessHandlingStateChangeEvent(object _, Process.HandlingStateChangeEventArgs ea)
 		{
-			if (!IsHandleCreated || disposed) return;
+			if (!IsHandleCreated || Disposed) return;
 
 			if (!Process.Manager.DebugProcesses && !DebugForeground) return;
 
@@ -3090,7 +3091,7 @@ namespace Taskmaster.UI
 
 		void ProcessHandlingStateChangeEvent_Invoke(Process.HandlingStateChangeEventArgs ea, ListViewItem item, bool newitem = false)
 		{
-			if (!IsHandleCreated || disposed) return;
+			if (!IsHandleCreated || Disposed) return;
 
 			int key = ea.Info.Id;
 
@@ -3114,18 +3115,18 @@ namespace Taskmaster.UI
 
 		void RemoveOldProcessingEntry(int key)
 		{
-			if (!IsHandleCreated || disposed) return;
+			if (!IsHandleCreated || Disposed) return;
 
 			BeginInvoke(new Action(async () => await RemoveOldProcessingEntry_Invoke(key).ConfigureAwait(true)));
 		}
 
 		async Task RemoveOldProcessingEntry_Invoke(int key)
 		{
-			if (!IsHandleCreated || disposed) return;
+			if (!IsHandleCreated || Disposed) return;
 
 			await Task.Delay(TimeSpan.FromSeconds(15)).ConfigureAwait(true);
 
-			if (!IsHandleCreated || disposed) return;
+			if (!IsHandleCreated || Disposed) return;
 
 			if (ProcessEventMap.TryRemove(key, out ListViewItem item))
 				ProcessingList.Items.Remove(item);
@@ -3179,14 +3180,14 @@ namespace Taskmaster.UI
 		public void ExitWaitListHandler(Process.ProcessEx ea)
 		{
 			//if (activeappmonitor is null) return;
-			if (!IsHandleCreated || disposed) return;
+			if (!IsHandleCreated || Disposed) return;
 
 			BeginInvoke(new Action(() => ExitWaitListHandler_Invoke(ea)));
 		}
 
 		void ExitWaitListHandler_Invoke(Process.ProcessEx info)
 		{
-			if (!IsHandleCreated || disposed) return;
+			if (!IsHandleCreated || Disposed) return;
 
 			try
 			{
@@ -3245,7 +3246,7 @@ namespace Taskmaster.UI
 		// Called by UI update timer, should be UI thread by default
 		void UpdateMemoryStats(object _, EventArgs _ea)
 		{
-			if (!IsHandleCreated || disposed) return;
+			if (!IsHandleCreated || Disposed) return;
 			if (!ramload.Visible) return;
 
 			Memory.Update(); // TODO: this is kinda dumb way to do things
@@ -3264,7 +3265,7 @@ namespace Taskmaster.UI
 		// TODO: Reverse this design, make the UI poll instead
 		void CPULoadHandler(object _, Hardware.ProcessorLoadEventArgs ea)
 		{
-			if (!IsHandleCreated || disposed) return;
+			if (!IsHandleCreated || Disposed) return;
 			if (!cpuload.Visible) return;
 
 			BeginInvoke(new Action(() => CPULoadHandler_Invoke(ea)));
@@ -3272,7 +3273,7 @@ namespace Taskmaster.UI
 
 		void CPULoadHandler_Invoke(Hardware.ProcessorLoadEventArgs ea)
 		{
-			if (!IsHandleCreated || disposed) return;
+			if (!IsHandleCreated || Disposed) return;
 
 			var load = ea.Load;
 
@@ -3287,14 +3288,14 @@ namespace Taskmaster.UI
 
 		public void PowerLoadDebugHandler(object _, Power.AutoAdjustReactionEventArgs ea)
 		{
-			if (!IsHandleCreated || disposed) return;
+			if (!IsHandleCreated || Disposed) return;
 
 			BeginInvoke(new Action(() => PowerLoadDebugHandler_Invoke(ea)));
 		}
 
 		void PowerLoadDebugHandler_Invoke(Power.AutoAdjustReactionEventArgs ea)
 		{
-			if (!IsHandleCreated || disposed) return;
+			if (!IsHandleCreated || Disposed) return;
 
 			try
 			{
@@ -3561,14 +3562,14 @@ namespace Taskmaster.UI
 
 		public void TempScanStats(StorageManager.ScanState state, StorageManager.DirectoryStats stats)
 		{
-			if (!IsHandleCreated || disposed) return;
+			if (!IsHandleCreated || Disposed) return;
 
 			BeginInvoke(new Action(() => TempScanStats_Invoke(state, stats)));
 		}
 
 		void TempScanStats_Invoke(StorageManager.ScanState state, StorageManager.DirectoryStats stats)
 		{
-			if (!IsHandleCreated || disposed) return;
+			if (!IsHandleCreated || Disposed) return;
 
 			tempObjectSize.Text = (stats.Size / 1_000_000).ToString();
 			tempObjectCount.Text = (stats.Dirs + stats.Files).ToString();
@@ -3673,14 +3674,14 @@ namespace Taskmaster.UI
 
 		void PowerBehaviourEvent(object sender, Power.PowerBehaviourEventArgs e)
 		{
-			if (!IsHandleCreated || disposed) return;
+			if (!IsHandleCreated || Disposed) return;
 
 			BeginInvoke(new Action(() => PowerBehaviourEvent_Invoke(e)));
 		}
 
 		void PowerBehaviourEvent_Invoke(Power.PowerBehaviourEventArgs e)
 		{
-			if (!IsHandleCreated || disposed) return;
+			if (!IsHandleCreated || Disposed) return;
 
 			UpdatePowerBehaviourHighlight(e.Behaviour);
 			pwbehaviour.Text = Power.Utility.GetBehaviourName(e.Behaviour);
@@ -3690,14 +3691,14 @@ namespace Taskmaster.UI
 
 		void PowerPlanEvent(object sender, Power.ModeEventArgs ea)
 		{
-			if (!IsHandleCreated || disposed) return;
+			if (!IsHandleCreated || Disposed) return;
 
 			BeginInvoke(new Action(() => PowerPlanEvent_Invoke(ea)));
 		}
 
 		void PowerPlanEvent_Invoke(Power.ModeEventArgs e)
 		{
-			if (!IsHandleCreated || disposed) return;
+			if (!IsHandleCreated || Disposed) return;
 
 			HighlightPowerMode();
 
@@ -3767,14 +3768,15 @@ namespace Taskmaster.UI
 
 		async void UpdateHealthMon(object sender, EventArgs e)
 		{
-			if (!IsHandleCreated || disposed) return;
+			if (!IsHandleCreated || Disposed) return;
+
 			if (powermanager?.SessionLocked ?? false) return;
 
 			if (!Atomic.Lock(ref updatehealthmon_lock)) return;
 
 			await Task.Delay(100).ConfigureAwait(false);
 
-			if (disposed) return; // recheck
+			if (Disposed) return; // recheck
 
 			try
 			{
@@ -3792,7 +3794,6 @@ namespace Taskmaster.UI
 				*/
 
 				//float impact_faults = health.PageFaults;
-
 
 				BeginInvoke(new Action(() => UpdateNVMLabels(nvmtransfers, splitio, nvmdelayt, nvmqueue)));
 
@@ -3887,7 +3888,7 @@ namespace Taskmaster.UI
 
 		public void PowerBehaviourDebugEvent(object _, Power.PowerBehaviourEventArgs ea)
 		{
-			if (!IsHandleCreated || disposed) return;
+			if (!IsHandleCreated || Disposed) return;
 
 			if (!DebugPower) return;
 
@@ -3896,7 +3897,7 @@ namespace Taskmaster.UI
 
 		void PowerBehaviourDebugEvent_Invoke(Power.PowerBehaviourEventArgs ea)
 		{
-			if (!IsHandleCreated || disposed) return;
+			if (!IsHandleCreated || Disposed) return;
 
 			powerbalancer_behaviour.Text = Power.Utility.GetBehaviourName(ea.Behaviour);
 			if (ea.Behaviour != Power.PowerBehaviour.Auto)
@@ -3905,7 +3906,7 @@ namespace Taskmaster.UI
 
 		public void PowerPlanDebugEvent(object _, Power.ModeEventArgs ea)
 		{
-			if (!IsHandleCreated || disposed) return;
+			if (!IsHandleCreated || Disposed) return;
 
 			if (!DebugPower) return;
 
@@ -3914,21 +3915,21 @@ namespace Taskmaster.UI
 
 		void PowerPlanDebugEvent_Invoke(Power.ModeEventArgs ea)
 		{
-			if (!IsHandleCreated || disposed) return;
+			if (!IsHandleCreated || Disposed) return;
 
 			powerbalancer_plan.Text = Power.Utility.GetModeName(ea.NewMode);
 		}
 
 		public void UpdateNetworkDevices(object _, EventArgs _ea)
 		{
-			if (!IsHandleCreated || disposed) return;
+			if (!IsHandleCreated || Disposed) return;
 
 			BeginInvoke(new Action(UpdateNetworkDevices_Invoke));
 		}
 
 		void UpdateNetworkDevices_Invoke()
 		{
-			if (!IsHandleCreated || disposed) return;
+			if (!IsHandleCreated || Disposed) return;
 
 			InetStatusLabel(netmonitor.InternetAvailable);
 			NetStatusLabelUpdate(netmonitor.NetworkAvailable);
@@ -4011,14 +4012,14 @@ namespace Taskmaster.UI
 
 		void NetSampleHandler(object _, Network.DeviceTrafficEventArgs ea)
 		{
-			if (!IsHandleCreated || disposed) return;
+			if (!IsHandleCreated || Disposed) return;
 
 			BeginInvoke(new Action(() => NetSampleHandler_Invoke(ea)));
 		}
 
 		void NetSampleHandler_Invoke(Network.DeviceTrafficEventArgs ea)
 		{
-			if (!IsHandleCreated || disposed) return;
+			if (!IsHandleCreated || Disposed) return;
 
 			try
 			{
@@ -4038,14 +4039,14 @@ namespace Taskmaster.UI
 
 		void InetStatusLabel(bool available)
 		{
-			if (!IsHandleCreated || disposed) return;
+			if (!IsHandleCreated || Disposed) return;
 
 			BeginInvoke(new Action(() => InetStatusLabel_Invoke(available)));
 		}
 
 		void InetStatusLabel_Invoke(bool available)
 		{
-			if (!IsHandleCreated || disposed) return;
+			if (!IsHandleCreated || Disposed) return;
 
 			inetstatuslabel.Text = available ? HumanReadable.Hardware.Network.Connected : HumanReadable.Hardware.Network.Disconnected;
 			// inetstatuslabel.BackColor = available ? System.Drawing.Color.LightGoldenrodYellow : System.Drawing.Color.Red;
@@ -4066,14 +4067,14 @@ namespace Taskmaster.UI
 
 		void NetStatusLabelUpdate(bool available)
 		{
-			if (!IsHandleCreated || disposed) return;
+			if (!IsHandleCreated || Disposed) return;
 
 			BeginInvoke(new Action(() => NetStatusLabelUpdate_Invoke(available)));
 		}
 
 		void NetStatusLabelUpdate_Invoke(bool available)
 		{
-			if (!IsHandleCreated || disposed) return;
+			if (!IsHandleCreated || Disposed) return;
 
 			netstatuslabel.Text = available ? HumanReadable.Hardware.Network.Connected : HumanReadable.Hardware.Network.Disconnected;
 			// netstatuslabel.BackColor = available ? System.Drawing.Color.LightGoldenrodYellow : System.Drawing.Color.Red;
@@ -4103,7 +4104,7 @@ namespace Taskmaster.UI
 
 		async void NewLogReceived(object _, LogEventArgs logmsg)
 		{
-			if (!IsHandleCreated || disposed
+			if (!IsHandleCreated || Disposed
 				|| (LogIncludeLevel.MinimumLevel > logmsg.Level)) return;
 
 			try
@@ -4159,6 +4160,8 @@ namespace Taskmaster.UI
 				first = LogListData[0];
 				LogListData.Remove(first);
 			}
+
+			if (!IsHandleCreated || Disposed) return;
 
 			//Logging.DebugMsg("LogList new size: " + newSize.ToString());
 
@@ -4227,12 +4230,14 @@ namespace Taskmaster.UI
 		}
 
 		#region IDispose
-		private bool disposed = false;
+		public bool Disposed { get; internal set; } = false;
 
 		protected override void Dispose(bool disposing)
 		{
-			if (disposed) return;
-			disposed = true;
+			if (Disposed) return;
+			Disposed= true;
+
+			DestroyHandle();
 
 			if (disposing)
 			{

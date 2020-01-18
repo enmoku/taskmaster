@@ -285,7 +285,7 @@ namespace Taskmaster.UI
 
 		private void ScanEndEventHandler(object sender, Process.ScanEndEventArgs e)
 		{
-			if (disposed || !IsHandleCreated) return;
+			if (!IsHandleCreated || IsDisposed) return;
 
 			BeginInvoke(new Action(() =>
 			{
@@ -420,7 +420,7 @@ namespace Taskmaster.UI
 
 		public void LoaderEndEvent(object sender, Process.LoaderEndEvent ea)
 		{
-			if (disposed || !IsHandleCreated) return;
+			if (!IsHandleCreated || IsDisposed) return;
 
 			BeginInvoke(new Action(() => RemoveLoader(ea.Loader)));
 		}
@@ -454,9 +454,9 @@ namespace Taskmaster.UI
 
 		public async void LoaderActivityEvent(object sender, Process.LoaderEvent ea)
 		{
-			if (!IsHandleCreated || disposed) return;
+			await Task.Delay(5).ConfigureAwait(false);
 
-			await Task.Delay(0).ConfigureAwait(false);
+			if (!IsHandleCreated || IsDisposed) return;
 
 			LoadListPair[] pairs = new LoadListPair[ea.Loaders.Length];
 

@@ -54,7 +54,7 @@ namespace Taskmaster.UI
 		readonly NotifyIcon Tray;
 		readonly TrayWndProcProxy WndProcEventProxy;
 
-		readonly ContextMenuStrip ms;
+		readonly ContextMenuStrip ms = new ContextMenuStrip();
 
 		public event EventHandler<DisposedEventArgs>? OnDisposed;
 
@@ -81,7 +81,6 @@ namespace Taskmaster.UI
 			#region Build UI
 			if (Trace) Log.Verbose("Generating tray icon.");
 
-			ms = new ContextMenuStrip();
 			_ = ms.Handle;
 
 			var menu_windowopen = new ToolStripMenuItem("Open main window", null, (_, _ea) => BuildMainWindow(reveal: true, top: true));
@@ -289,6 +288,8 @@ namespace Taskmaster.UI
 
 		void PowerBehaviourEvent(object sender, Power.PowerBehaviourEventArgs ea)
 		{
+			if (!ms.IsHandleCreated || IsDisposed) return;
+
 			ms.BeginInvoke(new Action(() =>
 			{
 				switch (ea.Behaviour)
@@ -311,6 +312,8 @@ namespace Taskmaster.UI
 
 		void HighlightPowerMode()
 		{
+			if (!ms.IsHandleCreated || IsDisposed) return;
+
 			ms.BeginInvoke(new Action(() =>
 			{
 				switch (powermanager.CurrentMode)
@@ -550,15 +553,9 @@ namespace Taskmaster.UI
 		// does this do anything really?
 		public void RefreshVisibility()
 		{
-			if (!hiddenwindow.IsHandleCreated)
+			hiddenwindow?.InvokeAsync(new Action(() =>
 			{
-				Logging.DebugMsg("-- HiddenWindow handle not present for visibility refresh");
-				return;
-			}
-
-			hiddenwindow?.Invoke(new Action(() =>
-			{
-				if (disposed) return;
+				if (IsDisposed) return;
 
 				Logging.DebugMsg("<Tray:Icon> Refreshing visibility");
 
@@ -742,20 +739,20 @@ namespace Taskmaster.UI
 		internal extern static bool ShutdownBlockReasonDestroy(IntPtr hWnd);
 
 		#region IDisposable Support
-		public bool IsDisposed => disposed;
-
-		bool disposed = false;
+		public bool IsDisposed { get; internal set; } = false;
 
 		protected void Dispose(bool disposing)
 		{
-			if (disposed) return;
-			disposed = true;
+			if (IsDisposed) return;
+			IsDisposed = true;
 
 			//Microsoft.Win32.SystemEvents.SessionEnding -= SessionEndingEvent; // leaks if not disposed
 
 			if (disposing)
 			{
 				if (Trace) Log.Verbose("Disposing tray...");
+
+				ms.Dispose();
 
 				WndProcEventProxy.Dispose();
 

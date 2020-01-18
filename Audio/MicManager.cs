@@ -461,7 +461,7 @@ namespace Taskmaster.Audio
 
 		public void ShutdownEvent(object sender, EventArgs ea)
 		{
-			ExecuteOnMainThread(new Action(() =>
+			hiddenwindow?.InvokeAsync(new Action(() =>
 			{
 				Device?.Dispose();
 				Device = null;
