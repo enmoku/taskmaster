@@ -8,7 +8,7 @@ Comprehensive changes can be found in Git change history:
 ### 2020-01-??
 	Changed: Internal changes that should not be visible to end-user.
 ### 2020-01-10
-	Addded: Tabs for the log. Warnings tab that just shows warnings. This will likely be scrapped later and changed into log filtering.
+	Added: Tabs for the log. Warnings tab that just shows warnings. This will likely be scrapped later and changed into log filtering.
 ### 2020-01-09
 	Changed: Altered some process handling logic to attempt to fix a handling counter leak. Uncertain if the problem is fixed as nothing observed seems to suggest the leak should happen under any conditions.
 	Changed: Recheck should not delay normal logic, it is no longer waited on.
