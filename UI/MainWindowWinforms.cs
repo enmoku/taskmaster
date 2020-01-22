@@ -106,16 +106,25 @@ namespace Taskmaster.UI
 				SizeMode = TabSizeMode.Normal,
 			};
 
-			EventLogList = new Extensions.ListViewEx
+			LogPanel = new Panel()
 			{
 				Parent = this,
 				Dock = DockStyle.Bottom,
+				AutoSize = true,
+				MinimumSize = new System.Drawing.Size(-2, 140),
+			};
+
+			EventLogList = new Extensions.ListViewEx
+			{
+				//Parent = this,
+				//Dock = DockStyle.Bottom,
+				Dock = DockStyle.Fill,
 				AutoSize = true,
 				View = View.Details,
 				FullRowSelect = true,
 				HeaderStyle = ColumnHeaderStyle.Nonclickable,
 				Scrollable = true,
-				MinimumSize = new System.Drawing.Size(-2, 140),
+				//MinimumSize = new System.Drawing.Size(-2, 140),
 				//MinimumSize = new System.Drawing.Size(-2, -2), // doesn't work
 				VirtualMode = true,
 				VirtualListSize = 0,
@@ -126,18 +135,29 @@ namespace Taskmaster.UI
 			EventLogList.SearchForVirtualItem += VirtualModeNoAction;
 			EventLogList.VirtualItemsSelectionRangeChanged += VirtualModeNoAction;
 
-			var logSearch = new Extensions.TextBox
+			/*
+			LogSearch = new UI.Extensions.LabeledBox
 			{
 				Parent = EventLogList,
+				Top = 3,
+				AutoSizeMode = AutoSizeMode.GrowAndShrink,
+				AutoSize = true,
 				Anchor = AnchorStyles.Top | AnchorStyles.Right,
-				Top = -20,
+				Dock = DockStyle.Right,
+				BackColor = System.Drawing.Color.Transparent,
 			};
+			*/
 
-			var imglist = new ImageList();
-			imglist.Images.Add(Properties.Resources.OkayIcon);
-			imglist.Images.Add(Properties.Resources.InfoIcon);
-			imglist.Images.Add(Properties.Resources.ErrorIcon);
-			EventLogList.SmallImageList = imglist;
+			LogPanel.Controls.Add(EventLogList);
+			//LogPanel.Controls.Add(LogSearch);
+
+			EventLogList.SendToBack();
+			//LogSearch.BringToFront();
+
+			ImgList = new ImageList();
+			ImgList.Images.AddRange(new[] { Properties.Resources.OkayIcon, Properties.Resources.InfoIcon, Properties.Resources.ErrorIcon });
+
+			EventLogList.SmallImageList = ImgList;
 
 			MenuToolbar = new MenuStrip() { Dock = DockStyle.Top, Parent = this };
 
@@ -163,12 +183,14 @@ namespace Taskmaster.UI
 			};
 
 			var menu_action_exit = new ToolStripMenuItem("Exit", null, ExitRequest);
-			menu_action.DropDownItems.Add(menu_action_rescan);
-			menu_action.DropDownItems.Add(menu_action_memoryfocus);
-			menu_action.DropDownItems.Add(new ToolStripSeparator());
-			menu_action.DropDownItems.Add(menu_action_restart);
-			menu_action.DropDownItems.Add(menu_action_restartadmin);
-			menu_action.DropDownItems.Add(menu_action_exit);
+			menu_action.DropDownItems.AddRange(new ToolStripItem[] {
+				menu_action_rescan,
+				menu_action_memoryfocus,
+				new ToolStripSeparator(),
+				menu_action_restart,
+				menu_action_restartadmin,
+				menu_action_exit,
+			});
 			#endregion // Actions toolstrip menu
 
 			#region Miscellaneous toolstrip menu
@@ -182,9 +204,11 @@ namespace Taskmaster.UI
 				Enabled = processmanager?.LoaderTracking ?? false,
 			};
 
-			menu_view.DropDownItems.Add(menu_view_volume);
-			menu_view.DropDownItems.Add(new ToolStripSeparator());
-			menu_view.DropDownItems.Add(menu_view_loaders);
+			menu_view.DropDownItems.AddRange(new ToolStripItem[] {
+				menu_view_volume,
+				new ToolStripSeparator(),
+				menu_view_loaders,
+			});
 			#endregion
 
 			// POWER menu item
@@ -202,13 +226,15 @@ namespace Taskmaster.UI
 				power_saving = new ToolStripMenuItem(Power.Utility.GetModeName(Power.Mode.PowerSaver), null, (_, _ea) => SetPower(Power.Mode.PowerSaver));
 				power_manual = new ToolStripMenuItem("Manual override", null, SetManualPower) { CheckOnClick = true };
 
-				menu_power.DropDownItems.Add(power_auto);
-				menu_power.DropDownItems.Add(new ToolStripSeparator());
-				menu_power.DropDownItems.Add(power_highperf);
-				menu_power.DropDownItems.Add(power_balanced);
-				menu_power.DropDownItems.Add(power_saving);
-				menu_power.DropDownItems.Add(new ToolStripSeparator());
-				menu_power.DropDownItems.Add(power_manual);
+				menu_power.DropDownItems.AddRange(new ToolStripItem[] {
+					power_auto,
+					new ToolStripSeparator(),
+					power_highperf,
+					power_balanced,
+					power_saving,
+					new ToolStripSeparator(),
+					power_manual,
+				});
 
 				if (powermanager != null)
 					UpdatePowerBehaviourHighlight(powermanager.Behaviour);
@@ -264,9 +290,11 @@ namespace Taskmaster.UI
 				corecfg.Config[HumanReadable.Generic.QualityOfLife]["Exit confirmation"].Bool = ExitConfirmation;
 			};
 
-			menu_config_behaviour.DropDownItems.Add(menu_config_behaviour_autoopen);
-			menu_config_behaviour.DropDownItems.Add(menu_config_behaviour_taskbar);
-			menu_config_behaviour.DropDownItems.Add(menu_config_behaviour_exitconfirm);
+			menu_config_behaviour.DropDownItems.AddRange(new ToolStripItem[] {
+				menu_config_behaviour_autoopen,
+				menu_config_behaviour_taskbar,
+				menu_config_behaviour_exitconfirm,
+			});
 
 			// CONFIG -> VISUALS
 			var menu_config_visuals_rowalternate = new ToolStripMenuItem("Alternate row colors");
@@ -287,9 +315,11 @@ namespace Taskmaster.UI
 				CheckOnClick = true,
 			};
 
-			menu_config_visuals_rowalternate.DropDownItems.Add(menu_config_visuals_rowalternate_log);
-			menu_config_visuals_rowalternate.DropDownItems.Add(menu_config_visuals_rowalternate_watchlist);
-			menu_config_visuals_rowalternate.DropDownItems.Add(menu_config_visuals_rowalternate_devices);
+			menu_config_visuals_rowalternate.DropDownItems.AddRange(new ToolStripItem[] {
+				menu_config_visuals_rowalternate_log,
+				menu_config_visuals_rowalternate_watchlist,
+				menu_config_visuals_rowalternate_devices,
+			});
 
 			menu_config_visuals_rowalternate_log.Click += (_, _ea) =>
 			{
@@ -362,9 +392,11 @@ namespace Taskmaster.UI
 				UpdateStyling();
 			};
 
-			menu_config_visual.DropDownItems.Add(menu_config_visuals_styling);
-			menu_config_visual.DropDownItems.Add(menu_config_visuals_rowalternate);
-			menu_config_visual.DropDownItems.Add(menu_config_visuals_topmost);
+			menu_config_visual.DropDownItems.AddRange(new ToolStripItem[] {
+				menu_config_visuals_styling,
+				menu_config_visuals_rowalternate,
+				menu_config_visuals_topmost,
+			});
 
 			// CONFIG -> LOGGING
 			var menu_config_logging_adjusts = new ToolStripMenuItem("Process adjusts")
@@ -482,22 +514,28 @@ namespace Taskmaster.UI
 			menu_config_logging_bitmask_bits.Click += (_, _ea) => SetLogBitmask(BitmaskStyle.Bits);
 			menu_config_logging_bitmask_mixed.Click += (_, _ea) => SetLogBitmask(BitmaskStyle.Mixed);
 
-			menu_config_logging_bitmask.DropDownItems.Add(menu_config_logging_bitmask_decimal);
-			menu_config_logging_bitmask.DropDownItems.Add(menu_config_logging_bitmask_bits);
-			menu_config_logging_bitmask.DropDownItems.Add(menu_config_logging_bitmask_mixed);
+			menu_config_logging_bitmask.DropDownItems.AddRange(new ToolStripItem[] {
+				menu_config_logging_bitmask_decimal,
+				menu_config_logging_bitmask_bits,
+				menu_config_logging_bitmask_mixed,
+			});
 
-			menu_config_logging.DropDownItems.Add(menu_config_logging_adjusts);
-			menu_config_logging_adjusts.DropDownItems.Add(menu_config_logging_showunmodified);
-			menu_config_logging_adjusts.DropDownItems.Add(menu_config_logging_showonlyfinal);
-			menu_config_logging.DropDownItems.Add(menu_config_logging_bitmask);
-			menu_config_logging.DropDownItems.Add(menu_config_logging_session);
-			menu_config_logging.DropDownItems.Add(menu_config_logging_neterrors);
-			menu_config_logging.DropDownItems.Add(new ToolStripSeparator());
-			menu_config_logging.DropDownItems.Add(new ToolStripLabel("– NVM log Level –") { ForeColor = System.Drawing.SystemColors.GrayText });
+			menu_config_logging_adjusts.DropDownItems.AddRange(new ToolStripItem[] {
+				menu_config_logging_showunmodified,
+				menu_config_logging_showonlyfinal,
+			});
 
-			menu_config_logging.DropDownItems.Add(menu_config_logging_info);
-			menu_config_logging.DropDownItems.Add(menu_config_logging_debug);
-			menu_config_logging.DropDownItems.Add(menu_config_logging_trace);
+			menu_config_logging.DropDownItems.AddRange(new ToolStripItem[] {
+				menu_config_logging_adjusts,
+				menu_config_logging_bitmask,
+				menu_config_logging_session,
+				menu_config_logging_neterrors,
+				new ToolStripSeparator(),
+				new ToolStripLabel("– NVM log Level –") { ForeColor = System.Drawing.SystemColors.GrayText },
+				menu_config_logging_info,
+				menu_config_logging_debug,
+				menu_config_logging_trace,
+			});
 
 			var menu_config_bitmaskstyle_bitmask = new ToolStripMenuItem("Bitmask")
 			{
@@ -549,18 +587,21 @@ namespace Taskmaster.UI
 
 			var menu_config_folder = new ToolStripMenuItem("Open in file manager", null, (_, _ea) => System.Diagnostics.Process.Start(DataPath));
 			// menu_config.DropDownItems.Add(menu_config_log);
-			menu_config.DropDownItems.Add(menu_config_behaviour);
-			menu_config.DropDownItems.Add(menu_config_visual);
-			menu_config.DropDownItems.Add(menu_config_logging);
-			menu_config.DropDownItems.Add(menu_config_bitmaskstyle);
-			menu_config.DropDownItems.Add(new ToolStripSeparator());
-			menu_config.DropDownItems.Add(menu_config_advanced);
-			menu_config.DropDownItems.Add(menu_config_powermanagement);
-			menu_config.DropDownItems.Add(menu_config_components);
-			menu_config.DropDownItems.Add(new ToolStripSeparator());
-			menu_config.DropDownItems.Add(menu_config_experiments);
-			menu_config.DropDownItems.Add(new ToolStripSeparator());
-			menu_config.DropDownItems.Add(menu_config_folder);
+
+			menu_config.DropDownItems.AddRange(new ToolStripItem[] {
+				menu_config_behaviour,
+				menu_config_visual,
+				menu_config_logging,
+				menu_config_bitmaskstyle,
+				new ToolStripSeparator(),
+				menu_config_advanced,
+				menu_config_powermanagement,
+				menu_config_components,
+				new ToolStripSeparator(),
+				menu_config_experiments,
+				new ToolStripSeparator(),
+				menu_config_folder,
+			});
 			#endregion // Config toolstrip menu
 
 			// DEBUG menu item
@@ -944,7 +985,7 @@ namespace Taskmaster.UI
 
 			// UI Log
 			// -1 = contents, -2 = heading
-			EventLogList.Columns.Add("Event Log", -2, HorizontalAlignment.Left); // 2
+			EventLogMainColumn = EventLogList.Columns.Add("Event Log", -2, HorizontalAlignment.Left); // 2
 
 			//ResizeEnd += ResizeLogList;
 			//Resize += ResizeLogList;
@@ -2242,10 +2283,14 @@ namespace Taskmaster.UI
 
 		void ResizeLogList(object sender, EventArgs ev)
 		{
-			EventLogList.Columns[0].Width = -2;
-			EventLogList.Columns[0].Width -= 2; // HACK: Enable visual styles causes horizontal bar to always be present without the following.
+			EventLogMainColumn.Width = -2;
+			EventLogMainColumn.Width -= 2; // HACK: Enable visual styles causes horizontal bar to always be present without the following.
 
 			EventLogList.Height = ClientSize.Height - TabPages.Height - statusbar.Height - MenuToolbar.Height;
+
+			LogPanel.Height = ClientSize.Height - TabPages.Height - statusbar.Height - MenuToolbar.Height;
+
+			//LogSearch.Anchor = AnchorStyles.Top | AnchorStyles.Right;
 
 			ShowLastLog();
 		}
@@ -3575,8 +3620,12 @@ namespace Taskmaster.UI
 			tempObjectCount.Text = (stats.Dirs + stats.Files).ToString();
 		}
 
+		readonly Panel LogPanel;
 		readonly Extensions.ListViewEx EventLogList;
+		readonly ColumnHeader EventLogMainColumn;
 		readonly MenuStrip MenuToolbar;
+		readonly UI.Extensions.LabeledBox LogSearch;
+		readonly ImageList ImgList;
 
 		public void FillLog()
 		{
