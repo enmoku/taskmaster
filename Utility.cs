@@ -106,11 +106,11 @@ namespace Taskmaster
 #endif
 				if (ex.InnerException != null)
 				{
-					sbs.AppendLine().AppendLine("--- Inner Exception ---");
-					AppendStacktace(ex.InnerException, ref sbs);
+					StackInnerException(ref sbs, ex.InnerException
 #if DEBUG
-					AppendStacktace(ex.InnerException, ref exceptionsbs);
+						, ref exceptionsbs
 #endif
+						);
 				}
 
 #if DEBUG
@@ -129,6 +129,27 @@ namespace Taskmaster
 #if DEBUG
 				Debug.WriteLine(exceptionsbs.ToString());
 #endif
+			}
+
+			void StackInnerException(ref StringBuilder sbs, Exception ex
+#if DEBUG
+			, ref StringBuilder exsbs
+#endif
+			)
+			{
+				sbs.AppendLine().AppendLine("--- Inner Exception ---");
+				AppendStacktace(ex, ref sbs);
+#if DEBUG
+				exsbs.AppendLine("--- Inner Exception ---");
+				AppendStacktace(ex, ref exsbs);
+#endif
+
+				if (ex.InnerException != null)
+					StackInnerException(ref sbs, ex.InnerException
+#if DEBUG
+						, ref exsbs
+#endif
+						);
 			}
 		}
 	}

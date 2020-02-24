@@ -390,8 +390,19 @@ namespace Taskmaster
 				sbs.AppendLine(ex.Message);
 				if (ex.InnerExceptions?.Length > 0)
 				{
-					sbs.AppendLine(ex.InnerExceptions[0].Message);
-					sbs.AppendLine(Logging.PruneStacktrace(ex.InnerExceptions[0].StackTrace));
+					foreach (var subex in ex.InnerExceptions)
+					{
+						sbs.AppendLine("--- Inner Exception ---")
+							.AppendLine(subex.Message);
+						sbs.AppendLine(Logging.PruneStacktrace(subex.StackTrace));
+
+						if (subex.InnerException != null)
+						{
+							sbs.AppendLine("--- Deep Inner Exception ---")
+								.AppendLine(subex.InnerException.Message);
+							sbs.AppendLine(Logging.PruneStacktrace(subex.InnerException.StackTrace));
+						}
+					}
 				}
 				sbs.Append("\nRetry?");
 
