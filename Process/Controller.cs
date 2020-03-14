@@ -1800,27 +1800,21 @@ namespace Taskmaster.Process
 			*/
 		}
 
-		int refresh_lock = 0;
+		GenericLock refresh_lock = new GenericLock();
 
 		async Task InternalRefresh(DateTimeOffset now)
 		{
-			if (!Atomic.Lock(ref refresh_lock)) return;
+			if (!refresh_lock.TryLock()) return;
+			using var scoped_unlock = refresh_lock.ScopedUnlock();
 
 			await Task.Delay(0).ConfigureAwait(false);
 
-			try
+			if (RecentlyModified.Count > 5)
 			{
-				if (RecentlyModified.Count > 5)
-				{
-					var ignrecent = Manager.IgnoreRecentlyModified;
+				var ignrecent = Manager.IgnoreRecentlyModified;
 
-					foreach (var r in RecentlyModified.Where(x => x.Value.LastIgnored.To(now) > ignrecent || x.Value.LastModified.To(now) > ignrecent))
-						RecentlyModified.TryRemove(r.Key, out _);
-				}
-			}
-			finally
-			{
-				Atomic.Unlock(ref refresh_lock);
+				foreach (var r in RecentlyModified.Where(x => x.Value.LastIgnored.To(now) > ignrecent || x.Value.LastModified.To(now) > ignrecent))
+					RecentlyModified.TryRemove(r.Key, out _);
 			}
 		}
 
