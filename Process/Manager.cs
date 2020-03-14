@@ -2189,7 +2189,7 @@ namespace Taskmaster.Process
 
 						if (prc.Foreground != ForegroundMode.Ignore) await ForegroundWatch(info).ConfigureAwait(false);
 
-						if (prc.ExclusiveMode) await ExclusiveMode(info).ConfigureAwait(false);
+						if (Application.ExclusiveMode && prc.ExclusiveMode) await ExclusiveMode(info).ConfigureAwait(false);
 
 						if (RecordAnalysis.HasValue && info.Controller.Analyze && info.Valid && info.State != HandlingState.Abandoned)
 							analyzer?.Analyze(info).ConfigureAwait(false);
