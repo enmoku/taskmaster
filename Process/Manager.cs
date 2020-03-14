@@ -1445,10 +1445,12 @@ namespace Taskmaster.Process
 		{
 			try
 			{
-				if (GetCachedProcess(info.Id, out parent))
+				int parentId = info.Process.ParentProcessId();
+
+				if (GetCachedProcess(parentId, out parent))
 					return true;
 
-				return Utility.Construct(info.Process.ParentProcessId(), out parent);
+				return Utility.Construct(parentId, out parent);
 			}
 			catch { /* don't care */ }
 
