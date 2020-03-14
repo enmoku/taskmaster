@@ -1369,25 +1369,29 @@ namespace Taskmaster.UI
 		{
 			if (!IsHandleCreated || Disposed) return;
 
-			try
+			lock (LogListData_Lock)
 			{
-				EventLogList.VirtualListSize = LogListData.Count;
-
-				//int count = LogList.Items.Count;
-				//if (count > 0) LogList.EnsureVisible(count - 1);
-
-				var count = EventLogList.Items.Count;
-				if (count > 0)
+				int count;
+				try
 				{
-					//var li = LogList.Items[count - 1];
-					//li.Focused = true; // does nothing
+					EventLogList.VirtualListSize = LogListData.Count;
 
-					EventLogList.TopItem = EventLogList.Items[count - 1]; // triggers RetrieveVirtualItem
+					//int count = LogList.Items.Count;
+					//if (count > 0) LogList.EnsureVisible(count - 1);
+
+					count = EventLogList.Items.Count;
+					if (count > 0)
+					{
+						//var li = LogList.Items[count - 1];
+						//li.Focused = true; // does nothing
+
+						EventLogList.TopItem = EventLogList.Items[count - 1]; // triggers RetrieveVirtualItem
+					}
 				}
-			}
-			catch
-			{
-				// ignore, apparently virtualistsize and topitem can randomly throw errors?
+				catch
+				{
+					// ignore, apparently virtualistsize and topitem can randomly throw errors?
+				}
 			}
 		}
 
@@ -2186,28 +2190,32 @@ namespace Taskmaster.UI
 
 		int LogListFirst = 0, ErrorListFirst = 0;
 
+		readonly object LogListData_Lock = new object();
+
 		readonly List<LogEventArgs> LogListData = new List<LogEventArgs>(200);
 		readonly MKAh.Cache.SimpleCache<ulong, ListViewItem> LogListCache = new MKAh.Cache.SimpleCache<ulong, ListViewItem>(200, 50);
 
 		void LogListCacheItem(object sender, CacheVirtualItemsEventArgs e)
 		{
 			// Confirm necessity of update
-			if (e.StartIndex >= LogListFirst && e.EndIndex <= LogListFirst + LogListData.Count)
-				return; // Subset of old cache
-
-			// Build cache
-			LogListFirst = e.StartIndex;
-			int newVisibleLength = e.EndIndex - e.StartIndex + 1; // inclusive range
-
-			//Fill the cache with the appropriate ListViewItems.
-			for (int i = 0; i < newVisibleLength; i++)
+			lock (LogListData_Lock)
 			{
-				var item = LogListData[i];
+				if (e.StartIndex >= LogListFirst && e.EndIndex <= LogListFirst + LogListData.Count)
+					return; // Subset of old cache
 
-				if (!LogListCache.Get(item.ID, out _))
-					LogListGenerateItem(item);
+				// Build cache
+				LogListFirst = e.StartIndex;
+				int newVisibleLength = e.EndIndex - e.StartIndex + 1; // inclusive range
+
+				//Fill the cache with the appropriate ListViewItems.
+				for (int i = 0; i < newVisibleLength; i++)
+				{
+					var item = LogListData[i];
+
+					if (!LogListCache.Get(item.ID, out _))
+						LogListGenerateItem(item);
+				}
 			}
-
 			//LogList.VirtualListSize = LogListData.Count;
 		}
 
@@ -2215,27 +2223,39 @@ namespace Taskmaster.UI
 		{
 			LogEventArgs ev;
 
-			try
+			int index = e.ItemIndex - LogListFirst;
+
+			lock (LogListData_Lock)
 			{
-				if (e.ItemIndex >= LogListFirst && e.ItemIndex <= LogListFirst + LogListData.Count)
+				int count = LogListData.Count;
+
+				try
 				{
-					ev = LogListData[e.ItemIndex - LogListFirst];
-
-					if (LogListCache.Get(ev.ID, out var li))
+					if (e.ItemIndex >= LogListFirst && e.ItemIndex <= LogListFirst + count)
 					{
-						e.Item = li;
-						return;
-					}
-				}
-				else
-					ev = LogListData.Last();
+						ev = LogListData[index];
 
-				if (e.Item is null)
-					e.Item = LogListGenerateItem(ev);
-			}
-			catch (Exception ex)
-			{
-				Logging.Stacktrace(ex);
+						if (LogListCache.Get(ev.ID, out var li))
+						{
+							e.Item = li;
+							return;
+						}
+					}
+					else
+						ev = LogListData.Last();
+
+					if (e.Item is null)
+						e.Item = LogListGenerateItem(ev);
+				}
+				catch (ArgumentOutOfRangeException ex)
+				{
+					Logging.Stacktrace(ex);
+					Log.Error("<UI> Log retrieve item – index out of range " + index.ToString() + " – items: " + count.ToString());
+				}
+				catch (Exception ex)
+				{
+					Logging.Stacktrace(ex);
+				}
 			}
 		}
 
@@ -3635,8 +3655,11 @@ namespace Taskmaster.UI
 			var logbuffer = MemoryLog.MemorySink.ToArray();
 			Logging.DebugMsg("Filling backlog of messages: " + logbuffer.Length.ToString());
 
-			foreach (var logmsg in logbuffer)
-				LogListData.Add(logmsg);
+			lock (LogListData_Lock)
+			{
+				foreach (var logmsg in logbuffer)
+					LogListData.Add(logmsg);
+			}
 
 			//ShowLastLog(); // part of resizeloglist
 
@@ -4143,9 +4166,12 @@ namespace Taskmaster.UI
 		{
 			//loglist.Clear();
 
-			LogListData.Clear();
-			LogListCache.Empty();
-			EventLogList.VirtualListSize = 0;
+			lock (LogListData_Lock)
+			{
+				LogListData.Clear();
+				LogListCache.Empty();
+				EventLogList.VirtualListSize = 0;
+			}
 
 			//LogList.Items.Clear();
 			MemoryLog.MemorySink.Clear();
@@ -4156,34 +4182,39 @@ namespace Taskmaster.UI
 			if (!IsHandleCreated || Disposed
 				|| (LogIncludeLevel.MinimumLevel > logmsg.Level)) return;
 
-			try
+			await Task.Delay(0).ConfigureAwait(false);
+
+			lock (LogListData_Lock)
 			{
-				LogListData.Add(logmsg);
-
-				await Task.Delay(0).ConfigureAwait(false);
-
-				LogEventArgs first;
-				while (LogListData.Count > MaxLogSize)
+				try
 				{
-					first = LogListData[0];
-					LogListData.Remove(first);
+					LogListData.Add(logmsg);
+
+					LogEventArgs first;
+					while (LogListData.Count > MaxLogSize)
+					{
+						first = LogListData[0];
+						LogListData.Remove(first);
+					}
+
+					//var li = LogListGenerateItem(ea);
+
+					//LogList.Items.Add(li);
+					//LogList.Columns[0].Width = -2;
+
+					//li.EnsureVisible();
+				}
+				catch (Exception ex)
+				{
+					Logging.Stacktrace(ex);
 				}
 
+				BeginInvoke(new Action(() => EventLogList.VirtualListSize = LogListData.Count));
+
 				//Logging.DebugMsg("LogList new size: " + newSize.ToString());
-
-				BeginInvoke(new Action(ShowLastLog));
-
-				//var li = LogListGenerateItem(ea);
-
-				//LogList.Items.Add(li);
-				//LogList.Columns[0].Width = -2;
-
-				//li.EnsureVisible();
 			}
-			catch (Exception ex)
-			{
-				Logging.Stacktrace(ex);
-			}
+
+			BeginInvoke(new Action(ShowLastLog));
 		}
 
 		/*
@@ -4201,20 +4232,27 @@ namespace Taskmaster.UI
 
 		void AddLog(LogEventArgs ea)
 		{
-			LogListData.Add(ea);
+			int count;
 
-			LogEventArgs first;
-			while (LogListData.Count > MaxLogSize)
+			lock (LogListData_Lock)
 			{
-				first = LogListData[0];
-				LogListData.Remove(first);
+				LogListData.Add(ea);
+
+				LogEventArgs first;
+				while (LogListData.Count > MaxLogSize)
+				{
+					first = LogListData[0];
+					LogListData.Remove(first);
+				}
+
+				count = LogListData.Count;
 			}
 
 			if (!IsHandleCreated || Disposed) return;
 
 			//Logging.DebugMsg("LogList new size: " + newSize.ToString());
 
-			BeginInvoke(new Action(() => EventLogList.VirtualListSize = LogListData.Count));
+			BeginInvoke(new Action(() => EventLogList.VirtualListSize = count));
 
 			//var li = LogListGenerateItem(ea);
 

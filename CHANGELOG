@@ -3,6 +3,8 @@ Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
 ## [0.14...]
+### 2020-02-26
+	Fixed: ArgumentOutOfRange exception in LogListRetrieveItem. Hopefully.
 ### 2020-02-24
 	Changed: Crashes are now more descriptive if the error occurs deeper in the code.
 ### 2020-01-18
