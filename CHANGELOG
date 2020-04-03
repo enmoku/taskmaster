@@ -8,6 +8,8 @@ Comprehensive changes can be found in Git change history:
 	Fixed: Culture variations should no longer cause saving/loading configuration to break (e.g. decimal pointer differences).
 	Fixed: Exception during initialization when certain components are disabled.
 	Changed: Disable a lot of optioal components by default on initial launch.
+	Fixed: Crash on exit if power manager is disabled.
+	Fixed: Crash if loopback is not the first found network interface.
 ### 2020-03-07
 	Changed: Exclusive mode is now disabled unless you're running Windows 7. This interacts poorly with Windows 10 Game Mode and needs farther investigation.
 ### 2020-03-01
