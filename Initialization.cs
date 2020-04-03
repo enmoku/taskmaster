@@ -685,7 +685,7 @@ namespace Taskmaster
 				throw;
 			}
 
-			Task.WhenAll(tProcMon, tFgMon).ContinueWith(_ => activeappmonitor?.Hook(processmanager), cts.Token, TaskContinuationOptions.OnlyOnRanToCompletion, TaskScheduler.Default);
+			Task.WhenAll(tProcMon, tFgMon).ContinueWith(_ => { if (ActiveAppMonitorEnabled) activeappmonitor?.Hook(processmanager); }, cts.Token, TaskContinuationOptions.OnlyOnRanToCompletion, TaskScheduler.Default);
 			if (cts.IsCancellationRequested) throw new InitFailure("Initialization failed", (cex?[0]), cex);
 
 			try
@@ -693,24 +693,22 @@ namespace Taskmaster
 				if (PowerManagerEnabled)
 				{
 					Task.WhenAll(tPowMan, tCpuMon, tProcMon).ContinueWith((task) =>
-					  {
-						  if (task.IsFaulted || processmanager is null)
-						  {
-							  Log.Fatal("Process, CPU or Power manager failed to initialize.");
-							  throw new TaskCanceledException("task canceled", task.Exception);
-						  }
+					{
+						if (task.IsFaulted || processmanager is null)
+						{
+							Log.Fatal("Process, CPU or Power manager failed to initialize.");
+							throw new TaskCanceledException("task canceled", task.Exception);
+						}
 
-						  if (cpumonitor != null)
-						  {
-							  cpumonitor.Hook(processmanager);
-							  powermanager?.Hook(cpumonitor);
-						  }
+						if (cpumonitor != null)
+						{
+							cpumonitor.Hook(processmanager);
+							powermanager?.Hook(cpumonitor);
+						}
 
-						  if (powermanager != null)
-						  {
-							  processmanager.Hook(powermanager);
-						  }
-					  }, cts.Token, TaskContinuationOptions.OnlyOnRanToCompletion, TaskScheduler.Default);
+						if (powermanager != null)
+							processmanager.Hook(powermanager);
+					}, cts.Token, TaskContinuationOptions.OnlyOnRanToCompletion, TaskScheduler.Default);
 
 					var tr = Task.WhenAny(init);
 					if (tr.IsFaulted)
@@ -726,9 +724,15 @@ namespace Taskmaster
 				//if (HardwareMonitorEnabled)
 				//	Task.WhenAll(HwMon).ContinueWith((x) => hardware.Start()); // this is slow
 
-				tNetMon.ContinueWith(_ => netmonitor.Tray = trayaccess, cts.Token, TaskContinuationOptions.OnlyOnRanToCompletion, TaskScheduler.Default);
+				tNetMon.ContinueWith(_ =>
+				{
+					if (NetworkMonitorEnabled) netmonitor.Tray = trayaccess;
+				}, cts.Token, TaskContinuationOptions.OnlyOnRanToCompletion, TaskScheduler.Default);
 
-				if (AudioManagerEnabled) tProcMon.ContinueWith(_ => audiomanager?.Hook(processmanager), cts.Token, TaskContinuationOptions.OnlyOnRanToCompletion, TaskScheduler.Default);
+				if (AudioManagerEnabled) tProcMon.ContinueWith(_ =>
+				{
+					if (AudioManagerEnabled) audiomanager?.Hook(processmanager);
+				}, cts.Token, TaskContinuationOptions.OnlyOnRanToCompletion, TaskScheduler.Default);
 
 				// WAIT for component initialization
 				if (!Task.WaitAll(init, 5_000))
