@@ -476,7 +476,7 @@ namespace External
 			byte[] bytes = reader.ReadBytes(Marshal.SizeOf(typeof(T)));
 
 			// Pin the managed memory while, copy it out the data, then unpin it
-			GCHandle handle = GCHandle.Alloc(bytes, GCHandleType.Pinned);
+			var handle = GCHandle.Alloc(bytes, GCHandleType.Pinned);
 			T theStructure = (T)Marshal.PtrToStructure(handle.AddrOfPinnedObject(), typeof(T));
 			if (handle.IsAllocated) handle.Free();
 
@@ -489,10 +489,24 @@ namespace External
 
 		const UInt16 IMAGE_FILE_32BIT_MACHINE = 0x0100;
 
+		const UInt16 IMAGE_FILE_LARGE_ADDRESS_AWARE = 0x0020;
+
+		const UInt16 IMAGE_FILE_UP_SYSTEM_ONLY = 0x4000;
+
 		/// <summary>
 		/// Gets if the file header is 32 bit or not
 		/// </summary>
 		public bool Is32BitHeader => (IMAGE_FILE_32BIT_MACHINE & FileHeader.Characteristics) == IMAGE_FILE_32BIT_MACHINE;
+
+		/// <summary>
+		/// Application is Large Address Aware (can use more than 2GB RAM).
+		/// </summary>
+		public bool IsLargeAddressAware => (IMAGE_FILE_LARGE_ADDRESS_AWARE & FileHeader.Characteristics) == IMAGE_FILE_LARGE_ADDRESS_AWARE;
+
+		/// <summary>
+		/// Meant to be run only on singular procssor.
+		/// </summary>
+		public bool IsUniprocessorOnly => (IMAGE_FILE_UP_SYSTEM_ONLY & FileHeader.Characteristics) == IMAGE_FILE_UP_SYSTEM_ONLY;
 
 		/// <summary>
 		/// Gets the timestamp from the file header

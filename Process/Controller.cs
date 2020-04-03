@@ -1678,6 +1678,11 @@ namespace Taskmaster.Process
 			try
 			{
 				var pereader = new External.PeHeaderReader(info.Path);
+
+				info.Is32BitExecutable = pereader.Is32BitHeader;
+				info.IsUniprocessorOnly = pereader.IsUniprocessorOnly;
+				info.IsLargeAddressAware = pereader.IsLargeAddressAware;
+
 				if (pereader.Is32BitHeader)
 				{
 					//bool definiteLegacy = pereader.TimeStamp.Year < 1999; // pre w2k

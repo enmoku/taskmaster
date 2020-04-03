@@ -74,6 +74,12 @@ namespace Taskmaster.Process
 
 		public LegacyLevel Legacy { get; set; } = LegacyLevel.Undefined;
 
+		public bool IsUniprocessorOnly { get; set; } = false;
+
+		public bool IsLargeAddressAware { get; set; } = false;
+
+		public bool Is32BitExecutable { get; set; } = false;
+
 		/// <summary>
 		/// Process Id.
 		/// </summary>
