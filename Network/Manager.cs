@@ -229,7 +229,17 @@ namespace Taskmaster.Network
 
 			// TODO: SUPPORT MULTIPLE NICS
 			const string CategoryName = "Network Interface";
-			var firstnic = new PerformanceCounterCategory(CategoryName).GetInstanceNames()[1]; // 0 = loopback
+			var ints = new PerformanceCounterCategory(CategoryName).GetInstanceNames();
+			string firstnic = string.Empty;
+			foreach (var iface in ints)
+			{
+				Debug.WriteLine(iface);
+				if (iface.IndexOf("loopback", StringComparison.InvariantCultureIgnoreCase) > 0) // loopback is not guaranteed to exist, but is in index 0 normally
+					continue;
+
+				firstnic = iface;
+				break;
+			}
 			NetInTrans = new Windows.PerformanceCounter(CategoryName, "Bytes Received/sec", firstnic);
 			NetOutTrans = new Windows.PerformanceCounter(CategoryName, "Bytes Sent/sec", firstnic);
 			NetQueue = new Windows.PerformanceCounter(CategoryName, "Output Queue Length", firstnic);
