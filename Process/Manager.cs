@@ -1403,12 +1403,19 @@ namespace Taskmaster.Process
 
 					if (ea.AffinityFail) sbs.Append(" [Failed]");
 					if (ea.Info.AffinityProtected) sbs.Append(" [Protected]");
-					if (ea.Info.Legacy == LegacyLevel.Win95) sbs.Append(" [Legacy]");
 				}
 
 				if (DebugProcesses) sbs.Append(" [").Append(prc.AffinityStrategy.ToString()).Append(']');
 
 				if (ea.NewIO >= 0) sbs.Append(" – I/O: ").Append(ea.NewIO.ToString());
+
+				if (ea.Info.Is32BitExecutable)
+				{
+					sbs.Append(" [32-bit]");
+					if (!ea.Info.IsLargeAddressAware) sbs.Append(" [no LAA]");
+				}
+				if (ea.Info.Legacy == LegacyLevel.Win95) sbs.Append(" [Legacy]");
+				if (ea.Info.IsUniprocessorOnly) sbs.Append(" [Uniprocessor]");
 
 				if (ea.User != null) sbs.Append(ea.User);
 
