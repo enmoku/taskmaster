@@ -767,11 +767,11 @@ namespace Taskmaster.UI
 				Tray.Visible = false;
 				Tray.Dispose();
 
-				power_auto.Dispose();
-				power_highperf.Dispose();
-				power_balanced.Dispose();
-				power_saving.Dispose();
-				power_manual.Dispose();
+				power_auto?.Dispose();
+				power_highperf?.Dispose();
+				power_balanced?.Dispose();
+				power_saving?.Dispose();
+				power_manual?.Dispose();
 
 				//base.Dispose();
 
