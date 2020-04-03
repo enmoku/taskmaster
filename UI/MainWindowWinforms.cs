@@ -574,6 +574,7 @@ namespace Taskmaster.UI
 			var menu_config_advanced = new ToolStripMenuItem("Advanced", null, (_, _ea) => Config.AdvancedConfig.Reveal());
 
 			var menu_config_powermanagement = new ToolStripMenuItem("Power management", null, (_, _ea) => Config.PowerConfigWindow.Reveal(powermanager));
+			menu_config_powermanagement.Enabled = Application.PowerManagerEnabled;
 			//menu_config_power.DropDownItems.Add(menu_config_power_autoadjust); // sub-menu removed
 
 			//
