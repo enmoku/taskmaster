@@ -46,7 +46,7 @@ namespace Taskmaster.UI.Extensions
 		// turn text to value
 		new protected void ParseEditText()
 		{
-			if (decimal.TryParse((string.IsNullOrEmpty(Unit) ? Text : Text.Replace(Unit, "")).Trim(), out decimal tval))
+			if (decimal.TryParse((string.IsNullOrEmpty(Unit) ? Text : Text.Replace(Unit, "")).Trim(), NumberStyles.Number, CultureInfo.InvariantCulture, out decimal tval))
 				Value = Math.Min(Math.Max(tval, Minimum), Maximum);
 			else
 			{
