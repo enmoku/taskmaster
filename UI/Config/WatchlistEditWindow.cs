@@ -645,10 +645,13 @@ namespace Taskmaster.UI.Config
 			// Exclusive mode
 
 			exMode = new CheckBox() { Checked = Controller.ExclusiveMode };
-			tooltip.SetToolTip(exMode, "Disable Windows Update and Windows Search services while this rule is in effect.");
+			exMode.Enabled = Application.ExclusiveMode;
+			if (Application.ExclusiveMode) 
+				tooltip.SetToolTip(exMode, "Disable Windows Update and Windows Search services while this rule is in effect.");
 
 			layout.Controls.Add(new Extensions.Label() { Text = "Exclusive mode" });
 			layout.Controls.Add(exMode);
+
 			layout.Controls.Add(new Extensions.Label() { Text = "EXPERIMENTAL", ForeColor = System.Drawing.Color.Red });
 
 			// LOG ADJUSTS
