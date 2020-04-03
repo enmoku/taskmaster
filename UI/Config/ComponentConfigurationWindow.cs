@@ -127,7 +127,7 @@ namespace Taskmaster.UI.Config
 			tooltip.SetToolTip(netmon, "Monitor network interface status and report online status.");
 			layout.Controls.Add(new Extensions.Label { Text = "Network monitor", Padding = BigPadding });
 			layout.Controls.Add(netmon);
-			netmon.Checked = initial || NetworkMonitorEnabled;
+			netmon.Checked = !initial || NetworkMonitorEnabled;
 			netmon.Click += (_, _ea) =>
 			{
 			};
@@ -256,7 +256,7 @@ namespace Taskmaster.UI.Config
 				//BackColor = System.Drawing.Color.Azure,
 				Dock = DockStyle.Left
 			};
-			fgmon.Checked = initial || ActiveAppMonitorEnabled;
+			fgmon.Checked = !initial || ActiveAppMonitorEnabled;
 			tooltip.SetToolTip(fgmon, "Allow processes and power mode to be managed based on if a process is in the foreground.\nPOWER MODE SWITCHING NOT IMPLEMENTED.");
 			layout.Controls.Add(new Extensions.Label { Text = "Foreground manager", Padding = BigPadding });
 			layout.Controls.Add(fgmon);
