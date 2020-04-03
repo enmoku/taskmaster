@@ -79,14 +79,14 @@ namespace Taskmaster
 		public static bool ProcessMonitorEnabled { get; private set; } = true;
 		public static bool MicrophoneManagerEnabled { get; private set; } = false;
 		// public static bool MediaMonitorEnabled { get; private set; } = true;
-		public static bool NetworkMonitorEnabled { get; private set; } = true;
-		public static bool PagingEnabled { get; private set; } = true;
-		public static bool ActiveAppMonitorEnabled { get; private set; } = true;
-		public static bool PowerManagerEnabled { get; private set; } = true;
-		public static bool MaintenanceMonitorEnabled { get; private set; } = true;
-		public static bool StorageMonitorEnabled { get; private set; } = true;
+		public static bool NetworkMonitorEnabled { get; private set; } = false;
+		public static bool PagingEnabled { get; private set; } = false;
+		public static bool ActiveAppMonitorEnabled { get; private set; } = false;
+		public static bool PowerManagerEnabled { get; private set; } = false;
+		public static bool MaintenanceMonitorEnabled { get; private set; } = false;
+		public static bool StorageMonitorEnabled { get; private set; } = false;
 		public static bool HealthMonitorEnabled { get; private set; } = true;
-		public static bool AudioManagerEnabled { get; private set; } = true;
+		public static bool AudioManagerEnabled { get; private set; } = false;
 		public static bool HardwareMonitorEnabled { get; private set; } = false;
 		public static bool AlertManagerEnabled { get; private set; } = false;
 
