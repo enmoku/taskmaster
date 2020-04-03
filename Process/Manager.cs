@@ -1140,6 +1140,8 @@ namespace Taskmaster.Process
 
 				// DEFAULT CONFIGURATION
 				appcfg.File.Replace(Ini.Config.FromData(Properties.Resources.Watchlist.Split(new string[] { appcfg.Config.LineEnd }, StringSplitOptions.None)));
+
+				// this won't be saved unless modified, which is probably fine
 			}
 
 			foreach (Ini.Section section in appcfg.Config)
@@ -1323,9 +1325,10 @@ namespace Taskmaster.Process
 					// cnt.delay = section.Contains("delay") ? section["delay"].Int : 30; // TODO: Add centralized default delay
 					// cnt.delayIncrement = section.Contains("delay increment") ? section["delay increment"].Int : 15; // TODO: Add centralized default increment
 				}
-				catch
+				catch (Exception ex)
 				{
 					Log.Error("<Watchlist> Error reading rule: " + section.Name);
+					Log.Error(ex, "<Exception> ");
 					// TODO: Should throw?
 				}
 			}
