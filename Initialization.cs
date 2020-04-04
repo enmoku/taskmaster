@@ -500,7 +500,7 @@ namespace Taskmaster
 			int trecanalysis = exsec.Get("Record analysis")?.Int ?? 0;
 			RecordAnalysis = trecanalysis > 0 ? (TimeSpan?)TimeSpan.FromSeconds(trecanalysis.Constrain(0, 180)) : null;
 			IOPriorityEnabled = exsec.Get(Process.Constants.IOPriority)?.Bool ?? false;
-			if (!MKAh.Execution.IsWin7)
+			if (IOPriorityEnabled && !MKAh.Execution.IsWin7)
 			{
 				Log.Warning("<Core> I/O priority was enabled. Requires Win7 which you don't appear to be running.");
 				IOPriorityEnabled = false;
