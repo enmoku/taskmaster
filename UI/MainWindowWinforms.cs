@@ -2251,7 +2251,7 @@ namespace Taskmaster.UI
 				catch (ArgumentOutOfRangeException ex)
 				{
 					Logging.Stacktrace(ex);
-					Log.Error("<UI> Log retrieve item – index out of range " + index.ToString() + " – items: " + count.ToString());
+					Log.Error("<UI> Log retrieve item – index (" + index.ToString() + ") out of range – items: " + count.ToString());
 				}
 				catch (Exception ex)
 				{
