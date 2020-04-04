@@ -1464,7 +1464,7 @@ namespace Taskmaster.Process
 				bool foreground = IsForeground(info.Id);
 
 				bool FirstTimeSeenForForeground = true;
-				if (!info.PriorityProtected)
+				if (!info.PriorityProtected && Priority.HasValue)
 				{
 					if (Foreground != ForegroundMode.Ignore)
 					{
@@ -1486,15 +1486,8 @@ namespace Taskmaster.Process
 							return;
 						}
 					}
-				}
-				else
-				{
-					if (ShowInaction && Debug) Log.Verbose(info.ToFullString() + " PROTECTED");
-				}
 
-				// APPLY CHANGES HERE
-				if (!info.PriorityProtected)
-				{
+					// APPLY CHANGES
 					try
 					{
 						if (info.Process.SetLimitedPriority(Priority.Value, PriorityStrategy))
@@ -1508,6 +1501,10 @@ namespace Taskmaster.Process
 
 					if (IOPriorityEnabled && IOPriority != IOPriority.Ignore)
 						nIO = (IOPriority)SetIO(info);
+				}
+				else
+				{
+					if (ShowInaction && Debug && info.PriorityProtected) Log.Verbose(info.ToFullString() + " PROTECTED");
 				}
 
 				int newAffinityMask = -1;
