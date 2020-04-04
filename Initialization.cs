@@ -225,7 +225,7 @@ namespace Taskmaster
 			var sec = tcfg.Config.Get(Constants.Core)?.Get(Constants.Version)?.String ?? null;
 			if (sec?.Equals(ConfigVersion, StringComparison.InvariantCulture) ?? false) return;
 
-			using var initialconfig = new UI.Config.ComponentConfigurationWindow();
+			using var initialconfig = new UI.Config.ComponentConfigurationWindow(initial:true);
 			initialconfig.ShowDialog();
 			if (!initialconfig.DialogOK)
 				throw new InitFailure("Component configuration cancelled", voluntary:true);
@@ -287,7 +287,7 @@ namespace Taskmaster
 			// MediaMonitorEnabled = compsec.GetSetDefault("Media", true, out modified).Bool;
 			// compsec["Media"].Comment = "Unused";
 			// dirtyconfig |= modified;
-			ActiveAppMonitorEnabled = compsec.GetOrSet(HumanReadable.System.Process.Foreground, true)
+			ActiveAppMonitorEnabled = compsec.GetOrSet(HumanReadable.System.Process.Foreground, false)
 				.InitComment("Game/Foreground app monitoring and adjustment.")
 				.Bool;
 
@@ -444,7 +444,7 @@ namespace Taskmaster
 				optsec.Remove(sosv);
 			}
 
-			PagingEnabled = optsec.GetOrSet("Paging", true)
+			PagingEnabled = optsec.GetOrSet(Constants.Paging, false)
 				.InitComment("Enable paging of apps as per their configuration.")
 				.Bool;
 

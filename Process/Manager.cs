@@ -1084,7 +1084,7 @@ namespace Taskmaster.Process
 			DebugPaths = dbgsec.Get("Paths")?.Bool ?? false;
 			DebugAdjustDelay = dbgsec.Get("Adjust Delay")?.Bool ?? false;
 			DebugProcesses = dbgsec.Get("Processes")?.Bool ?? false;
-			DebugPaging = dbgsec.Get("Paging")?.Bool ?? false;
+			DebugPaging = dbgsec.Get(Application.Constants.Paging)?.Bool ?? false;
 			DebugLoaders = dbgsec.Get("Loaders")?.Bool ?? false;
 
 			var logsec = corecfg.Config[Application.Constants.Logging];

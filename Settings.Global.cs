@@ -104,7 +104,7 @@ namespace Taskmaster
 		// DEBUG INFO
 		public static bool DebugCache { get; private set; } = false;
 
-		public static bool ShowOnStart { get; private set; } = true;
+		public static bool ShowOnStart { get; private set; } = false;
 		public static bool ShowVolOnStart { get; private set; } = false;
 
 		public static bool SelfOptimize { get; private set; } = true;
