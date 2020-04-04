@@ -359,9 +359,11 @@ namespace Taskmaster.UI.Config
 				compsec[HumanReadable.System.Process.Foreground].Bool = fgmon.Checked;
 				compsec[Network.Constants.Network].Bool = netmon.Checked;
 				compsec[HumanReadable.Hardware.Power.Section].Bool = powmon.Checked;
-				compsec[Constants.Paging].Bool = paging.Checked;
 				compsec[Constants.Maintenance].Bool = tempmon.Checked;
 				compsec[Constants.Health].Bool = autodoc.Checked;
+
+				var optsec = cfg.Config[Constants.Options];
+				optsec[Constants.Paging].Bool = paging.Checked;
 
 				var powsec = cfg.Config[HumanReadable.Hardware.Power.Section];
 				if (powmon.Checked) powsec[Power.Constants.Behaviour].String = powbehaviour.Text.ToLowerInvariant();

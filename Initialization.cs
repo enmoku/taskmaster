@@ -299,8 +299,11 @@ namespace Taskmaster
 				.InitComment("Enable power plan management.")
 				.Bool;
 
-			if (compsec.TryGet(Constants.Paging, out var pagingsetting))
+			if (compsec.TryGet(Constants.Paging, out var pagingsetting)) // DEPRECATED
+			{
 				compsec.Remove(pagingsetting);
+				optsec[Constants.Paging].Bool = pagingsetting.Bool;
+			}
 
 			StorageMonitorEnabled = compsec.GetOrSet(Constants.Storage, false)
 				.InitComment("Enable NVM storage monitoring functionality.")
