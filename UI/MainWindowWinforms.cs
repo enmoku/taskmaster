@@ -2232,7 +2232,7 @@ namespace Taskmaster.UI
 
 				try
 				{
-					if (e.ItemIndex >= LogListFirst && e.ItemIndex <= LogListFirst + count)
+					if (index >= 0 && index < count)
 					{
 						ev = LogListData[index];
 
