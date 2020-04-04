@@ -7,6 +7,9 @@ Comprehensive changes can be found in Git change history:
 	Fixed: ArgumentOutOfRange bug. Hopefully for good.
 	Fixed: Process priority was being attempted to be set even when it was set to be ignored.
 	Added: Legacy app detection utilizes uniprocessor flag in executables.
+	Fixed: I/O Priority warning was output even when it was not actually relevant due to insufficient checks.
+	Fixed: Several components could not be disabled correctly.
+	Fixed: Paging option was incorrectly using deprecated setting.
 ### 2020-04-03
 	Added: Display more info about legacy, 32bit, and non-LAA app traits.
 	Fixed: Culture variations should no longer cause saving/loading configuration to break (e.g. decimal pointer differences).
