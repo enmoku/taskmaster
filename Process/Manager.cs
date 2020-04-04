@@ -1196,16 +1196,16 @@ namespace Taskmaster.Process
 					}
 
 					ProcessPriorityClass? prioR = Utility.IntToNullablePriority(prio);
-					PriorityStrategy priostrat = PriorityStrategy.None;
+					PriorityStrategy priostrat = PriorityStrategy.Ignore;
 					if (prioR.HasValue)
 					{
 						priostrat = (PriorityStrategy)(section.Get(HumanReadable.System.Process.PriorityStrategy)?.Int.Constrain(0, 3) ?? 0);
-						if (priostrat == PriorityStrategy.None) prioR = null; // invalid data
+						if (priostrat == PriorityStrategy.Ignore) prioR = null; // invalid data
 					}
 
 					AffinityStrategy affStrat = (aff >= 0)
 						? (AffinityStrategy)(section.Get(HumanReadable.System.Process.AffinityStrategy)?.Int.Constrain(0, 3) ?? 2)
-						: AffinityStrategy.None;
+						: AffinityStrategy.Ignore;
 
 					int baff = section.Get(Constants.BackgroundAffinity)?.Int ?? -1;
 					int bpriot = section.Get(Constants.BackgroundPriority)?.Int ?? -1;
@@ -1286,11 +1286,11 @@ namespace Taskmaster.Process
 					}
 
 					// TODO: Blurp about following configuration errors
-					if (prc.AffinityMask < 0) prc.AffinityStrategy = AffinityStrategy.None;
-					else if (prc.AffinityStrategy == AffinityStrategy.None) prc.AffinityMask = -1;
+					if (prc.AffinityMask < 0) prc.AffinityStrategy = AffinityStrategy.Ignore;
+					else if (prc.AffinityStrategy == AffinityStrategy.Ignore) prc.AffinityMask = -1;
 
-					if (!prc.Priority.HasValue) prc.PriorityStrategy = PriorityStrategy.None;
-					else if (prc.PriorityStrategy == PriorityStrategy.None) prc.Priority = null;
+					if (!prc.Priority.HasValue) prc.PriorityStrategy = PriorityStrategy.Ignore;
+					else if (prc.PriorityStrategy == PriorityStrategy.Ignore) prc.Priority = null;
 
 					int[] resize = section.Get(Constants.Resize)?.IntArray ?? null; // width,height
 					if (resize?.Length == 4)

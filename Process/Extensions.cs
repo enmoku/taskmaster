@@ -54,7 +54,7 @@ namespace Taskmaster
 					if (process.PriorityClass.ToInt32() <= target.ToInt32())
 						return false;
 					break;
-				case Process.PriorityStrategy.None:
+				case Process.PriorityStrategy.Ignore:
 				default:
 					return false;
 			}

@@ -103,7 +103,7 @@ namespace Taskmaster.Process
 
 	public enum AffinityStrategy
 	{
-		None = 0,
+		Ignore = 0,
 
 		/// <summary>
 		/// Set affinity as is, ignoring everything.
@@ -134,7 +134,7 @@ namespace Taskmaster.Process
 	[Flags]
 	public enum PriorityStrategy
 	{
-		None = 0,
+		Ignore = 0,
 		Increase = 1,
 		Decrease = 2,
 
@@ -147,7 +147,7 @@ namespace Taskmaster.Process
 	[Flags]
 	public enum WindowResizeStrategy
 	{
-		None = 0,
+		Ignore = 0,
 		Size = 1,
 		Position = 2,
 		Both = 3

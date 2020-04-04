@@ -1819,7 +1819,7 @@ namespace Taskmaster.UI
 					si.BackColor = alter ? AlterColor : DefaultLIBGColor;
 				}
 
-				if (prc.PriorityStrategy == Process.PriorityStrategy.None)
+				if (prc.PriorityStrategy == Process.PriorityStrategy.Ignore)
 					li.SubItems[PrioColumn].ForeColor = System.Drawing.SystemColors.GrayText;
 
 				if (string.IsNullOrEmpty(prc.Path))

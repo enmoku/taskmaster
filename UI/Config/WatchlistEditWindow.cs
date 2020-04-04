@@ -421,7 +421,7 @@ namespace Taskmaster.UI.Config
 			{
 				Process.AffinityStrategy.Force => 2,
 				Process.AffinityStrategy.Limit => 1,
-				Process.AffinityStrategy.None => 0,
+				Process.AffinityStrategy.Ignore => 0,
 				_ => 1,
 			};
 
@@ -791,12 +791,12 @@ namespace Taskmaster.UI.Config
 			if (priorityClass.SelectedIndex == 5) // ignored
 			{
 				Controller.Priority = null;
-				Controller.PriorityStrategy = Process.PriorityStrategy.None;
+				Controller.PriorityStrategy = Process.PriorityStrategy.Ignore;
 			}
 			else
 			{
 				Controller.Priority = Process.Utility.IntToPriority(priorityClass.SelectedIndex); // is this right?
-				Controller.PriorityStrategy = Process.PriorityStrategy.None;
+				Controller.PriorityStrategy = Process.PriorityStrategy.Ignore;
 				switch (priorityClassMethod.SelectedIndex)
 				{
 					case 0: Controller.PriorityStrategy = Process.PriorityStrategy.Increase; break;
@@ -831,7 +831,7 @@ namespace Taskmaster.UI.Config
 			{
 				// strategy = ignore
 				Controller.AffinityMask = -1;
-				Controller.AffinityStrategy = Process.AffinityStrategy.None;
+				Controller.AffinityStrategy = Process.AffinityStrategy.Ignore;
 			}
 
 			Controller.ModifyDelay = (int)(modifyDelay.Value * 1_000);

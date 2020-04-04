@@ -239,7 +239,7 @@ namespace Taskmaster.Process
 
 		public IOPriority IOPriority { get; set; } = IOPriority.Ignore; // Win7 only?
 
-		public PriorityStrategy PriorityStrategy { get; set; } = PriorityStrategy.None;
+		public PriorityStrategy PriorityStrategy { get; set; } = PriorityStrategy.Ignore;
 
 		/// <summary>
 		/// CPU core affinity.
@@ -1860,7 +1860,7 @@ namespace Taskmaster.Process
 
 					Taskmaster.NativeMethods.MoveWindow(info.Handle, newsize.Left, newsize.Top, newsize.Width, newsize.Height, true);
 
-					if (ResizeStrategy != WindowResizeStrategy.None)
+					if (ResizeStrategy != WindowResizeStrategy.Ignore)
 					{
 						Resize = newsize;
 						NeedsSaving = true;
@@ -1884,12 +1884,12 @@ namespace Taskmaster.Process
 						sbs.Append(" to ").Append(newsize.Width).Append('×').Append(newsize.Height);
 					}
 
-					if (ResizeStrategy == WindowResizeStrategy.None)
+					if (ResizeStrategy == WindowResizeStrategy.Ignore)
 						sbs.Append("; remembering size or pos not enabled.");
 					Log.Debug(sbs.ToString());
 				}
 
-				if (ResizeStrategy == WindowResizeStrategy.None) return;
+				if (ResizeStrategy == WindowResizeStrategy.Ignore) return;
 
 				info.Resize = true;
 				ActiveWait.TryAdd(info.Id, info);
@@ -1996,7 +1996,7 @@ namespace Taskmaster.Process
 
 		public bool LegacyWorkaround { get; set; } = false;
 
-		public WindowResizeStrategy ResizeStrategy = WindowResizeStrategy.None;
+		public WindowResizeStrategy ResizeStrategy = WindowResizeStrategy.Ignore;
 
 		public System.Drawing.Rectangle? Resize = null;
 		readonly ConcurrentDictionary<int, int> ResizeWaitList = new ConcurrentDictionary<int, int>();
