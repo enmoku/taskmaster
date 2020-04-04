@@ -1341,7 +1341,7 @@ namespace Taskmaster.Process
 					if (info.Legacy == LegacyLevel.Undefined)
 						LegacyTest(info);
 
-					if (info.Legacy == LegacyLevel.Win95)
+					if (info.Legacy == LegacyLevel.Win95 || info.IsUniprocessorOnly)
 						lAffinityMask = Bit.Fill(0, lAffinityMask, 1); // single core
 				}
 				else
