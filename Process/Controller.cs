@@ -124,7 +124,7 @@ namespace Taskmaster.Process
 
 		/// <summary>
 		/// Frienly executable name as required by various System.Process functions.
-		/// Same as <see cref="T:Taskmaster.ProcessControl.Executable"/> but with the extension missing.
+		/// Same as <see cref="ProcessControl.Executable"/> but with the extension missing.
 		/// </summary>
 		public string[] ExecutableFriendlyName { get; internal set; } = null;
 
@@ -347,7 +347,8 @@ namespace Taskmaster.Process
 					if (c == System.IO.Path.DirectorySeparatorChar || c == System.IO.Path.AltDirectorySeparatorChar) PathElements++;
 				}
 
-				if (!(Path.EndsWith(System.IO.Path.DirectorySeparatorChar.ToString()) || Path.EndsWith(System.IO.Path.AltDirectorySeparatorChar.ToString())))
+				if (!(Path.EndsWith(System.IO.Path.DirectorySeparatorChar.ToString(System.Globalization.CultureInfo.InvariantCulture), StringComparison.InvariantCulture)
+					|| Path.EndsWith(System.IO.Path.AltDirectorySeparatorChar.ToString(System.Globalization.CultureInfo.InvariantCulture), StringComparison.InvariantCulture)))
 					PathElements++;
 			}
 		}
@@ -1084,7 +1085,7 @@ namespace Taskmaster.Process
 			System.Diagnostics.Debug.Assert(info.Controller != null, "No controller attached");
 
 			if (DebugPower || DebugForeground)
-				Log.Debug("[" + FriendlyName + "] " + info.Name + " #" + info.Id.ToString() + " foreground power on");
+				Log.Debug("[" + FriendlyName + "] " + info.ToString() + " foreground power on");
 
 			try
 			{
@@ -1162,14 +1163,14 @@ namespace Taskmaster.Process
 							for (int i = 0; i < sparts.Count - 1; i++)
 							{
 								string cur = sparts[i].ToLowerInvariant();
-								if (SpecialCasePathBits.Any(x => x.Equals(cur))) // e.g. steamapps
+								if (SpecialCasePathBits.Any(x => x.Equals(cur, StringComparison.InvariantCulture))) // e.g. steamapps
 								{
 									sparts[i] = HumanReadable.Generic.Ellipsis;
 									sparts.RemoveAt(++i); // common, i at app name, rolled over with loop
 									replaced = false;
 								}
 								else if ((i > 2 && i < sparts.Count - 3) // remove midpoint
-									|| UnwantedPathBits.Any((x) => x.Equals(cur)) // flat out unwanted
+									|| UnwantedPathBits.Any((x) => x.Equals(cur, StringComparison.InvariantCulture)) // flat out unwanted
 									|| (info.Name.Length > 5 && cur.IndexOf(info.Name, StringComparison.InvariantCultureIgnoreCase) >= 0)) // folder contains exe name
 								{
 									if (replaced)
@@ -1256,7 +1257,7 @@ namespace Taskmaster.Process
 			return false;
 		}
 
-		// TODO: Simplify this
+		// TODO: SIMPLIFY THIS
 		async Task Touch(ProcessEx info, bool refresh = false)
 		{
 			System.Diagnostics.Debug.Assert(info.Process != null, "ProcessController.Touch given null process.");
@@ -1299,7 +1300,7 @@ namespace Taskmaster.Process
 
 					if (info.Process.HasExited)
 					{
-						if (Debug && ShowInaction) Log.Debug("[" + FriendlyName + "] " + info.Name + " #" + info.Id.ToString() + " has already exited.");
+						if (Debug && ShowInaction) Log.Debug("[" + FriendlyName + "] " + info.ToString() + " has already exited.");
 						info.State = HandlingState.Exited;
 						return; // return ProcessState.Invalid;
 					}
@@ -1330,7 +1331,7 @@ namespace Taskmaster.Process
 
 				var now = DateTimeOffset.UtcNow;
 
-				int lAffinityMask = AffinityMask;
+				int lAffinityMask = AffinityMask; // local copy
 
 				if (LegacyWorkaround && !string.IsNullOrEmpty(info.Path))
 				{
@@ -1973,7 +1974,7 @@ namespace Taskmaster.Process
 					|| (Bit.IsSet((int)ResizeStrategy, (int)WindowResizeStrategy.Position)
 					&& (oldrect.Left != Resize.Value.Left || oldrect.Top != Resize.Value.Top)))
 				{
-					if (DebugResize) Log.Debug("Saving " + info + " size to " + Resize.Value.Width.ToString() + "×" + Resize.Value.Height.ToString());
+					if (DebugResize) Log.Debug("Saving " + info.ToString() + " size to " + Resize.Value.Width.ToString() + "×" + Resize.Value.Height.ToString());
 
 					NeedsSaving = true;
 				}
@@ -2114,7 +2115,7 @@ namespace Taskmaster.Process
 
 		private bool disposed; // = false;
 
-		void Dispose(bool disposing)
+		protected virtual void Dispose(bool disposing)
 		{
 			if (disposed) return;
 			disposed = true;

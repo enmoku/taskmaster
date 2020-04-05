@@ -255,7 +255,7 @@ namespace Taskmaster.Audio
 					// NOP
 				}
 
-				NAudio.Mixer.MixerLine mixerLine = null;
+				NAudio.Mixer.MixerLine? mixerLine = null;
 				try
 				{
 					mixerLine = new NAudio.Mixer.MixerLine(waveInDeviceNumber, 0, NAudio.Mixer.MixerFlags.WaveIn);
@@ -438,7 +438,7 @@ namespace Taskmaster.Audio
 			GC.SuppressFinalize(this);
 		}
 
-		protected void Dispose(bool disposing)
+		protected virtual void Dispose(bool disposing)
 		{
 			if (disposed) return;
 			disposed = true;

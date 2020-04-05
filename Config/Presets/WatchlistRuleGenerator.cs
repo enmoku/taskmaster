@@ -29,7 +29,7 @@ using System.Collections.Generic;
 
 namespace Taskmaster
 {
-	class WatchlistRuleGenerator
+	internal class WatchlistRuleGenerator
 	{
 		const string MuiCachePath = @"Software\Classes\Local Settings\Software\Microsoft\Windows\Shell\MuiCache";
 		// HKEY_CURRENT_USER\Software\Classes\Local Settings\Software\Microsoft\Windows\Shell\MuiCache

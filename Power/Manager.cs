@@ -1543,7 +1543,7 @@ namespace Taskmaster.Power
 
 		public bool IsDisposed { get; private set; } = false;
 
-		void Dispose(bool disposing)
+		protected virtual void Dispose(bool disposing)
 		{
 			if (IsDisposed) return;
 			IsDisposed = true;

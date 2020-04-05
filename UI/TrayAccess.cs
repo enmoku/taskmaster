@@ -743,7 +743,7 @@ namespace Taskmaster.UI
 		#region IDisposable Support
 		public bool IsDisposed { get; internal set; } = false;
 
-		protected void Dispose(bool disposing)
+		protected virtual void Dispose(bool disposing)
 		{
 			if (IsDisposed) return;
 			IsDisposed = true;

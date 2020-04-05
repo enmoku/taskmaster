@@ -37,19 +37,19 @@ namespace Taskmaster
 {
 	public static partial class Application
 	{
-		public static System.Uri GitURL => new System.Uri("https://github.com/mkahvi/taskmaster", UriKind.Absolute);
-		public static System.Uri ItchURL => new System.Uri("https://mkah.itch.io/taskmaster", UriKind.Absolute);
+		internal static System.Uri GitURL => new System.Uri("https://github.com/mkahvi/taskmaster", UriKind.Absolute);
+		internal static System.Uri ItchURL => new System.Uri("https://mkah.itch.io/taskmaster", UriKind.Absolute);
 
-		public static readonly string Name = (System.Reflection.Assembly.GetExecutingAssembly()).GetName().Name;
-		public static readonly string Version = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version.ToString();
+		internal static string Name => (System.Reflection.Assembly.GetExecutingAssembly()).GetName().Name;
+		internal static string Version => System.Reflection.Assembly.GetExecutingAssembly().GetName().Version.ToString();
 
-		public static string DataPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MKAh", Name);
-		const string LogFolder = "Logs";
-		public static string LogPath = string.Empty;
+		internal static string DataPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MKAh", Name);
+		internal const string LogFolder = "Logs";
+		internal static string LogPath = string.Empty;
 
-		public static string ConfigVersion = "alpha.3";
+		internal static string ConfigVersion = "alpha.3";
 
-		public static Configuration.Manager Config = new Configuration.Manager.Null();
+		internal static Configuration.Manager Config = new Configuration.Manager.Null();
 
 		/// <summary>
 		/// For making sure disposal happens and that it does so in main thread.
@@ -58,7 +58,7 @@ namespace Taskmaster
 
 		static Runstate State = Runstate.Normal;
 
-		public static void ConfirmExit(bool restart = false, bool admin = false, string message = null, bool alwaysconfirm = false)
+		internal static void ConfirmExit(bool restart = false, bool admin = false, string message = null, bool alwaysconfirm = false)
 		{
 			var rv = UI.MessageBox.ResultType.OK;
 
@@ -77,7 +77,7 @@ namespace Taskmaster
 
 		static bool CleanedUp = false;
 
-		public static void ExitCleanup()
+		internal static void ExitCleanup()
 		{
 			if (CleanedUp) return;
 
@@ -115,12 +115,12 @@ namespace Taskmaster
 
 		static event EventHandler<ShutDownEventArgs> ShuttingDown;
 
-		public static void RegisterForExit(IShutdownEventReceiver disposable)
+		internal static void RegisterForExit(IShutdownEventReceiver disposable)
 		{
 			ShuttingDown += disposable.ShutdownEvent;
 		}
 
-		public static void UnifiedExit(bool restart = false, bool elevate = false)
+		internal static void UnifiedExit(bool restart = false, bool elevate = false)
 		{
 			State = restart ? Runstate.Restart : Runstate.Exit;
 			if (elevate && restart) RestartElevated = true;
@@ -135,7 +135,7 @@ namespace Taskmaster
 			// nothing else should be needed.
 		}
 
-		public static void BuildVolumeMeter()
+		internal static void BuildVolumeMeter()
 		{
 			if (!AudioManagerEnabled) return;
 
@@ -149,7 +149,7 @@ namespace Taskmaster
 			}
 		}
 
-		public static void BuildLoaderBox()
+		internal static void BuildLoaderBox()
 		{
 			lock (window_creation_lock)
 			{
@@ -164,12 +164,12 @@ namespace Taskmaster
 			}
 		}
 
-		static readonly object window_creation_lock = new object();
+		internal static readonly object window_creation_lock = new object();
 
 		/// <summary>
 		/// Constructs and hooks the main window
 		/// </summary>
-		public static void BuildMainWindow(bool reveal = false, bool top = false)
+		internal static void BuildMainWindow(bool reveal = false, bool top = false)
 		{
 			Logging.DebugMsg("<Main Window> Building: " + !(mainwindow is null));
 
@@ -242,7 +242,7 @@ namespace Taskmaster
 			}
 		}
 
-		static void OptimizeResponsiviness(bool shown = false)
+		internal static void OptimizeResponsiviness(bool shown = false)
 		{
 			var self = System.Diagnostics.Process.GetCurrentProcess();
 
@@ -319,7 +319,7 @@ namespace Taskmaster
 
 		const string SingletonID = "088f7210-51b2-4e06-9bd4-93c27a973874.taskmaster"; // garbage
 
-		public static LoggingLevelSwitch loglevelswitch = new LoggingLevelSwitch(LogEventLevel.Information),
+		internal static LoggingLevelSwitch loglevelswitch = new LoggingLevelSwitch(LogEventLevel.Information),
 			uiloglevelswitch = new LoggingLevelSwitch(LogEventLevel.Information);
 
 		static internal event EventHandler<LoadEventArgs>? LoadEvent;

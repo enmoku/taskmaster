@@ -196,9 +196,9 @@ namespace Taskmaster.Process
 		public ProcessLoad? Load = null;
 
 		/// <summary>
-		/// Display: <code>Name #PID</code>
+		/// Display: <code>Name #PID</code> or <code>#PID</code>
 		/// </summary>
-		public override string ToString() => Name + " #" + Id.ToString();
+		public override string ToString() => Name + (Name.Length>0?" ":string.Empty) + "#" + Id.ToString();
 
 		/// <summary>
 		/// Same as ToString() but prepends controller name.

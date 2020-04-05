@@ -235,7 +235,7 @@ namespace Taskmaster
 			GC.SuppressFinalize(this);
 		}
 
-		protected void Dispose(bool disposing)
+		protected virtual void Dispose(bool disposing)
 		{
 			if (disposed) return;
 			disposed = true;

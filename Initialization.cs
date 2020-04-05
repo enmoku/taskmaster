@@ -250,7 +250,7 @@ namespace Taskmaster
 
 			const string Hello = "Hello", Hi = "Hi";
 
-			if (!cfg.TryGet(Constants.Core, out var core) || !core.TryGet(Hello, out var hello) || !hello.String.Equals(Hi))
+			if (!cfg.TryGet(Constants.Core, out var core) || !core.TryGet(Hello, out var hello) || !hello.String.Equals(Hi, StringComparison.InvariantCulture))
 				cfg[Constants.Core][Hello].String = Hi;
 
 			var compsec = cfg[Constants.Components];
@@ -457,7 +457,7 @@ namespace Taskmaster
 			// PROTECT USERS FROM TOO HIGH PERMISSIONS
 			bool isadmin = MKAh.Execution.IsAdministrator;
 			const string Hell = "Hell";
-			bool adminwarning = !(cfg[Constants.Core].Get(Hell)?.String ?? string.Empty).Equals(Constants.No);
+			bool adminwarning = !(cfg[Constants.Core].Get(Hell)?.String ?? string.Empty).Equals(Constants.No, StringComparison.InvariantCulture);
 			if (isadmin && adminwarning)
 			{
 				var rv = UI.MessageBox.ShowModal(

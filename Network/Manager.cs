@@ -140,8 +140,8 @@ namespace Taskmaster.Network
 				{
 					string? host = dnssec.Get(Constants.Host).String;
 					bool tooshort = (host?.Length ?? 0) < 10; // HACK: Arbitrary size limit
-					bool http = host?.StartsWith("http://") ?? false;
-					bool https = host?.StartsWith("https://") ?? false;
+					bool http = host?.StartsWith("http://", StringComparison.InvariantCulture) ?? false;
+					bool https = host?.StartsWith("https://", StringComparison.InvariantCulture) ?? false;
 					if (https) http = true;
 
 					//bool afraidorg = (host?.IndexOf("sync.afraid.org/", StringComparison.InvariantCultureIgnoreCase) ?? -1) > 0;
@@ -187,7 +187,7 @@ namespace Taskmaster.Network
 				DebugNet = dbgsec.Get(Network.Constants.Network)?.Bool ?? false;
 				DebugDNS = dbgsec.Get(Network.Constants.DynDNS)?.Bool ?? false;
 
-				if (Trace) Log.Debug("<Network> Traffic sample frequency: " + PacketStatTimerInterval.ToString() + "s");
+				if (Trace) Log.Debug("<Network> Traffic sample frequency: " + PacketStatTimerInterval.ToString(System.Globalization.CultureInfo.InvariantCulture) + "s");
 			}
 			catch (Exception ex)
 			{
@@ -277,10 +277,10 @@ namespace Taskmaster.Network
 				&& DynamicDNSLastUpdate.To(DateTimeOffset.UtcNow).TotalMinutes < 15d)
 			{
 				TimerStartDelay = TimeSpan.FromMinutes(15d);
-				Log.Debug("<Net:DynDNS> Delaying update timer (" + TimerStartDelay.ToString("g") + ")");
+				Log.Debug("<Net:DynDNS> Delaying update timer (" + TimerStartDelay.ToString("g", System.Globalization.CultureInfo.CurrentCulture) + ")");
 			}
 			else
-				if (DebugDNS) Log.Debug("<Net:DynDNS> Starting update timer (" + TimerStartDelay.ToString("g") + ").");
+				if (DebugDNS) Log.Debug("<Net:DynDNS> Starting update timer (" + TimerStartDelay.ToString("g", System.Globalization.CultureInfo.CurrentCulture) + ").");
 
 			bool old4 = DNSOldIPv4 != IPAddress.None, old6 = DNSOldIPv6 != IPAddress.IPv6None;
 
@@ -290,7 +290,8 @@ namespace Taskmaster.Network
 			if (old4) sbs.Append(DNSOldIPv4.ToString());
 			if (old4 && old6) sbs.Append(" or ");
 			if (old6) sbs.Append('[').Append(DNSOldIPv6.ToString()).Append(']');
-			sbs.Append(" on ").Append(DynamicDNSLastUpdate.ToString("u")).Append(" (").Append(DynamicDNSLastUpdate.To(DateTimeOffset.UtcNow)).Append(')');
+			sbs.Append(" on ").Append(DynamicDNSLastUpdate.ToString("u", System.Globalization.CultureInfo.CurrentCulture))
+				.Append(" (").Append(DynamicDNSLastUpdate.To(DateTimeOffset.UtcNow)).Append(')');
 			Log.Information(sbs.ToString());
 
 			DynDNSTimer.Change(TimerStartDelay, DynamicDNSFrequency);
@@ -339,7 +340,8 @@ namespace Taskmaster.Network
 						if (ip4Update) sbs.Append(curIPv4.ToString());
 						if (ip4Update && ip6Update) sbs.Append(" or ");
 						if (ip6Update) sbs.Append('[').Append(curIPv6.ToString()).Append(']');
-						sbs.Append(" on ").Append(DynamicDNSLastUpdate.ToString("u")).Append(" (").Append(DynamicDNSLastUpdate.To(DateTimeOffset.UtcNow)).Append(')');
+						sbs.Append(" on ").Append(DynamicDNSLastUpdate.ToString("u", System.Globalization.CultureInfo.CurrentCulture))
+							.Append(" (").Append(DynamicDNSLastUpdate.To(DateTimeOffset.UtcNow)).Append(')');
 						Log.Debug(sbs.ToString());
 					}
 					else
@@ -361,7 +363,7 @@ namespace Taskmaster.Network
 							var dns = netcfg.Config[Constants.DNSUpdating];
 
 							DynamicDNSLastUpdate = DateTimeOffset.UtcNow;
-							dns[Constants.LastAttempt].String = DynamicDNSLastUpdate.ToString("u");
+							dns[Constants.LastAttempt].String = DynamicDNSLastUpdate.ToString("u", System.Globalization.CultureInfo.InvariantCulture);
 							if (ip4Update)
 							{
 								dns[Constants.LastKnownIPv4].String = curIPv4.ToString();
@@ -381,7 +383,8 @@ namespace Taskmaster.Network
 						if (ip4Update) sbs.Append(DNSOldIPv4.ToString());
 						if (ip4Update && ip6Update) sbs.Append(" or ");
 						if (ip6Update) sbs.Append('[').Append(DNSOldIPv6.ToString()).Append(']');
-						sbs.Append(" on ").Append(DynamicDNSLastUpdate.ToString("u")).Append(" (").Append(DynamicDNSLastUpdate.To(DateTimeOffset.UtcNow)).Append(')');
+						sbs.Append(" on ").Append(DynamicDNSLastUpdate.ToString("u", System.Globalization.CultureInfo.CurrentCulture))
+							.Append(" (").Append(DynamicDNSLastUpdate.To(DateTimeOffset.UtcNow)).Append(')');
 						Log.Information(sbs.ToString());
 					}
 					else if (DynDNSFailures++ > 3)
@@ -467,7 +470,7 @@ namespace Taskmaster.Network
 
 			foreach (var device in InterfaceList)
 			{
-				if (device.Name.Equals(devicename))
+				if (device.Name.Equals(devicename, StringComparison.InvariantCulture))
 				{
 					return devicename + " – " + device.IPv4Address.ToString() + " [" + IPv6Address.ToString() + "]" +
 						" – " + (device.Incoming.Bytes / 1_000_000).ToString() + " MB in, " + (device.Outgoing.Bytes / 1_000_000).ToString() + " MB out, " +
@@ -1184,7 +1187,7 @@ namespace Taskmaster.Network
 			GC.SuppressFinalize(this);
 		}
 
-		protected void Dispose(bool disposing)
+		protected virtual void Dispose(bool disposing)
 		{
 			if (disposed) return;
 			disposed = true;

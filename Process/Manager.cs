@@ -31,6 +31,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.Linq;
 using System.Management;
 using System.Text;
@@ -343,8 +344,6 @@ namespace Taskmaster.Process
 			info = null;
 			return false;
 		}
-
-		public bool GetProcessInfo(int pid, out ProcessEx info) => Utility.Construct(pid, out info, getPath: true);
 
 		public bool LoaderTracking { get; set; } = false;
 
@@ -713,10 +712,9 @@ namespace Taskmaster.Process
 				missed = found - totalManaged;
 				if (missed > 0)
 				{
+					Handling -= missed;
 
 					Log.Error("<Process> Missed " + missed.ToString() + " items while scanning.");
-
-					Handling -= missed;
 				}
 
 				SignalProcessHandled().ConfigureAwait(false); // scan done
@@ -848,7 +846,7 @@ namespace Taskmaster.Process
 			{
 				if (DebugPaging)
 				{
-					var sbs = new StringBuilder("<Process> Paging: ", 128).Append(info.Name).Append(" #").Append(info.Id.ToString());
+					var sbs = new StringBuilder("<Process> Paging: ", 128).Append(info.ToString());
 					if (info.Controller != null) sbs.Append(" – Rule: ").Append(info.Controller.FriendlyName);
 					Log.Debug(sbs.ToString());
 				}
@@ -2115,7 +2113,7 @@ namespace Taskmaster.Process
 
 				if (string.IsNullOrEmpty(info.Name))
 				{
-					Log.Warning($"<Process:Triage> #{info.Id.ToString()} details unaccessible, ignored.");
+					Log.Warning($"<Process:Triage> {info} details unaccessible, ignored.");
 					info.State = HandlingState.AccessDenied;
 					return; // ProcessState.AccessDenied;
 				}
@@ -2504,7 +2502,7 @@ namespace Taskmaster.Process
 				{
 					using var targetInstance = ea.NewEvent.Properties["TargetInstance"].Value as ManagementBaseObject;
 					//var tpid = targetInstance.Properties["Handle"].Value as int?; // doesn't work for some reason
-					pid = Convert.ToInt32(targetInstance.Properties["Handle"].Value as string);
+					pid = Convert.ToInt32(targetInstance.Properties["Handle"].Value as string, CultureInfo.InvariantCulture);
 
 					string iname = targetInstance.Properties[Application.Constants.Name].Value as string;
 					path = targetInstance.Properties["ExecutablePath"].Value as string;
@@ -2792,7 +2790,7 @@ namespace Taskmaster.Process
 			GC.SuppressFinalize(this);
 		}
 
-		protected void Dispose(bool disposing)
+		protected virtual void Dispose(bool disposing)
 		{
 			if (disposed) return;
 			disposed = true;
