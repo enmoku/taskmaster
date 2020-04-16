@@ -3,6 +3,8 @@ Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
 ## [0.14...]
+### 2020-04-16
+	Fixed: NullRef when disasbling process debug when foreground monitor is disabled.
 ### 2020-04-05
 	Fixed: ArgumentOutOfRange bug. Hopefully for good.
 	Fixed: Process priority was being attempted to be set even when it was set to be ignored.

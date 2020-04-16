@@ -3022,9 +3022,11 @@ namespace Taskmaster.UI
 			bool refocus = TabPages.SelectedTab.Equals(ProcessDebugTab);
 			if (!enabled)
 			{
-				activePID.Text = HumanReadable.Generic.Undefined;
-				activeFullscreen.Text = HumanReadable.Generic.Undefined;
-				activeFullscreen.Text = HumanReadable.Generic.Undefined;
+				if (activeappmonitor != null)
+				{
+					activePID.Text = HumanReadable.Generic.Undefined;
+					activeFullscreen.Text = HumanReadable.Generic.Undefined;
+				}
 
 				TabPages.Controls.Remove(ProcessDebugTab);
 				ProcessingList.Items.Clear();
