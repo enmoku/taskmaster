@@ -677,7 +677,7 @@ namespace Taskmaster.Process
 				var procs = System.Diagnostics.Process.GetProcesses();
 				int found = procs.Length;
 
-				Handling += found;
+				System.Threading.Interlocked.Add(ref Handling, found);
 
 
 				//var loaderOffload = new List<ProcessEx>();
@@ -710,7 +710,7 @@ namespace Taskmaster.Process
 				missed = found - totalManaged;
 				if (missed > 0)
 				{
-					Handling -= missed;
+					System.Threading.Interlocked.Add(ref Handling, -missed);
 
 					Log.Error("<Process> Missed " + missed.ToString() + " items while scanning.");
 				}
@@ -2405,8 +2405,9 @@ namespace Taskmaster.Process
 			ExclusiveEnabled = false;
 		}
 
-		public int Handling { get; private set; } = 0; // this isn't used for much...
+		public int HandlingCount => Handling;
 
+		private int Handling = 0; // this isn't used for much...
 
 		/*
 		/// <summary>
@@ -2469,7 +2470,7 @@ namespace Taskmaster.Process
 			var now = DateTimeOffset.UtcNow;
 			var timer = Stopwatch.StartNew();
 
-			Handling += 1;
+			System.Threading.Interlocked.Increment(ref Handling);
 
 			int pid = -1;
 			string name = string.Empty, path = string.Empty;
@@ -2619,7 +2620,7 @@ namespace Taskmaster.Process
 			}
 			finally
 			{
-				Handling -= 1;
+				System.Threading.Interlocked.Decrement(ref Handling);
 
 				if (info is null) info = new ProcessEx(pid, now) { Timer = timer, State = state, WMIDelay = wmidelay };
 				HandlingStateChange?.Invoke(this, new HandlingStateChangeEventArgs(info));

@@ -2298,7 +2298,7 @@ namespace Taskmaster.UI
 		{
 			if (Disposed || !IsHandleCreated) return;
 
-			processingcount.Text = processmanager?.Handling.ToString() ?? "n/a";
+			processingcount.Text = processmanager?.HandlingCount.ToString() ?? "n/a";
 			trackingcount.Text = processmanager?.RunningCount.ToString() ?? "n/a";
 		}
 
