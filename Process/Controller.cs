@@ -1361,7 +1361,7 @@ namespace Taskmaster.Process
 							{
 								if (ShowInaction && Debug)
 									Log.Debug($"[{FriendlyName}] {FormatPathName(info)} #{info.Id.ToString()} has been granted agency, ignoring.");
-								info.State = HandlingState.Abandoned;
+								info.State = HandlingState.Unmodified;
 								return true;
 							}
 
@@ -1370,6 +1370,7 @@ namespace Taskmaster.Process
 							{
 								ormt.ExpectedState++;
 								if (Debug) Logging.DebugMsg($"[{FriendlyName}] {FormatPathName(info)} #{info.Id.ToString()} Is behaving well ({ormt.ExpectedState.ToString()}), skipping a check.");
+								info.State = HandlingState.Unmodified;
 								return true;
 							}
 
@@ -1439,11 +1440,7 @@ namespace Taskmaster.Process
 						return false;
 					}
 
-					if (CheckForRecentlyModified(info, ormt))
-					{
-						info.State = HandlingState.Unmodified;
-						return;
-					}
+					if (CheckForRecentlyModified(info, ormt)) return;
 				}
 
 				if (Trace) Log.Verbose(info.ToFullString() + " Touching...");
@@ -1652,7 +1649,9 @@ namespace Taskmaster.Process
 
 							WaitForExit(info);
 						}
-					};
+					}
+					else
+						info.State = HandlingState.Unmodified;
 
 					await InternalRefresh(now).ConfigureAwait(false);
 				}
