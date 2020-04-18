@@ -592,7 +592,6 @@ namespace Taskmaster.Process
 		}
 
 		public ModificationDelegate ProcessModified;
-		public ProcessingCountDelegate HandlingCounter;
 		public InfoDelegate ProcessStateChange;
 
 		public event EventHandler<HandlingStateChangeEventArgs> HandlingStateChange;
@@ -680,7 +679,6 @@ namespace Taskmaster.Process
 
 				Handling += found;
 
-				SignalProcessHandled().ConfigureAwait(false); // scan start
 
 				//var loaderOffload = new List<ProcessEx>();
 
@@ -717,7 +715,6 @@ namespace Taskmaster.Process
 					Log.Error("<Process> Missed " + missed.ToString() + " items while scanning.");
 				}
 
-				SignalProcessHandled().ConfigureAwait(false); // scan done
 
 				ScanEnd?.Invoke(this, new ScanEndEventArgs() { Found = found, Ignored = ignored, Modified = modified });
 
@@ -2410,16 +2407,6 @@ namespace Taskmaster.Process
 
 		public int Handling { get; private set; } = 0; // this isn't used for much...
 
-		/// <summary>
-		/// 
-		/// </summary>
-		/// <param name="adjust">Pass 0 to just signal current state.</param>
-		async Task SignalProcessHandled()
-		{
-			await Task.Delay(10).ConfigureAwait(false);
-
-			HandlingCounter?.Invoke(Handling);
-		}
 
 		/*
 		/// <summary>
