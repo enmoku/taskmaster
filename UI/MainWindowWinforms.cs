@@ -1246,13 +1246,6 @@ namespace Taskmaster.UI
 			MinimumSize = new System.Drawing.Size(780, MinimumHeight);
 
 			// FormBorderStyle = FormBorderStyle.FixedDialog; // no min/max buttons as wanted
-
-			if (!ShowOnStart)
-			{
-				Logging.DebugMsg("<Main Window> Show on start disabled, hiding.");
-				Hide();
-			}
-
 			// CenterToScreen();
 
 			Shown += OnShown;
