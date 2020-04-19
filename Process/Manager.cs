@@ -652,12 +652,12 @@ namespace Taskmaster.Process
 		public event EventHandler ScanStart;
 		public event EventHandler<ScanEndEventArgs> ScanEnd;
 
-		bool Scan(int ignorePid = -1, bool PageToDisk = false)
+		void Scan(int ignorePid = -1, bool PageToDisk = false)
 		{
 			if (disposed) throw new ObjectDisposedException(nameof(Manager), "Scan called when ProcessManager was already disposed");
-			if (cts.IsCancellationRequested) return false;
+			if (cts.IsCancellationRequested) return;
 
-			if (!ScanLock.TryLock()) return false;
+			if (!ScanLock.TryLock()) return;
 			using var scscoped = ScanLock.ScopedUnlock();
 
 			var timer = Stopwatch.StartNew();
@@ -730,8 +730,6 @@ namespace Taskmaster.Process
 			{
 				Logging.Stacktrace(ex);
 			}
-
-			return true;
 		}
 
 		ProcessEx ScanTriage(System.Diagnostics.Process process, bool doPaging = false)
