@@ -751,15 +751,15 @@ namespace Taskmaster
 
 				var faulting = new System.Collections.Generic.List<string>();
 
-				if (!tPowMan.IsCompleted) faulting.Add("Power");
-				if (!tCpuMon.IsCompleted) faulting.Add("CPU");
-				if (!tProcMon.IsCompleted) faulting.Add("Process");
-				if (!tFgMon.IsCompleted) faulting.Add("Foreground");
-				if (!tNetMon.IsCompleted) faulting.Add("Network");
-				if (!tStorMon.IsCompleted) faulting.Add("Storage");
-				if (!tHpMon.IsCompleted) faulting.Add("Health");
-				if (!tHwMon.IsCompleted) faulting.Add("Hardware");
-				if (!tSelfMaint.IsCompleted) faulting.Add("Self-maintenance");
+				if (tPowMan.IsFaulted) faulting.Add("Power");
+				if (tCpuMon.IsFaulted) faulting.Add("CPU");
+				if (tProcMon.IsFaulted) faulting.Add("Process");
+				if (tFgMon.IsFaulted) faulting.Add("Foreground");
+				if (tNetMon.IsFaulted) faulting.Add("Network");
+				if (tStorMon.IsFaulted) faulting.Add("Storage");
+				if (tHpMon.IsFaulted) faulting.Add("Health");
+				if (tHwMon.IsFaulted) faulting.Add("Hardware");
+				if (tSelfMaint.IsFaulted) faulting.Add("Self-maintenance");
 				if (faulting.Count == 0) faulting.Add("[Unrecognized]");
 
 				string failed = string.Join(", ", faulting);
