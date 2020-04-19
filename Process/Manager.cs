@@ -699,7 +699,7 @@ namespace Taskmaster.Process
 					else
 						ignored++;
 
-					Handling -= 1;
+					System.Threading.Interlocked.Decrement(ref Handling);
 				}
 
 				//SystemLoaderAnalysis(loaderOffload);
