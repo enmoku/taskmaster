@@ -662,23 +662,22 @@ namespace Taskmaster.Process
 
 			var timer = Stopwatch.StartNew();
 
-			int missed = 0;
+			int found = 0;
 
 			try
 			{
 				NextScan = (LastScan = DateTimeOffset.UtcNow).Add(ScanFrequency.Value);
 
-				if (DebugScan) Log.Debug("<Process> Full Scan: Start");
+				if (Trace && DebugScan) Log.Debug("<Process> Full Scan: Start");
 
 				ScanStart?.Invoke(this, EventArgs.Empty);
 
 				if (!Utility.SystemProcessId(ignorePid)) Ignore(ignorePid);
 
 				var procs = System.Diagnostics.Process.GetProcesses();
-				int found = procs.Length;
+				found = procs.Length;
 
 				System.Threading.Interlocked.Add(ref Handling, found);
-
 
 				//var loaderOffload = new List<ProcessEx>();
 
@@ -704,17 +703,15 @@ namespace Taskmaster.Process
 
 				//SystemLoaderAnalysis(loaderOffload);
 
-				if (DebugScan) Log.Debug("<Process> Full Scan: Complete");
+				if (Trace && DebugScan) Log.Debug("<Process> Full Scan: Complete");
 
-				int totalManaged = modified + ignored + unmodified;
-				missed = found - totalManaged;
+				int missed = found - (modified + ignored + unmodified);
 				if (missed > 0)
 				{
 					System.Threading.Interlocked.Add(ref Handling, -missed);
 
 					Log.Error("<Process> Missed " + missed.ToString() + " items while scanning.");
 				}
-
 
 				ScanEnd?.Invoke(this, new ScanEndEventArgs() { Found = found, Ignored = ignored, Modified = modified });
 
@@ -758,7 +755,7 @@ namespace Taskmaster.Process
 					return null;
 				}
 
-				if (DebugScan) Log.Verbose($"<Process> Checking: {name} #{pid}");
+				if (Trace && DebugScan) Log.Verbose($"<Process> Checking: {name} #{pid}");
 				
 				if (GetCachedProcess(pid, out info))
 				{
@@ -2524,6 +2521,7 @@ namespace Taskmaster.Process
 				}
 				catch (Exception ex)
 				{
+					Logging.DebugMsg("<Process> NewInstanceTriage failed for #" + pid + " - Exception: " + ex.Message);
 					Logging.Stacktrace(ex);
 					state = HandlingState.Invalid;
 					return;
@@ -2587,7 +2585,7 @@ namespace Taskmaster.Process
 
 					info.WMIDelay = wmidelay;
 
-					if (cts.IsCancellationRequested) throw new ObjectDisposedException(nameof(Manager), "NewInstanceTriagePhaseTwo called when ProcessManager was already disposed");
+					if (cts.IsCancellationRequested) throw new ObjectDisposedException(nameof(Manager));
 
 					if (Trace) Log.Verbose("Caught: " + info + " at: " + info.Path);
 
@@ -2644,7 +2642,10 @@ namespace Taskmaster.Process
 				NewProcessWatcher.Stop();
 				NewProcessWatcher.Dispose(); // throws if WMI service is acting up
 			}
-			catch { /* nop */ }
+			catch
+			{
+				Log.Error("<<WMI>> Error stopping event watcher, WMI service misbehaving?");
+			}
 		}
 
 		public const string WatchlistFile = "Watchlist.ini";
@@ -2791,7 +2792,6 @@ namespace Taskmaster.Process
 				ScanEnd = null;
 
 				ProcessModified = null;
-				HandlingCounter = null;
 				ProcessStateChange = null;
 				HandlingStateChange = null;
 
@@ -2803,7 +2803,6 @@ namespace Taskmaster.Process
 
 				try
 				{
-					//watcher.EventArrived -= NewInstanceTriage;
 					StopWMIEventWatcher();
 
 					if (activeappmonitor != null)

@@ -1731,7 +1731,6 @@ namespace Taskmaster.UI
 			processmanager = manager;
 			processmanager.OnDisposed += (_, _ea) => processmanager = null;
 
-			//processmanager.HandlingCounter += ProcessNewInstanceCount;
 			processmanager.ProcessStateChange += ExitWaitListHandler;
 			if (DebugCache) PathCacheUpdate(null, EventArgs.Empty);
 
@@ -1768,7 +1767,6 @@ namespace Taskmaster.UI
 		void UnhookProcessManager()
 		{
 			processmanager.ProcessModified -= ProcessTouchEvent;
-			//processmanager.HandlingCounter -= ProcessNewInstanceCount;
 			processmanager.ProcessStateChange -= ExitWaitListHandler;
 			processmanager.HandlingStateChange -= ProcessHandlingStateChangeEvent;
 		}
@@ -1887,7 +1885,7 @@ namespace Taskmaster.UI
 		static void WatchlistUpdateTooltip(ListViewItem li, Process.Controller prc)
 		{
 			// BUG: Doens't work for some reason. Gets set but is never shown.
-			//li.ToolTipText = prc.ToDetailedString();
+			li.ToolTipText = prc.ToDetailedString();
 		}
 
 		void FormatWatchlist(ListViewItem litem, Process.Controller prc)
@@ -2554,7 +2552,7 @@ namespace Taskmaster.UI
 				AlterColor = System.Drawing.Color.FromArgb(red, green, blue);
 			}
 
-			Logging.DebugMsg($"ALTER COLOR: {AlterColor.R}, {AlterColor.G}, {AlterColor.B}");
+			//Logging.DebugMsg($"ALTER COLOR: {AlterColor.R}, {AlterColor.G}, {AlterColor.B}");
 		}
 
 		void BuildPowerDebugPanel()
