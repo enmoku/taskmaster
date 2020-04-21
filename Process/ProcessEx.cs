@@ -95,6 +95,7 @@ namespace Taskmaster.Process
 		/// </summary>
 		public Process.Controller? Controller { get; set; } = null;
 
+		public bool FullyProtected { get; set; } = false;
 		public bool PriorityProtected { get; set; } = false;
 		public bool AffinityProtected { get; set; } = false;
 

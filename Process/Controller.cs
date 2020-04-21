@@ -1454,14 +1454,24 @@ namespace Taskmaster.Process
 
 				ProcessPriorityClass? newPriority = null;
 				IntPtr? newAffinity;
+				int newAffinityMask = -1;
 
 				bool mAffinity = false, mPriority = false, mPower = false, modified = false, failSetAffinity = false, failSetPriority = false;
 
 				IOPriority nIO = IOPriority.Ignore;
 
 				bool foreground = IsForeground(info.Id);
-
 				bool FirstTimeSeenForForeground = true;
+				bool foreground = false;
+
+				if (info.FullyProtected)
+				{
+					Logging.DebugMsg(info.ToString() + " fully protected, ignoring.");
+					goto LogModification;
+				}
+
+				foreground = IsForeground(info.Id);
+
 				if (!info.PriorityProtected && Priority.HasValue)
 				{
 					if (Foreground != ForegroundMode.Ignore)
@@ -1504,8 +1514,6 @@ namespace Taskmaster.Process
 				{
 					if (ShowInaction && Debug && info.PriorityProtected) Log.Verbose(info.ToFullString() + " PROTECTED");
 				}
-
-				int newAffinityMask = -1;
 
 				if (lAffinityMask >= 0 && !info.AffinityProtected)
 				{
@@ -1575,6 +1583,7 @@ namespace Taskmaster.Process
 					Log.Warning(sbs.ToString());
 				}
 
+				LogModification:
 				// such a mess
 				bool logevent = modified && (ShowProcessAdjusts && !(Foreground != ForegroundMode.Ignore && !Manager.ShowForegroundTransitions));
 				logevent |= (FirstTimeSeenForForeground && Foreground != ForegroundMode.Ignore);

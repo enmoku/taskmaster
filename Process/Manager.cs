@@ -793,7 +793,8 @@ namespace Taskmaster.Process
 
 					// Protected files, expensive but necessary.
 					info.PriorityProtected = ProtectedProcess(info.Name, info.Path);
-					info.AffinityProtected = (info.PriorityProtected && ProtectionLevel >= 2);
+					info.AffinityProtected = (info.PriorityProtected && ProtectionLevel == 2);
+					info.FullyProtected = (info.PriorityProtected && ProtectionLevel == 2);
 
 					ProcessTriage(info, old: true).ConfigureAwait(false);
 
@@ -1066,6 +1067,7 @@ namespace Taskmaster.Process
 			ProtectionLevel = ignsetting.GetOrSet("Protection level", 2)
 				.InitComment("Amount of core system shielding to do. 1 = Affinity tuning allowed. 2 = Full protection.")
 				.Int;
+			if (ProtectionLevel < 1 || ProtectionLevel > 2) ProtectionLevel = 2;
 
 			var dbgsec = corecfg.Config[HumanReadable.Generic.Debug];
 			// .Get to not add these in case they don't exist
@@ -1898,31 +1900,42 @@ namespace Taskmaster.Process
 		public bool EnableParentFinding { get; set; } = false;
 
 		public string[] ProtectList { get; } = {
-			"consent", // UAC, user account control prompt
-			"winlogon", // core system
-			"wininit", // core system
-			"csrss", // client server runtime, subsystems
-			"dwm", // desktop window manager
-			"taskmgr", // task manager
-			"LogonUI", // session lock
-			"services", // service control manager
-		};
-
-		public string[] IgnoreList { get; private set; } = {
+			"conhost",
+			"runtimebroker", // win10 only
+			"applicationframehost", // win10 only
+			"lsass",
+			"ctfmon",
+			"audiodg",
+			"winlogon",
+			"wininit",
 			"svchost", // service host
+			"csrss",
+			"consent",
+			"services",
+			"ntoskrnl",
 			"taskeng", // task scheduler
 			"consent", // UAC, user account control prompt
+			"conhost",
+			"ctfmon",
+			"csrss", // client server runtime, subsystems
+			"lsass",
+			"taskmgr", // task manager
 			"taskhost", // task scheduler process host
 			"rundll32", //
 			"dllhost", //
 			//"conhost", // console host, hosts command prompts (cmd.exe)
 			"dwm", // desktop window manager
 			"wininit", // core system
-			"csrss", // client server runtime, subsystems
 			"winlogon", // core system
 			"services", // service control manager
+			"LogonUI", // session lock
+		};
+
+		/// <summary>
+		/// User controlled user list.
+		/// </summary>
+		public string[] IgnoreList { get; private set; } = {
 			"explorer", // file manager
-			"taskmgr", // task manager
 			"audiodg" // audio device isolation
 		};
 
@@ -1946,7 +1959,6 @@ namespace Taskmaster.Process
 		public bool IgnoreProcessName(string name) => IgnoreList.Any(item => item.Equals(name, StringComparison.InvariantCultureIgnoreCase));
 
 		// BUG: Flat process name matching is not great.
-		[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
 		public bool ProtectedProcessName(string name) => ProtectList.Any(item => item.Equals(name, StringComparison.InvariantCultureIgnoreCase));
 		// %SYSTEMROOT%
 
@@ -2581,7 +2593,8 @@ namespace Taskmaster.Process
 
 					info.Timer = timer;
 					info.PriorityProtected = ProtectedProcess(info.Name, info.Path);
-					info.AffinityProtected = (info.PriorityProtected && ProtectionLevel >= 2);
+					info.AffinityProtected = (info.PriorityProtected && ProtectionLevel == 2);
+					info.FullyProtected = (info.PriorityProtected && ProtectionLevel == 2);
 
 					info.WMIDelay = wmidelay;
 
