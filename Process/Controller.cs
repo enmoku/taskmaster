@@ -1460,7 +1460,6 @@ namespace Taskmaster.Process
 
 				IOPriority nIO = IOPriority.Ignore;
 
-				bool foreground = IsForeground(info.Id);
 				bool FirstTimeSeenForForeground = true;
 				bool foreground = false;
 
