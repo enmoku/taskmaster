@@ -4,6 +4,7 @@ Comprehensive changes can be found in Git change history:
 
 ## [0.14...]
 ### 2020-04-26
+	Changed: Volume changes now show the matching rule and process name as normal.
 	Changed: Volume changer to use cached information before trying to harvest it (again).
 ### 2020-04-21
 	Changed: System protection improved by increasing the number of process names.
