@@ -342,7 +342,8 @@ namespace Taskmaster.Audio
 					float volume = session.SimpleAudioVolume.Volume;
 
 					//OnNewSession?.Invoke(this, info);
-					if (processmanager.GetController(info, out var prc))
+					var prc = info.Controller;
+					if (prc != null || processmanager.GetController(info, out prc))
 					{
 						bool volAdjusted = false;
 						float oldvolume = session.SimpleAudioVolume.Volume;

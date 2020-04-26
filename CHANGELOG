@@ -3,6 +3,8 @@ Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
 ## [0.14...]
+### 2020-04-26
+	Changed: Volume changer to use cached information before trying to harvest it (again).
 ### 2020-04-21
 	Changed: System protection improved by increasing the number of process names.
 	Changed: Protection level 2 now denies all changes, not just affinity&priority.
