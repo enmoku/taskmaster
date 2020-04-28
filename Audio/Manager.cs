@@ -388,18 +388,18 @@ namespace Taskmaster.Audio
 
 						if (volAdjusted)
 						{
-							Log.Information($"{info.ToFullString()} Volume changed from {oldvolume * 100f:N1} % to {prc.Volume * 100f:N1} %");
+							Log.Information($"{info.ToFullFormattedString()} Volume changed from {oldvolume * 100f:N1} % to {prc.Volume * 100f:N1} %");
 						}
 						else
 						{
 							if (ShowInaction && DebugAudio)
-								Log.Debug($"{info.ToFullString()} Volume at {volume * 100f:N1} % – Already correct (Plan: {prc.VolumeStrategy.ToString()})");
+								Log.Debug($"{info.ToFullFormattedString()} Volume at {volume * 100f:N1} % – Already correct (Plan: {prc.VolumeStrategy.ToString()})");
 						}
 					}
 					else
 					{
 						if (ShowInaction && DebugAudio)
-							Log.Debug($"{info.ToFullString()}; Volume at {(volume * 100f):N1} % – not watched: {info.Path}");
+							Log.Debug($"{info.ToFullFormattedString()}; Volume at {(volume * 100f):N1} % – not watched: {info.Path}");
 					}
 				}
 				else

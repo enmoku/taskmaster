@@ -201,9 +201,13 @@ namespace Taskmaster.Process
 		/// </summary>
 		public override string ToString() => Name + (Name.Length>0?" ":string.Empty) + "#" + Id.ToString();
 
+		public string ToFormattedString() => FormattedPath + (FormattedPath.Length > 0 ? " " : string.Empty) + "#" + Id.ToString();
+
 		/// <summary>
 		/// Same as ToString() but prepends controller name.
 		/// </summary>
 		public string ToFullString() => "[" + Controller.FriendlyName + "] " + ToString();
+
+		public string ToFullFormattedString() => "[" + Controller.FriendlyName + "] " + ToFormattedString();
 	}
 }

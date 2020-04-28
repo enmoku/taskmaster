@@ -839,8 +839,7 @@ namespace Taskmaster.Process
 			{
 				if (DebugPaging)
 				{
-					var sbs = new StringBuilder("<Process> Paging: ", 128).Append(info.ToString());
-					if (info.Controller != null) sbs.Append(" – Rule: ").Append(info.Controller.FriendlyName);
+					var sbs = new StringBuilder(info.ToFullFormattedString()).Append(" Paging.");
 					Log.Debug(sbs.ToString());
 				}
 
@@ -1613,7 +1612,7 @@ namespace Taskmaster.Process
 			try
 			{
 				if (DebugForeground || DebugPower)
-					Log.Debug(info.ToFullString() + " exited [Power: " + info.PowerWait + ", Active: " + info.ForegroundWait + "]");
+					Log.Debug(info.ToFullFormattedString() + " Process exited [Power: " + info.PowerWait + ", Active: " + info.ForegroundWait + "]");
 
 				info.ForegroundWait = false;
 
@@ -1764,7 +1763,7 @@ namespace Taskmaster.Process
 					if (info.ForegroundWait)
 					{
 						var prc = info.Controller;
-						if (Trace && DebugForeground) Log.Debug(info.ToFullString() + " on foreground!");
+						if (Trace && DebugForeground) Log.Debug(info.ToFullFormattedString() + " Process on foreground!");
 
 						if (prc.Foreground != ForegroundMode.Ignore) prc.SetForeground(info);
 
@@ -1830,7 +1829,7 @@ namespace Taskmaster.Process
 				if (info.Process.HasExited) // can throw
 				{
 					info.State = HandlingState.Exited;
-					if (ShowInaction && DebugProcesses) Log.Verbose(info.ToString() + " has already exited.");
+					if (ShowInaction && DebugProcesses) Log.Verbose(info.ToFullFormattedString() + " has already exited.");
 					prc = null;
 					return false; // return ProcessState.Invalid;
 				}
@@ -2072,7 +2071,7 @@ namespace Taskmaster.Process
 			bool keyadded = WaitForExit(info);
 
 			if (Trace && DebugForeground)
-				Log.Debug(info.ToFullString() + " " + (!keyadded ? "already in" : "added to") + " foreground watchlist.");
+				Log.Debug(info.ToFullFormattedString() + " " + (!keyadded ? "Already in" : "Added to") + " foreground watchlist.");
 
 			ProcessStateChange?.Invoke(info);
 		}
@@ -2154,7 +2153,7 @@ namespace Taskmaster.Process
 					{
 						if (prc.LogStartAndExit)
 						{
-							var str = info.ToFullString() + " started.";
+							var str = info.ToFullFormattedString() + " started.";
 
 							if (prc.Warn)
 								Log.Warning(str);
@@ -2163,7 +2162,7 @@ namespace Taskmaster.Process
 
 							info.Process.Exited += (_, _ea) =>
 							{
-								var str = info.ToFullString() + " exited (run time: " + info.Start.To(DateTimeOffset.UtcNow).ToString("g") + ").";
+								var str = info.ToFullFormattedString() + " Exited (run time: " + info.Start.To(DateTimeOffset.UtcNow).ToString("g") + ").";
 								if (prc.Warn)
 									Log.Warning(str);
 								else
@@ -2174,7 +2173,7 @@ namespace Taskmaster.Process
 						}
 						else if (prc.Warn)
 						{
-							Log.Warning(info.ToFullString() + " started.");
+							Log.Warning(info.ToFullFormattedString() + " Started.");
 						}
 					}
 
@@ -2183,19 +2182,19 @@ namespace Taskmaster.Process
 						if (prc.Ignored(info))
 						{
 							if (ShowInaction && Manager.DebugProcesses)
-								Log.Debug(info.ToFullString() + " ignored due to user defined rule.");
+								Log.Debug(info.ToFullFormattedString() + " Ignored due to user defined rule.");
 							info.State = HandlingState.Invalid;
 							return;
 						}
 
 						if (info.Restricted)
 						{
-							if (DebugProcesses) Logging.DebugMsg("<Process:Triage> " + info + " RESTRICTED; Cancelling");
+							if (DebugProcesses) Logging.DebugMsg(info.ToFullFormattedString() + " Triage: RESTRICTED; Cancelling");
 							info.State = HandlingState.Invalid;
 							return;
 						}
 
-						if (Trace && DebugProcesses) Logging.DebugMsg("<Process:Triage> Trying to modify: " + info);
+						if (Trace && DebugProcesses) Logging.DebugMsg(info.ToFullFormattedString() + " Triage: Trying to modify.");
 
 						await prc.Modify(info).ConfigureAwait(false);
 
@@ -2214,7 +2213,7 @@ namespace Taskmaster.Process
 
 						if (info.State == HandlingState.Processing)
 						{
-							Logging.DebugMsg(info.ToFullString() + " correcting state to Finished");
+							Logging.DebugMsg(info.ToFullFormattedString() + " Correcting state to Finished. This should not happen.");
 							info.State = HandlingState.Finished;
 						}
 					}
@@ -2273,7 +2272,7 @@ namespace Taskmaster.Process
 		{
 			await Task.Delay(10).ConfigureAwait(false);
 
-			Log.Information(info.ToFullString() + " exited, resetting color (NOT REALLY, SORRY!).");
+			Log.Information(info.ToFullFormattedString() + " Exited; Resetting color (NOT REALLY, SORRY!).");
 			return;
 
 			var buffer = new StringBuilder(4096);
@@ -2294,7 +2293,7 @@ namespace Taskmaster.Process
 
 			lock (info) if (info.Exclusive) return;
 
-			if (DebugProcesses) Log.Debug(info.ToFullString() + " Exclusive mode initiating.");
+			if (DebugProcesses) Log.Debug(info.ToFullFormattedString() + " Exclusive mode initiating.");
 
 			await Task.Delay(10).ConfigureAwait(false);
 
@@ -2365,7 +2364,7 @@ namespace Taskmaster.Process
 			{
 				ExclusiveLocks--;
 
-				if (DebugProcesses) Log.Debug(info.ToFullString() + " Exclusive mode ending.");
+				if (DebugProcesses) Log.Debug(info.ToFullFormattedString() + " Exclusive mode ending.");
 				if (ExclusiveLocks == 0)
 				{
 					if (DebugProcesses) Log.Debug("<Exclusive> Ended for all, restarting services.");

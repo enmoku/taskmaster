@@ -131,6 +131,8 @@ namespace Taskmaster.Process
 			else
 				info.Path = cob.Path;
 
+			info.Controller?.FormatPathName(info);
+
 			return true;
 		}
 
@@ -227,7 +229,7 @@ namespace Taskmaster.Process
 			{
 				info.Restricted = true;
 
-				if (Debug) Logging.DebugMsg("GetModuleFileNameEx - Access Denied - " + info.ToString());
+				if (Debug) Logging.DebugMsg(info.ToFullFormattedString() + " GetModuleFileNameEx - Access Denied");
 			}
 			catch (InvalidOperationException) { /* already exited */ }
 			catch (Exception ex)
@@ -450,6 +452,8 @@ namespace Taskmaster.Process
 				};
 
 				if (getPath && string.IsNullOrEmpty(path)) FindPath(info);
+
+				controller?.FormatPathName(info);
 
 				return true;
 			}

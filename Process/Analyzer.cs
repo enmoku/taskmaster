@@ -103,7 +103,7 @@ namespace Taskmaster.Process
 					return;
 				}
 
-				if (Trace) Logging.DebugMsg("Analyzing:" + info.ToString());
+				if (Trace) Logging.DebugMsg(info.ToFullFormattedString() + " Analyzing...");
 
 				var module = info.Process.MainModule;
 				modFile = module.FileName;
@@ -175,14 +175,14 @@ namespace Taskmaster.Process
 			{
 				// already exited
 				RemoveCached(hash);
-				Log.Debug($"{info.ToFullString()} exited before analysis could begin.");
+				Log.Debug(info.ToFullFormattedString() + " Exited before analysis could begin.");
 			}
 			catch (Win32Exception)
 			{
 				info.Restricted = true;
 				// access denied
 				RemoveCached(hash);
-				Log.Debug($"{info.ToFullString()} was denied access for analysis.");
+				Log.Debug(info.ToFullFormattedString() + " Analysis access denied.");
 			}
 			catch (OutOfMemoryException) { throw; }
 			catch (Exception ex)

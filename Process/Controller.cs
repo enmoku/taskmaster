@@ -881,7 +881,7 @@ namespace Taskmaster.Process
 
 			if (info.InBackground) return; // already paused
 
-			if (DebugForeground && Trace) Log.Debug(info.ToFullString() + " Quelling.");
+			if (DebugForeground && Trace) Log.Debug(info.ToFullFormattedString() + " Quelling.");
 
 			// PausedState.Affinity = Affinity;
 			// PausedState.Priority = Priority;
@@ -923,7 +923,7 @@ namespace Taskmaster.Process
 			{
 				if (BackgroundPowerdown)
 				{
-					if (DebugPower) Log.Debug(info.ToFullString() + " Power down.");
+					if (DebugPower) Log.Debug(info.ToFullFormattedString() + " Power down.");
 
 					UndoPower(info);
 				}
@@ -1085,7 +1085,7 @@ namespace Taskmaster.Process
 			System.Diagnostics.Debug.Assert(info.Controller != null, "No controller attached");
 
 			if (DebugPower || DebugForeground)
-				Log.Debug("[" + FriendlyName + "] " + info.ToString() + " foreground power on");
+				Log.Debug(info.ToFullFormattedString() + " foreground power on");
 
 			try
 			{
@@ -1300,7 +1300,7 @@ namespace Taskmaster.Process
 
 					if (info.Process.HasExited)
 					{
-						if (Debug && ShowInaction) Log.Debug("[" + FriendlyName + "] " + info.ToString() + " has already exited.");
+						if (Debug && ShowInaction) Log.Debug(info.ToFullFormattedString() + " has already exited.");
 						info.State = HandlingState.Exited;
 						return; // return ProcessState.Invalid;
 					}
@@ -1395,7 +1395,7 @@ namespace Taskmaster.Process
 							if (ormt.LastIgnored.To(now) < Manager.IgnoreRecentlyModified
 								|| ormt.LastModified.To(now) < Manager.IgnoreRecentlyModified)
 							{
-								if (Debug && ShowInaction) Log.Debug(info.ToFullString() + " ignored due to recent modification. State " + (expected ? "un" : "") + "changed ×" + ormt.ExpectedState.ToString());
+								if (Debug && ShowInaction) Log.Debug(info.ToFullFormattedString() + " Ignored due to recent modification. State " + (expected ? "un" : "") + "changed ×" + ormt.ExpectedState.ToString());
 
 								if (ormt.ExpectedState == -2) // 2-3 seems good number
 								{
@@ -1443,14 +1443,14 @@ namespace Taskmaster.Process
 					if (CheckForRecentlyModified(info, ormt)) return;
 				}
 
-				if (Trace) Log.Verbose(info.ToFullString() + " Touching...");
+				if (Trace) Log.Verbose(info.ToFullFormattedString() + " Touching...");
 
 				info.Valid = true;
 
 				// TODO: IgnoreSystem32Path
 
 				if (Debug && info.PriorityProtected && ShowInaction)
-					Log.Debug(info.ToFullString() + " in protected list, limiting tampering.");
+					Log.Debug(info.ToFullFormattedString() + " Protected; Limiting tampering.");
 
 				ProcessPriorityClass? newPriority = null;
 				IntPtr? newAffinity;
@@ -1465,7 +1465,7 @@ namespace Taskmaster.Process
 
 				if (info.FullyProtected)
 				{
-					Logging.DebugMsg(info.ToString() + " fully protected, ignoring.");
+					Logging.DebugMsg(info.ToFullFormattedString() + " fully protected, ignoring.");
 					goto LogModification;
 				}
 
@@ -1486,7 +1486,7 @@ namespace Taskmaster.Process
 						if (!foreground)
 						{
 							if (DebugForeground || ShowInaction)
-								Log.Debug(info.ToFullString() + " not in foreground, not prioritizing.");
+								Log.Debug(info.ToFullFormattedString() + " Not in foreground, not prioritizing.");
 
 							SetBackground(info, FirstTimeSeenForForeground);
 							// info.State = ProcessHandlingState.Paused; // Pause() sets this
@@ -1511,7 +1511,7 @@ namespace Taskmaster.Process
 				}
 				else
 				{
-					if (ShowInaction && Debug && info.PriorityProtected) Log.Verbose(info.ToFullString() + " PROTECTED");
+					if (ShowInaction && Debug && info.PriorityProtected) Log.Verbose(info.ToFullFormattedString() + " PROTECTED");
 				}
 
 				if (lAffinityMask >= 0 && !info.AffinityProtected)
@@ -1571,7 +1571,7 @@ namespace Taskmaster.Process
 
 				if (ShowInaction && Debug && (failSetPriority || failSetAffinity))
 				{
-					var sbs = new StringBuilder(info.ToFullString()).Append(" failed to set process ");
+					var sbs = new StringBuilder(info.ToFullFormattedString()).Append(" Failed to set process ");
 
 					if (failSetPriority) sbs.Append("priority");
 					if (failSetAffinity)
@@ -1723,7 +1723,7 @@ namespace Taskmaster.Process
 			}
 			catch (System.IO.IOException)
 			{
-				Logging.DebugMsg("<Process> Legacy test failed due to access error: " + info.ToString());
+				Logging.DebugMsg(info.ToFullFormattedString() + " Legacy test failed due to access error.");
 
 				// TODO: Retry after a bit?
 			}
@@ -1747,12 +1747,12 @@ namespace Taskmaster.Process
 
 				if (original < 0)
 				{
-					if (Debug && Trace) Log.Debug(info.ToFullString() + " – I/O priority access error");
+					if (Debug && Trace) Log.Debug(info.ToFullFormattedString() + " I/O priority access error");
 				}
 				else if (original == target)
 				{
 					if (Trace && Debug && ShowInaction)
-						Log.Debug(info.ToFullString() + " – I/O priority ALREADY set to " + original.ToString() + ", target: " + target.ToString());
+						Log.Debug(info.ToFullFormattedString() + " I/O priority ALREADY set to " + original.ToString() + ", target: " + target.ToString());
 					nIO = -1;
 				}
 				else
@@ -1760,21 +1760,21 @@ namespace Taskmaster.Process
 					if (Debug && Trace)
 					{
 						if (nIO >= 0 && nIO != original)
-							Log.Debug(info.ToFullString() + " – I/O priority set from " + original.ToString() + " to " + nIO.ToString() + ", target: " + target.ToString());
+							Log.Debug(info.ToFullFormattedString() + " I/O priority set from " + original.ToString() + " to " + nIO.ToString() + ", target: " + target.ToString());
 						else if (ShowInaction)
-							Log.Debug(info.ToFullString() + " – I/O priority NOT set from " + original.ToString() + " to " + target.ToString());
+							Log.Debug(info.ToFullFormattedString() + " I/O priority NOT set from " + original.ToString() + " to " + target.ToString());
 					}
 				}
 			}
 			catch (OutOfMemoryException) { throw; }
 			catch (ArgumentException)
 			{
-				if (Debug && ShowInaction && Trace) Log.Debug(info.ToFullString() + " – I/O priority not set, failed to open process.");
+				if (Debug && ShowInaction && Trace) Log.Debug(info.ToFullFormattedString() + " I/O priority not set, failed to open process.");
 			}
 			catch (InvalidOperationException)
 			{
 				if (Debug && Trace)
-					Log.Debug(info.ToFullString() + " – I/O priority access error");
+					Log.Debug(info.ToFullFormattedString() + " I/O priority access error");
 			}
 
 			return nIO;
@@ -1981,7 +1981,7 @@ namespace Taskmaster.Process
 					|| (Bit.IsSet((int)ResizeStrategy, (int)WindowResizeStrategy.Position)
 					&& (oldrect.Left != Resize.Value.Left || oldrect.Top != Resize.Value.Top)))
 				{
-					if (DebugResize) Log.Debug("Saving " + info.ToString() + " size to " + Resize.Value.Width.ToString() + "×" + Resize.Value.Height.ToString());
+					if (DebugResize) Log.Debug(info.ToFullFormattedString() + " Saving window size to " + Resize.Value.Width.ToString() + "×" + Resize.Value.Height.ToString());
 
 					NeedsSaving = true;
 				}
@@ -2013,7 +2013,7 @@ namespace Taskmaster.Process
 		{
 			await Task.Delay(Math.Max(Recheck, 5) * 1_000).ConfigureAwait(false);
 
-			if (Debug) Log.Debug(info.ToFullString() + " rechecking");
+			if (Debug) Log.Debug(info.ToFullFormattedString() + " Rechecking.");
 
 			try
 			{
@@ -2021,7 +2021,7 @@ namespace Taskmaster.Process
 				if (info.Process.HasExited)
 				{
 					info.State = HandlingState.Exited;
-					if (Trace) Log.Verbose(info.ToFullString() + " is gone yo.");
+					if (Trace) Log.Verbose(info.ToFullFormattedString() + " Process has disappeared.");
 					return;
 				}
 
@@ -2038,7 +2038,7 @@ namespace Taskmaster.Process
 			}
 			catch (Exception ex)
 			{
-				Log.Warning(info.ToFullString() + " – something bad happened.");
+				Log.Warning(info.ToFullFormattedString() + " Something bad happened while re-applying changes.");
 				Logging.Stacktrace(ex);
 				info.State = HandlingState.Abandoned;
 				//throw; // would throw but this is async function
