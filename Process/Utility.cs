@@ -148,7 +148,7 @@ namespace Taskmaster.Process
 
 			if (info.Restricted)
 			{
-				if (Manager.DebugProcesses) Logging.DebugMsg($"<Process> {info} RESTRICTED - cancelling FindPathExtended");
+				if (Manager.DebugProcesses) Logging.DebugMsg("FindPathExtended (" + info.ToString() + ") RESTRICTED; Cancelling.");
 				return false;
 			}
 
@@ -229,7 +229,7 @@ namespace Taskmaster.Process
 			{
 				info.Restricted = true;
 
-				if (Debug) Logging.DebugMsg(info.ToFullFormattedString() + " GetModuleFileNameEx - Access Denied");
+				if (Debug) Logging.DebugMsg("GetModuleFileNameEx (" + info.ToString() + ") - Access Denied");
 			}
 			catch (InvalidOperationException) { /* already exited */ }
 			catch (Exception ex)

@@ -1579,6 +1579,7 @@ namespace Taskmaster.Process
 						if (failSetPriority) sbs.Append(", ");
 						sbs.Append("affinity");
 					}
+					sbs.Append(".");
 					Log.Warning(sbs.ToString());
 				}
 

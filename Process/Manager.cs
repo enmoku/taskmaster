@@ -2097,7 +2097,7 @@ namespace Taskmaster.Process
 			{
 				var time = info.Process.StartTime.ToUniversalTime();
 				var ago = time.To(DateTime.UtcNow);
-				if (Trace) Logging.DebugMsg($"<Process:Triage> {info} – started: {info.Process.StartTime:g} ({ago:g} ago)");
+				if (Trace) Logging.DebugMsg($"<Process:Triage> {info} – Started: {info.Process.StartTime:g} ({ago:g} ago)");
 
 				// Add to tracking if it's not already there, but only if it has been running for X minutes
 				if (!info.ExitWait && ago.TotalSeconds >= MinRunningTimeForTracking) AddRunning(info);
@@ -2105,7 +2105,7 @@ namespace Taskmaster.Process
 			catch // no access to startime
 			{
 				info.Restricted = true;
-				if (DebugProcesses) Logging.DebugMsg("<Process> " + info + " – NO ACCESS");
+				if (DebugProcesses) Logging.DebugMsg("<Process:Triage>" + info.ToString() + " – NO ACCESS");
 			}
 
 			try
@@ -2116,7 +2116,7 @@ namespace Taskmaster.Process
 
 				if (string.IsNullOrEmpty(info.Name))
 				{
-					Log.Warning($"<Process:Triage> {info} details unaccessible, ignored.");
+					Log.Warning($"<Process:Triage> {info} – Details innaccessible; Ignored.");
 					info.State = HandlingState.AccessDenied;
 					return; // ProcessState.AccessDenied;
 				}

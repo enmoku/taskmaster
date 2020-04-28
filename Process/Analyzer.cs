@@ -64,7 +64,7 @@ namespace Taskmaster.Process
 
 			if (info.Restricted)
 			{
-				if (Manager.DebugProcesses) Logging.DebugMsg($"<Process> {info} RESTRICTED - cancelling Analyze");
+				if (Manager.DebugProcesses) Logging.DebugMsg(info.ToFullFormattedString() + " Cancelling analysis due to restricted access.");
 				return;
 			}
 
