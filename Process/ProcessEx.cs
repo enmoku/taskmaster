@@ -206,8 +206,8 @@ namespace Taskmaster.Process
 		/// <summary>
 		/// Same as ToString() but prepends controller name.
 		/// </summary>
-		public string ToFullString() => "[" + Controller.FriendlyName + "] " + ToString();
+		public string ToFullString() => (Controller != null ? ("[" + Controller.FriendlyName + "] ") : string.Empty) + ToString();
 
-		public string ToFullFormattedString() => "[" + Controller.FriendlyName + "] " + ToFormattedString();
+		public string ToFullFormattedString() => (Controller != null ? ("[" + Controller.FriendlyName + "] ") : string.Empty) + ToFormattedString();
 	}
 }
