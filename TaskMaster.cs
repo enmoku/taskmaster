@@ -345,7 +345,7 @@ namespace Taskmaster
 					OnStart = null;
 
 					// UI
-					trayaccess.RefreshVisibility();
+					//trayaccess.RefreshVisibility();
 					//UIWaiter.WaitOne();
 
 					System.Windows.Forms.Application.Run(); // WinForms
