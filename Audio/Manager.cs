@@ -95,8 +95,8 @@ namespace Taskmaster.Audio
 				Removed = DeviceRemovedProxy
 			};
 
-			GetDefaultDevice();
 			EnumerateDevices();
+			GetDefaultDevice();
 
 			Enumerator.RegisterEndpointNotificationCallback(notificationClient);
 
@@ -211,8 +211,14 @@ namespace Taskmaster.Audio
 					Added?.Invoke(this, new DeviceEventArgs(deviceId, adev.GUID, adev));
 				}
 			}
+			catch (COMException ex)
+			{
+				Log.Error("<Audio> COM exception (0x" + ex.HResult.ToString("X") + ") handling new device: " + deviceId);
+				// This should probably just be ignored. It happens when a device doesn't have a name and those are probably always things that do nothing for us.
+			}
 			catch (Exception ex)
 			{
+				Log.Error("<Audio> Error handling new device: " + deviceId);
 				Logging.Stacktrace(ex);
 			}
 		}
@@ -289,10 +295,13 @@ namespace Taskmaster.Audio
 				var mmdevmultimedia = Enumerator.GetDefaultAudioEndpoint(NAudio.CoreAudioApi.DataFlow.Render, NAudio.CoreAudioApi.Role.Multimedia);
 				var mmdevconsole = Enumerator.GetDefaultAudioEndpoint(NAudio.CoreAudioApi.DataFlow.Render, NAudio.CoreAudioApi.Role.Console);
 				var mmdevinput = Enumerator.GetDefaultAudioEndpoint(NAudio.CoreAudioApi.DataFlow.Capture, NAudio.CoreAudioApi.Role.Communications);
-
-				MultimediaDevice = new Device(mmdevmultimedia);
-				ConsoleDevice = new Device(mmdevconsole);
-				RecordingDevice = new Device(mmdevinput);
+				
+				Devices.TryGetValue(Utility.DeviceIdToGuid(mmdevconsole.ID), out var multimediadev);
+				MultimediaDevice = multimediadev;
+				Devices.TryGetValue(Utility.DeviceIdToGuid(mmdevconsole.ID), out var consoledev);
+				ConsoleDevice = consoledev;
+				Devices.TryGetValue(Utility.DeviceIdToGuid(mmdevinput.ID), out var inputdev);
+				RecordingDevice = inputdev;
 
 				Log.Information("<Audio> Default movie/music device: " + MultimediaDevice.Name);
 				Log.Information("<Audio> Default game/voip device: " + ConsoleDevice.Name);
