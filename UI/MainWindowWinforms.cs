@@ -3638,7 +3638,6 @@ namespace Taskmaster.UI
 		readonly Extensions.ListViewEx EventLogList;
 		readonly ColumnHeader EventLogMainColumn;
 		readonly MenuStrip MenuToolbar;
-		readonly UI.Extensions.LabeledBox LogSearch;
 		readonly ImageList ImgList;
 
 		public void FillLog()
