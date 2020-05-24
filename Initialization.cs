@@ -488,7 +488,6 @@ namespace Taskmaster
 			DebugMonitor = dbgsec.Get(HumanReadable.Hardware.Monitor.Section)?.Bool ?? false;
 
 			DebugSession = dbgsec.Get(Constants.Session)?.Bool ?? false;
-			DebugResize = dbgsec.Get(Process.Constants.Resize)?.Bool ?? false;
 
 			DebugMemory = dbgsec.Get(HumanReadable.Hardware.Memory)?.Bool ?? false;
 
