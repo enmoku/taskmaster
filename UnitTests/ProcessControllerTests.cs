@@ -51,44 +51,28 @@ namespace Processes
 		/// </summary>
 		[Test]
 		[TestOf(nameof(Taskmaster.Process.Utility.ApplyAffinityStrategy))]
-		public void AffinityStrategyLimitActual()
+		[TestCase(4, 0b0100, 0b1100, ExpectedResult = 1)]
+		[TestCase(6, 0b100000, 0b111000, ExpectedResult = 1)]
+		[TestCase(8, 0b11000000, 0b11110000, ExpectedResult = 2)]
+		[TestCase(24, 0b111001110000000000000000, 0b000001010000000000000000, ExpectedResult = 2)]
+		public int AffinityStrategyLimitActual(int cores, int source, int target)
 		{
-			int testSource, testTarget;
-
-			int cores = Taskmaster.Hardware.Utility.ProcessorCount;
-
-			switch (cores)
-			{
-				case 8:
-					testSource = 0b11000000;
-					testTarget = 0b11110000;
-					break;
-				case 6:
-					testSource = 0b100000;
-					testTarget = 0b111000;
-					break;
-				case 4:
-					testSource = 0b0100;
-					testTarget = 0b1100;
-					break;
-				default:
-					throw new NotImplementedException("Test not implemented for core count of " + cores.ToString());
-			}
+			//int cores = Taskmaster.Hardware.Utility.ProcessorCount;
 
 			Taskmaster.Process.Utility.Debug = true;
 
 			System.Diagnostics.Debug.AutoFlush = true;
 			System.Diagnostics.Debug.Listeners.Add(new System.Diagnostics.ConsoleTraceListener());
 
-			Console.WriteLine("Source: " + Convert.ToString(testSource, 2).PadLeft(cores, '0'));
-			Console.WriteLine("Target: " + Convert.ToString(testTarget, 2).PadLeft(cores, '0'));
+			Console.WriteLine("Source: " + Convert.ToString(source, 2).PadLeft(cores, '0'));
+			Console.WriteLine("Target: " + Convert.ToString(target, 2).PadLeft(cores, '0'));
 
-			int testProduct = Taskmaster.Process.Utility.ApplyAffinityStrategy(
-				testSource, testTarget, Taskmaster.Process.AffinityStrategy.Limit);
+			int product = Taskmaster.Process.Utility.ApplyAffinityStrategy(
+				source, target, Taskmaster.Process.AffinityStrategy.Limit);
 
-			Console.WriteLine("Result: " + Convert.ToString(testProduct, 2).PadLeft(cores, '0'));
+			Console.WriteLine("Result: " + Convert.ToString(product, 2).PadLeft(cores, '0'));
 
-			Assert.AreEqual(Bit.Count(testSource), Bit.Count(testProduct));
+			return Bit.Count(product);
 		}
 
 		[Test]
