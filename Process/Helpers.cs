@@ -144,15 +144,6 @@ namespace Taskmaster.Process
 		Force = 3,
 	}
 
-	[Flags]
-	public enum WindowResizeStrategy
-	{
-		Ignore = 0,
-		Size = 1,
-		Position = 2,
-		Both = 3
-	}
-
 	public static partial class Utility
 	{
 		/// <summary>

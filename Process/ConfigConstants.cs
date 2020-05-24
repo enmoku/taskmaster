@@ -10,9 +10,6 @@
 
 		public const string ModifyDelay = "Modify delay";
 
-		public const string Resize = "Resize";
-		public const string ResizeStrategy = "Resize strategy";
-
 		public const string ColorReset = "Reset color";
 
 		public const string Volume = "Volume";

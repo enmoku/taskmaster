@@ -365,8 +365,6 @@ namespace Taskmaster.Process
 
 		public static bool ShowForegroundTransitions { get; set; } = false;
 
-		bool WindowResizeEnabled { get; set; } = false;
-
 		bool ColorResetEnabled { get; set; } = false;
 
 		/// <summary>
@@ -1089,7 +1087,9 @@ namespace Taskmaster.Process
 			if (!IgnoreSystem32Path) Log.Warning($"<Process> System32 ignore disabled.");
 
 			var exsec = corecfg.Config[Application.Constants.Experimental];
-			WindowResizeEnabled = exsec.Get(Application.Constants.WindowResize)?.Bool ?? false;
+
+			exsec.TryRemove("Window resize"); // DEPRECATED / OBSOLETE
+
 			ColorResetEnabled = exsec.Get(Application.Constants.ColorReset)?.Bool ?? false;
 			LoaderTracking = exsec.Get(Application.Constants.LoaderTracking)?.Bool ?? false;
 
@@ -1283,16 +1283,9 @@ namespace Taskmaster.Process
 					if (!prc.Priority.HasValue) prc.PriorityStrategy = PriorityStrategy.Ignore;
 					else if (prc.PriorityStrategy == PriorityStrategy.Ignore) prc.Priority = null;
 
-					int[] resize = section.Get(Constants.Resize)?.IntArray ?? null; // width,height
-					if (resize?.Length == 4)
-					{
-						int resstrat = section.Get(Constants.ResizeStrategy)?.Int.Constrain(0, 3) ?? -1;
-						if (resstrat < 0) resstrat = 0;
-
-						prc.ResizeStrategy = (WindowResizeStrategy)resstrat;
-
-						prc.Resize = new System.Drawing.Rectangle(resize[0], resize[1], resize[2], resize[3]);
-					}
+					// DEPRECATED / OBSOLETE
+					section.TryRemove("Resize");
+					section.TryRemove("Resize strategy");
 
 					if (ColorResetEnabled)
 						prc.ColorReset = section.Get(Constants.ColorReset)?.Bool ?? false;
@@ -2204,9 +2197,6 @@ namespace Taskmaster.Process
 
 						if (RecordAnalysis.HasValue && info.Controller.Analyze && info.Valid && info.State != HandlingState.Abandoned)
 							analyzer?.Analyze(info).ConfigureAwait(false);
-
-						if (WindowResizeEnabled && prc.Resize.HasValue)
-							await prc.TryResize(info).ConfigureAwait(false);
 
 						//if (ColorResetEnabled && prc.ColorReset)
 						//	await RegisterColorReset(info).ConfigureAwait(false);

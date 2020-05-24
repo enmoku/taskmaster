@@ -3595,7 +3595,7 @@ namespace Taskmaster.UI
 					if (prc.LogStartAndExit) sbs.AppendLine("Log start and exit = true");
 					if (!prc.Enabled) sbs.AppendLine("Enabled = false");
 
-					// TODO: Add Resize and Modify Delay
+					// TODO: Add Modify Delay
 
 					try
 					{

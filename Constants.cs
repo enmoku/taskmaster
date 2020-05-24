@@ -46,7 +46,6 @@ namespace Taskmaster
 			public const string Config = "Config";
 
 			public const string Experimental = "Experimental";
-			public const string WindowResize = "Window Resize";
 			public const string ColorReset = "Color Reset";
 
 			public const string AutoNGEN = "Auto-update native image";
