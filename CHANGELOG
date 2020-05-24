@@ -4,6 +4,7 @@ Comprehensive changes can be found in Git change history:
 
 ## [0.14...]
 ### 2020-05-24
+	Removed: Ideal affinity experiment. Deemed to have no notable impact.
 	Removed: Window resize&reposition feature. Deemed unnecessary for most users and too likely to break things if made into proper feature.
 ### 2020-04-29
 	Fixed: Audio manager under some conditions fails to hook to default devices.

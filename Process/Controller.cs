@@ -249,14 +249,6 @@ namespace Taskmaster.Process
 		public AffinityStrategy AffinityStrategy;
 		//int ScatterChunk = 1; // should default to Cores/4 or Range/2 at max, 1 at minimum.
 
-		int _affinityIdeal = -1;
-
-		public int AffinityIdeal // EXPERIMENTAL
-		{
-			get => _affinityIdeal;
-			set => _affinityIdeal = value.Constrain(-1, Hardware.Utility.ProcessorCount);
-		}
-
 		/// <summary>
 		/// The power plan.
 		/// </summary>
@@ -640,14 +632,6 @@ namespace Taskmaster.Process
 				app.TryRemove(HumanReadable.System.Process.AffinityStrategy);
 			}
 
-			if (AffinityIdeal >= 0)
-			{
-				var affideal = app[HumanReadable.System.Process.AffinityIdeal];
-				if (affideal.TryInt != AffinityIdeal) affideal.Int = AffinityIdeal;
-			}
-			else
-				app.TryRemove(HumanReadable.System.Process.AffinityIdeal);
-
 			if (IOPriority != IOPriority.Ignore)
 			{
 				var ioprio = app["IO priority"];
@@ -971,9 +955,6 @@ namespace Taskmaster.Process
 
 				if (IOPriorityEnabled)
 					nIO = (IOPriority)SetIO(info, DefaultForegroundIOPriority); // force these to always have normal I/O priority
-
-				if (AffinityIdeal >= 0 && info.Legacy == LegacyLevel.None)
-					ApplyAffinityIdeal(info);
 			}
 			catch (InvalidOperationException) // ID not available, probably exited
 			{
@@ -1510,10 +1491,6 @@ namespace Taskmaster.Process
 					if (Debug && Trace && ShowInaction) Logging.DebugMsg($"{FormatPathName(info)} #{info.Id.ToString()} --- affinity not touched");
 				}
 
-				// TODO: Make sure the ideal matches set mask
-				if (AffinityIdeal >= 0 && info.Legacy == LegacyLevel.None)
-					ApplyAffinityIdeal(info);
-
 				/*
 				if (BackgroundIO)
 				{
@@ -1763,29 +1740,6 @@ namespace Taskmaster.Process
 		bool EstablishNewAffinity(int oldmask, out int newmask)
 			=> (newmask = Utility.ApplyAffinityStrategy(oldmask, AffinityMask, AffinityStrategy)) != oldmask;
 
-		void ApplyAffinityIdeal(ProcessEx info)
-		{
-			try
-			{
-				var threads = info.Process.Threads;
-				threads[0].IdealProcessor = AffinityIdeal;
-				// Is there benefit for changing only the first/primary thread?
-				// Optimistically the main thread constains the app main loop and other core functions.
-				// This is not guaranteed however.
-			}
-			catch (OutOfMemoryException) { throw; }
-			catch (Win32Exception) // NOP; Access denied or such. Possibly malconfigured ideal
-			{
-				info.Restricted = true;
-			}
-			/*
-			catch (Exception ex)
-			{
-				Logging.Stacktrace(ex);
-			}
-			*/
-		}
-
 		GenericLock refresh_lock = new GenericLock();
 
 		async Task InternalRefresh(DateTimeOffset now)
@@ -1879,8 +1833,6 @@ namespace Taskmaster.Process
 			{
 				sbs.Append("Affinity: ")
 					.Append(Process.Utility.FormatBitMask(AffinityMask, Hardware.Utility.ProcessorCount, LogBitmask));
-				if (AffinityIdeal >= 0)
-					sbs.Append(" – ideal core: ").Append(AffinityIdeal);
 				sbs.Append(" – strategy: ").AppendLine(AffinityStrategy.ToString());
 			}
 

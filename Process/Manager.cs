@@ -1268,13 +1268,8 @@ namespace Taskmaster.Process
 
 					//prc.SetForegroundMode((ForegroundMode)(section.TryGet("Foreground mode")?.Int.Constrain(-1, 2) ?? -1)); // NEW
 
-					var ruleIdeal = section.Get(HumanReadable.System.Process.AffinityIdeal);
-					prc.AffinityIdeal = ruleIdeal?.Int ?? -1;
-					if (prc.AffinityIdeal >= 0 && !Bit.IsSet(prc.AffinityMask, prc.AffinityIdeal))
-					{
-						Log.Debug($"<Watchlist:{ruleIdeal.Line}> [{prc.FriendlyName}] Affinity ideal to mask mismatch: {Process.Utility.FormatBitMask(prc.AffinityMask, Hardware.Utility.ProcessorCount, LogBitmask)}, ideal core: {prc.AffinityIdeal}");
-						prc.AffinityIdeal = -1;
-					}
+					if (section.TryGet("Affinity ideal", out var ideal)) // DEPRECATED / OBSOLETE
+						section.Remove(ideal);
 
 					// TODO: Blurp about following configuration errors
 					if (prc.AffinityMask < 0) prc.AffinityStrategy = AffinityStrategy.Ignore;

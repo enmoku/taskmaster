@@ -430,19 +430,6 @@ namespace Taskmaster.UI.Config
 
 			// EXPERIMENTS
 
-			idealAffinity = new NumericUpDown()
-			{
-				Width = 80,
-				Maximum = cores,
-				Minimum = 0,
-				Value = (Controller.AffinityIdeal + 1).Constrain(0, cores),
-			};
-			tooltip.SetToolTip(idealAffinity, "EXPERIMENTAL\nTell the OS to favor this particular core for the primary thread.\nMay not have any perceivable effect.\n0 disables this feature.");
-
-			layout.Controls.Add(new Extensions.Label() { Text = "Ideal affinity", ForeColor = System.Drawing.Color.Red });
-			layout.Controls.Add(idealAffinity);
-			layout.Controls.Add(new Extensions.Label() { Text = "EXPERIMENTAL", ForeColor = System.Drawing.Color.Red });
-
 			if (IOPriorityEnabled)
 			{
 				ioPriority = new ComboBox()
@@ -878,8 +865,6 @@ namespace Taskmaster.UI.Config
 				Controller.Volume = Convert.ToSingle(volume.Value / 100M);
 			}
 
-			Controller.AffinityIdeal = Convert.ToInt32(idealAffinity.Value) - 1;
-
 			if (IOPriorityEnabled)
 				Controller.IOPriority = (Process.IOPriority)((ioPriority?.SelectedIndex ?? 0) - 1);
 
@@ -912,7 +897,7 @@ namespace Taskmaster.UI.Config
 		readonly ComboBox pathVisibility, priorityClass, priorityClassMethod, bgPriorityClass;
 
 		readonly ComboBox affstrategy;
-		readonly NumericUpDown affinityMask, bgAffinityMask, idealAffinity;
+		readonly NumericUpDown affinityMask, bgAffinityMask;
 		readonly ComboBox ioPriority;
 
 		readonly ComboBox volumeMethod;
@@ -1090,10 +1075,6 @@ namespace Taskmaster.UI.Config
 					break;
 				}
 			}
-
-			if (affinityMask.Value >= 0 && idealAffinity.Value > 0
-				&& !Bit.IsSet(Convert.ToInt32(affinityMask.Value).Replace(0, Process.Utility.FullCPUMask), Convert.ToInt32(idealAffinity.Value) - 1))
-				sbs.AppendLine("Affinity ideal is not within defined affinity.");
 
 			if (ioPriority != null && ioPriority.SelectedIndex != 0)
 			{
