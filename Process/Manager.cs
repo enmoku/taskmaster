@@ -1217,6 +1217,9 @@ namespace Taskmaster.Process
 					else
 						tignorelist = Array.Empty<string>();
 
+					if (section.TryGet(Constants.Exclusive, out var exmode)) // DEPRECATED / OBSOLETE
+						section.Remove(exmode);
+
 					var prc = new Controller(section.Name, prioR, aff)
 					{
 						Enabled = (section.Get(HumanReadable.Generic.Enabled)?.Bool ?? true),
@@ -1236,7 +1239,6 @@ namespace Taskmaster.Process
 						IgnoreList = tignorelist,
 						AllowPaging = (section.Get(Constants.AllowPaging)?.Bool ?? false),
 						Analyze = (section.Get(Constants.Analyze)?.Bool ?? false),
-						ExclusiveMode = (section.Get(Constants.Exclusive)?.Bool ?? false),
 						DeclareParent = (section.Get(Constants.DeclareParent)?.Bool ?? false),
 						OrderPreference = (section.Get(Constants.Preference)?.Int.Constrain(0, 100) ?? 10),
 						IOPriority = (IOPriority)(section.Get(Constants.IOPriority)?.Int.Constrain(-1, 2) ?? -1), // 0-1 background, 2 = normal, anything else seems to have no effect
@@ -2188,8 +2190,6 @@ namespace Taskmaster.Process
 
 						if (prc.Foreground != ForegroundMode.Ignore) await ForegroundWatch(info).ConfigureAwait(false);
 
-						if (Application.ExclusiveMode && prc.ExclusiveMode) await ExclusiveMode(info).ConfigureAwait(false);
-
 						if (RecordAnalysis.HasValue && info.Controller.Analyze && info.Valid && info.State != HandlingState.Abandoned)
 							analyzer?.Analyze(info).ConfigureAwait(false);
 
@@ -2265,135 +2265,6 @@ namespace Taskmaster.Process
 			IntPtr hdc = IntPtr.Zero; // hardware device context
 
 			bool got = Taskmaster.NativeMethods.GetICMProfile(hdc, Convert.ToUInt64(buffer.Capacity) + 1UL, buffer);
-		}
-
-		readonly object Exclusive_lock = new object();
-
-		int ExclusiveLocks = 0;
-
-		async Task ExclusiveMode(ProcessEx info)
-		{
-			if (disposed) throw new ObjectDisposedException(nameof(Manager), "ExclusiveMode called when ProcessManager was already disposed");
-			if (!MKAh.Execution.IsAdministrator) return; // sadly stopping services requires admin rights
-
-			lock (info) if (info.Exclusive) return;
-
-			if (DebugProcesses) Log.Debug(info.ToFullFormattedString() + " Exclusive mode initiating.");
-
-			await Task.Delay(10).ConfigureAwait(false);
-
-			try
-			{
-				bool ensureExit = false;
-				try
-				{
-					lock (info)
-					{
-						if (!info.Exclusive)
-						{
-							lock (Exclusive_lock)
-							{
-								ExclusiveLocks++;
-
-								info.Process.Exited += (_, _ea) => EndExclusiveMode(info).ConfigureAwait(false);
-								info.HookExit();
-
-								ExclusiveEnabled = info.Exclusive = true;
-
-								foreach (var service in Services)
-									service.Stop(service.FullDisable);
-							}
-
-							WaitForExit(info);
-
-							ensureExit = true;
-						}
-					}
-				}
-				catch (InvalidOperationException)
-				{
-					ensureExit = true; // already exited
-				}
-
-				if (ensureExit)
-				{
-					info.Process.Refresh();
-					if (info.Process.HasExited)
-					{
-						info.State = HandlingState.Exited;
-						await EndExclusiveMode(info).ConfigureAwait(false);
-					}
-				}
-			}
-			catch (Exception ex) when (ex is NullReferenceException || ex is OutOfMemoryException) { throw; }
-			catch (Exception ex)
-			{
-				Logging.Stacktrace(ex);
-			}
-		}
-
-		async Task EndExclusiveMode(ProcessEx info)
-		{
-			if (disposed) return;
-
-			await Task.Delay(10).ConfigureAwait(false);
-
-			lock (info)
-			{
-				if (!info.Exclusive) return;
-
-				info.Exclusive = false;
-			}
-
-			lock (Exclusive_lock)
-			{
-				ExclusiveLocks--;
-
-				if (DebugProcesses) Log.Debug(info.ToFullFormattedString() + " Exclusive mode ending.");
-				if (ExclusiveLocks == 0)
-				{
-					if (DebugProcesses) Log.Debug("<Exclusive> Ended for all, restarting services.");
-					try
-					{
-						ExclusiveEnd();
-					}
-					catch (InvalidOperationException)
-					{
-						Log.Warning("<Exclusive> Failure to restart services after " + info + " exited.");
-					}
-				}
-				else
-				{
-					if (DebugProcesses)
-						Log.Debug("<Exclusive> Still used by " + ExclusiveLocks.ToString() + " processes.");
-				}
-			}
-		}
-
-		readonly List<ServiceWrapper> Services = new List<ServiceWrapper>(new ServiceWrapper[] {
-			new ServiceWrapper("wuaserv") { FullDisable = true }, // Windows Update
-			new ServiceWrapper("wsearch") { FullDisable = true }, // Windows Search
-		});
-
-		bool ExclusiveEnabled = false;
-
-		void ExclusiveEnd()
-		{
-			if (!ExclusiveEnabled) return;
-
-			foreach (var service in Services)
-			{
-				try
-				{
-					service.Start(service.FullDisable);
-				}
-				catch (Exception ex) when (!(ex is InvalidOperationException))
-				{
-					Logging.Stacktrace(ex);
-				}
-			}
-
-			ExclusiveEnabled = false;
 		}
 
 		public int HandlingCount => Handling;
@@ -2734,20 +2605,16 @@ namespace Taskmaster.Process
 
 				Parallel.ForEach(Running.Values, info =>
 				{
-					if (info.Exclusive)
+					try
 					{
-						try
+						//info.Process.Refresh();
+						//if (info.Process.HasExited)
+						if (info.Exited)
 						{
-							//info.Process.Refresh();
-							//if (info.Process.HasExited)
-							if (info.Exited)
-							{
-								//info.State = HandlingState.Exited;
-								EndExclusiveMode(info).ConfigureAwait(false);
-							}
+							//info.State = HandlingState.Exited;
 						}
-						catch { /* don't care */ }
 					}
+					catch { /* don't care */ }
 				});
 			}
 			catch (Exception ex)
@@ -2850,12 +2717,6 @@ namespace Taskmaster.Process
 
 				CancelPowerWait();
 				WaitForExitList.Clear();
-
-				foreach (var service in Services)
-					service.Dispose();
-				Services.Clear();
-
-				lock (Exclusive_lock) try { ExclusiveEnd(); } catch { }
 
 				//base.Dispose();
 

@@ -112,11 +112,6 @@ namespace Taskmaster.Process
 		public bool ForegroundWait { get; set; } = false;
 
 		/// <summary>
-		/// Has exlusive mode enabled and waiting for exit.
-		/// </summary>
-		public bool Exclusive { get; set; } = false;
-
-		/// <summary>
 		/// Resized, monitoring for exit.
 		/// </summary>
 		public bool Resize { get; set; } = false;

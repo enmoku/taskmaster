@@ -96,11 +96,6 @@ namespace Taskmaster
 		public static TimeSpan? RecordAnalysis { get; set; } = null;
 		public static bool IOPriorityEnabled { get; private set; } = false;
 
-		/// <summary>
-		/// Disable some services when app is running.
-		/// </summary>
-		public static bool ExclusiveMode { get; private set; } = false;
-
 		// DEBUG INFO
 		public static bool DebugCache { get; private set; } = false;
 

@@ -3048,7 +3048,6 @@ namespace Taskmaster.UI
 			ExitWaitList.Columns.Add(HumanReadable.System.Process.Executable, 280);
 			ExitWaitList.Columns.Add("State", 160);
 			ExitWaitList.Columns.Add(HumanReadable.Hardware.Power.Section, 80);
-			ExitWaitList.Columns.Add("Exclusive", 80);
 
 			var waitlist = processmanager?.GetExitWaitList();
 			if ((waitlist?.Length ?? 0) > 0)
@@ -3256,7 +3255,6 @@ namespace Taskmaster.UI
 				ListViewItem li = null;
 				string fgonlytext = fgonly ? (fg ? HumanReadable.System.Process.Foreground : HumanReadable.System.Process.Background) : "Ignored";
 				string powertext = (info.PowerWait ? "FORCED" : HumanReadable.Generic.NotAvailable);
-				string extext = (info.Exclusive ? Constants.Yes : Constants.No);
 
 				if (ExitWaitlistMap?.TryGetValue(info.Id, out li) ?? false)
 				{
@@ -3282,7 +3280,6 @@ namespace Taskmaster.UI
 
 					li.SubItems[2].Text = fgonlytext;
 					li.SubItems[3].Text = powertext;
-					li.SubItems[4].Text = extext;
 				}
 				else
 				{
@@ -3291,7 +3288,6 @@ namespace Taskmaster.UI
 							info.Name,
 							fgonlytext,
 							powertext,
-							extext,
 						});
 
 					ExitWaitlistMap?.TryAdd(info.Id, li);

@@ -505,8 +505,6 @@ namespace Taskmaster
 				IOPriorityEnabled = false;
 			}
 
-			ExclusiveMode = MKAh.Execution.IsWin7;
-
 #if DEBUG
 			Trace = dbgsec.Get(Constants.Trace)?.Bool ?? false;
 #endif

@@ -128,8 +128,6 @@ namespace Taskmaster.Process
 		/// </summary>
 		public string[] ExecutableFriendlyName { get; internal set; } = null;
 
-		public bool ExclusiveMode { get; set; } = false;
-
 		public bool DeclareParent { get; set; } = false;
 
 		public string Path { get; set; } = string.Empty;
@@ -781,13 +779,7 @@ namespace Taskmaster.Process
 			else
 				app.TryRemove("Log description");
 
-			if (ExclusiveMode)
-			{
-				var exmode = app[Constants.Exclusive];
-				if (exmode.TryBool != ExclusiveMode) exmode.Bool = ExclusiveMode;
-			}
-			else
-				app.TryRemove(Constants.Exclusive);
+			app.TryRemove(Constants.Exclusive); // DEPRECATED / OBSOLETE
 
 			if (DeclareParent)
 			{
@@ -1856,9 +1848,6 @@ namespace Taskmaster.Process
 
 			if (DeclareParent)
 				sbs.AppendLine("[DeclareParent]");
-
-			if (ExclusiveMode)
-				sbs.AppendLine("[Exclusive]");
 
 			if (AllowPaging)
 				sbs.AppendLine("[AllowPaging]");
