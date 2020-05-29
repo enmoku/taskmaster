@@ -30,7 +30,7 @@ namespace Paths
 		}
 
 		[Test]
-		[TestCase(@"c:\Program Files (x86)\brand\test\hoolahoo\bin32\test.exe", ExpectedResult = @"…\brand\test\hoolahoo\bin32\test.exe")]
+		[TestCase(@"c:\Program Files (x86)\brand\test\hoolahoo\bin32\test.exe", ExpectedResult = @"…\brand\…\hoolahoo\bin32\test.exe")]
 		[TestCase(@"c:\Program Files (x86)\brand\test\hoolahoo\bin\test\bin32\test.exe", ExpectedResult = @"…\brand\…\hoolahoo\…\bin32\test.exe")]
 		[TestOf(nameof(Taskmaster.Process.Controller.FormatPathName))]
 		public string CutSmartPath(string input)
