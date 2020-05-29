@@ -178,7 +178,7 @@ namespace Taskmaster.Process
 		}
 		*/
 
-		int PathElements { get; set; } = 0;
+		public int PathElements { get; private set; } = 0;
 
 		/// <summary>
 		/// User description for the rule.
