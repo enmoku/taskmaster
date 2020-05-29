@@ -114,8 +114,10 @@ namespace Taskmaster.Audio
 
 		void EnumerateDevices()
 		{
+			Logging.DebugMsg("<Audio> Enumerating devices.");
 			foreach (var dev in Enumerator.EnumerateAudioEndPoints(NAudio.CoreAudioApi.DataFlow.All, NAudio.CoreAudioApi.DeviceState.All))
 				DeviceAddedProxy(dev.ID);
+			Logging.DebugMsg("<Audio> Device enumeration complete.");
 		}
 
 		void VolumeTimer_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
@@ -290,6 +292,8 @@ namespace Taskmaster.Audio
 		{
 			if (disposed) return;
 
+			Logging.DebugMsg("<Audio> Finding default devices.");
+
 			try
 			{
 				var mmdevmultimedia = Enumerator.GetDefaultAudioEndpoint(NAudio.CoreAudioApi.DataFlow.Render, NAudio.CoreAudioApi.Role.Multimedia);
@@ -312,6 +316,8 @@ namespace Taskmaster.Audio
 			{
 				Logging.Stacktrace(ex);
 			}
+
+			Logging.DebugMsg("<Audio> Default device search complete.");
 		}
 
 		public void SetupEventHooks()

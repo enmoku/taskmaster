@@ -34,6 +34,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 using Ini = MKAh.Ini;
@@ -327,6 +328,7 @@ namespace Taskmaster.Process
 			}
 		}
 
+		// TODO: This needs to be re-run every time path is altered.
 		void Prepare()
 		{
 			if (PathElements == 0 && !string.IsNullOrEmpty(Path))
@@ -1005,12 +1007,12 @@ namespace Taskmaster.Process
 		/// <summary>
 		/// Last seen any associated process.
 		/// </summary>
-		public DateTimeOffset LastSeen { get; set; } = DateTimeOffset.MinValue;
+		public DateTimeOffset LastSeen { get; private set; } = DateTimeOffset.MinValue;
 
 		/// <summary>
 		/// Last modified any associated process.
 		/// </summary>
-		public DateTimeOffset LastTouch { get; set; } = DateTimeOffset.MinValue;
+		public DateTimeOffset LastTouch { get; private set; } = DateTimeOffset.MinValue;
 
 		/*
 		public bool Children = false;
@@ -1080,7 +1082,6 @@ namespace Taskmaster.Process
 					if (PathElements > 0)
 					{
 						var pparts = new List<string>(info.Path.Split(System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar));
-						// replace Path
 						pparts.RemoveRange(0, PathElements);
 						pparts.Insert(0, HumanReadable.Generic.Ellipsis);
 						return info.FormattedPath = System.IO.Path.Combine(pparts.ToArray());
@@ -1253,7 +1254,7 @@ namespace Taskmaster.Process
 
 				int oldAffinityMask = 0;
 
-				await Task.Delay(refresh ? 0 : ModifyDelay).ConfigureAwait(false);
+				await Task.Delay(refresh ? 5 : ModifyDelay).ConfigureAwait(false);
 
 				// EXTRACT INFORMATION
 
@@ -1765,7 +1766,7 @@ namespace Taskmaster.Process
 			}
 		}
 
-		public bool NeedsSaving = false;
+		public bool NeedsSaving { get; set; } = false;
 
 		public bool ColorReset { get; set; } = false;
 

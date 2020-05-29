@@ -323,7 +323,7 @@ namespace Taskmaster.Process
 			{
 				//result = targetmask;
 
-				throw new NotImplementedException("Affinitry scatter strategy not implemented.");
+				throw new NotImplementedException("Affinity scatter strategy not implemented.");
 
 				// NOT IMPLEMENTED
 				/*

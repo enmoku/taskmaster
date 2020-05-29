@@ -482,6 +482,7 @@ namespace Taskmaster.UI
 		}
 
 		readonly ConcurrentDictionary<int, int> KnownExplorerInstances = new ConcurrentDictionary<int, int>();
+
 		static System.Diagnostics.Process[] ExplorerInstances => System.Diagnostics.Process.GetProcessesByName("explorer");
 
 		bool RegisterExplorerExit(System.Diagnostics.Process[]? procs = null)

@@ -25,6 +25,7 @@
 // THE SOFTWARE.
 
 using MKAh;
+using MKAh.Data;
 using MKAh.Logic;
 using Serilog;
 using System;
@@ -397,10 +398,6 @@ namespace Taskmaster.Process
 
 			if (RecordAnalysis.HasValue) analyzer = new Analyzer();
 
-			//allCPUsMask = 1;
-			//for (int i = 0; i < CPUCount - 1; i++)
-			//	allCPUsMask = (allCPUsMask << 1) | 1;
-
 			if (DebugProcesses) Log.Debug($"<CPU> Logical cores: {Hardware.Utility.ProcessorCount}, full mask: {Process.Utility.FormatBitMask(Utility.FullCPUMask, Hardware.Utility.ProcessorCount, BitmaskStyle.Bits)} ({Utility.FullCPUMask} = OS control)");
 
 			LoadConfig();
@@ -507,7 +504,7 @@ namespace Taskmaster.Process
 		public async Task FreeMemoryAsync(int ignorePid = -1)
 		{
 			if (!PagingEnabled) return;
-			
+
 			try
 			{
 				if (DebugPaging) Log.Debug("<Process> Requesting OS to page applications to swap file...");
@@ -679,7 +676,7 @@ namespace Taskmaster.Process
 
 				//var loaderOffload = new List<ProcessEx>();
 
-				int modified = 0, ignored = 0, unmodified=0;
+				int modified = 0, ignored = 0, unmodified = 0;
 				foreach (var process in procs)
 				{
 					var info = ScanTriage(process, PageToDisk);
@@ -754,7 +751,7 @@ namespace Taskmaster.Process
 				}
 
 				if (Trace && DebugScan) Log.Verbose($"<Process> Checking: {name} #{pid}");
-				
+
 				if (GetCachedProcess(pid, out info))
 				{
 					bool stale = false;
