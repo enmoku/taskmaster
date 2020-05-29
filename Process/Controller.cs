@@ -1088,14 +1088,15 @@ namespace Taskmaster.Process
 						return info.Path;
 				case PathVisibilityOptions.Smart:
 					// TODO: Cut off bin, x86, x64, win64, win32 or similar generic folder parts
+					// TODO: Don't replace lone folders shorter than 4 characters.
 					var sparts = new List<string>(info.Path.Split(System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar));
 					if (PathElements > 0)
 					{
-						// cut Path from the output
 						// following notes assume matching c:\program files
-
 						sparts.RemoveRange(0, PathElements); // remove Path component
 
+						// TODO: remove long path elements
+						// TODO: remove repetitive path elements
 						// replace
 						if (sparts.Count > 4)
 						{
@@ -1106,30 +1107,34 @@ namespace Taskmaster.Process
 							//parts.RemoveRange(3, parts.Count - 4); // remove all but two first and last
 							//parts.Insert(3, HumanReadable.Generic.Ellipsis);
 
-							bool replaced = false;
+							bool previousWasCut = false;
 							// remove unwanted bits
-							for (int i = 0; i < sparts.Count - 1; i++)
+							for (int i = 1; i < sparts.Count - 1; i++) // always conserve first
 							{
 								string cur = sparts[i].ToLowerInvariant();
 								if (SpecialCasePathBits.Any(x => x.Equals(cur, StringComparison.InvariantCulture))) // e.g. steamapps
 								{
 									sparts[i] = HumanReadable.Generic.Ellipsis;
 									sparts.RemoveAt(++i); // common, i at app name, rolled over with loop
-									replaced = false;
+									previousWasCut = false;
 								}
 								else if ((i > 2 && i < sparts.Count - 3) // remove midpoint
 									|| UnwantedPathBits.Any((x) => x.Equals(cur, StringComparison.InvariantCulture)) // flat out unwanted
-									|| (info.Name.Length > 5 && cur.IndexOf(info.Name, StringComparison.InvariantCultureIgnoreCase) >= 0)) // folder contains exe name
+									|| cur.Equals(info.Name, StringComparison.InvariantCultureIgnoreCase) // folder is same as exe name
+									|| (info.Name.Length > 5 && cur.StartsWith(info.Name, StringComparison.InvariantCultureIgnoreCase))) // folder name starts with exe name
 								{
-									if (replaced)
+									if (previousWasCut)
 										sparts.RemoveAt(i--); // remove current and roll back loop
 									else
+									{
 										sparts[i] = HumanReadable.Generic.Ellipsis;
+										//sparts.Insert(i, System.IO.Path.DirectorySeparatorChar.ToString());
+									}
 
-									replaced = true;
+									previousWasCut = true;
 								}
 								else
-									replaced = false;
+									previousWasCut = false;
 							}
 						}
 
@@ -1137,7 +1142,10 @@ namespace Taskmaster.Process
 
 						// ...\brand\app\app.exe
 					}
-					else if (sparts.Count <= 5) return info.Path; // as is
+					else if (sparts.Count <= 5) // should consider total length, too
+					{
+						return info.Path; // as is
+					}
 					else
 					{
 						// Minimal structure
@@ -1147,11 +1155,17 @@ namespace Taskmaster.Process
 						// c:\programs\brand\app\v2.5\x256\bin\app.exe -> c:\programs\brand\app\...\app.exe
 
 						sparts.RemoveRange(4, sparts.Count - 5);
-						sparts[0] += System.IO.Path.DirectorySeparatorChar; // Path.Combine handles drive letter weird
+						//sparts[0] += System.IO.Path.DirectorySeparatorChar;
+						//sparts.Insert(1, System.IO.Path.DirectorySeparatorChar.ToString()); // Path.Combine handles drive letter weird
 						sparts.Insert(sparts.Count - 1, HumanReadable.Generic.Ellipsis);
 					}
 
-					return info.FormattedPath = System.IO.Path.Combine(sparts.ToArray());
+					//Console.WriteLine("Parts: " + string.Join(" || ", sparts.ToArray()));
+
+					//sparts[0] = sparts[0] + "\\";
+					info.FormattedPath = System.IO.Path.Combine(sparts.ToArray());
+
+					return info.FormattedPath;
 				case PathVisibilityOptions.Full:
 					return info.Path;
 			}
