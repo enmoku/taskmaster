@@ -345,6 +345,7 @@ namespace Taskmaster.Process
 
 		public void Repair()
 		{
+			PathElements = 0;
 			Prepare();
 
 			bool FixedSomething = false, ForegroundFixed = false, BackgroundAffinityFixed = false, BackgroundPriorityFixed = false, PathVisibilityFixed = false;
