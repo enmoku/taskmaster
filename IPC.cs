@@ -4,7 +4,7 @@
 // Author:
 //       M.A. (https://github.com/mkahvi)
 //
-// Copyright (c) 2019 M.A.
+// Copyright (c) 2019–2020 M.A.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -33,16 +33,39 @@ namespace Taskmaster
 {
 	using static Application;
 
-	internal static class IPC
+	internal class IPC : IDisposable
 	{
+		internal IPC()
+		{
+
+		}
+
 		internal const string PipeName = @"\\.\MKAh\Taskmaster\Pipe";
 		internal const string RestartMessage = "TM...RESTART";
 		internal const string TerminationMessage = "TM...TERMINATE";
 		internal const string RefreshMessage = "TM...REFRESH";
 
-		static System.IO.Pipes.NamedPipeServerStream? pipe = null;
+		internal enum IPCAction { Restart, Terminate, Refresh }
 
-		internal static async void Receive(IAsyncResult result)
+		System.IO.Pipes.NamedPipeServerStream? pipe = null;
+
+		internal void Send(IPCAction action)
+		{
+			switch (action)
+			{
+				case IPCAction.Restart:
+					Transmit(RestartMessage).ConfigureAwait(false);
+					break;
+				case IPCAction.Terminate:
+					Transmit(TerminationMessage).ConfigureAwait(false);
+					break;
+				case IPCAction.Refresh:
+					Transmit(RefreshMessage).ConfigureAwait(false);
+					break; 
+			}
+		}
+
+		internal async void Receive(IAsyncResult result)
 		{
 			if (pipe is null) return;
 
@@ -60,19 +83,19 @@ namespace Taskmaster
 
 				using var sr = new StreamReader(lp);
 				var line = await sr.ReadLineAsync().ConfigureAwait(true);
-				if (line.StartsWith(RestartMessage))
+				if (line.StartsWith(RestartMessage, StringComparison.InvariantCulture))
 				{
 					Log.Information("<IPC> Restart request received.");
 					UnifiedExit(restart: true);
 					return;
 				}
-				else if (line.StartsWith(TerminationMessage))
+				else if (line.StartsWith(TerminationMessage, StringComparison.InvariantCulture))
 				{
 					Log.Information("<IPC> Termination request received.");
 					UnifiedExit(restart: false);
 					return;
 				}
-				else if (line.StartsWith(RefreshMessage))
+				else if (line.StartsWith(RefreshMessage, StringComparison.InvariantCulture))
 				{
 					Log.Information("<IPC> Refresh.");
 					Refresh(globalmodules);
@@ -93,7 +116,7 @@ namespace Taskmaster
 			}
 		}
 
-		internal static System.IO.Pipes.NamedPipeServerStream? Listen()
+		internal System.IO.Pipes.NamedPipeServerStream? Listen()
 		{
 			try
 			{
@@ -124,7 +147,7 @@ namespace Taskmaster
 		/// </summary>
 		/// <exception cref="IOException">Communication timeout</exception>
 		/// <exception cref="UnauthorizedAccessException">Running process has elevated privileges compared to our own.</exception>
-		internal static async Task Transmit(string message)
+		internal async Task Transmit(string message)
 		{
 			Logging.DebugMsg("Attempting to communicate with running instance of TM.");
 
@@ -166,18 +189,35 @@ namespace Taskmaster
 			}
 		}
 
-		internal static void Close()
+		internal void Close()
 		{
 			try { pipe?.Dispose(); } catch { /* NOP */ }
-			pipe = null;
 		}
 
-		// Static Finalizer
-		internal static readonly Finalizer finalizer = new Finalizer();
+		~IPC() => Dispose(false);
 
-		internal sealed class Finalizer
+		private bool disposed;
+
+		protected virtual void Dispose(bool disposing)
 		{
-			~Finalizer() => Close();
+			if (!disposed)
+			{
+				if (disposing)
+				{
+					// meh
+				}
+
+				try { pipe?.Dispose(); } catch { /* NOP */ }
+				pipe = null;
+
+				disposed = true;
+			}
+		}
+
+		public void Dispose()
+		{
+			Dispose(true);
+			GC.SuppressFinalize(this);
 		}
 	}
 }

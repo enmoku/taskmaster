@@ -92,13 +92,13 @@ namespace Taskmaster
 				switch (rv)
 				{
 					case UI.MessageBox.ResultType.Retry:
-						IPC.Transmit(IPC.RestartMessage).ConfigureAwait(false);
+						GlobalIPC.Send(IPC.IPCAction.Restart);
 						break;
 					case UI.MessageBox.ResultType.End:
-						IPC.Transmit(IPC.TerminationMessage).ConfigureAwait(false);
+						GlobalIPC.Send(IPC.IPCAction.Terminate);
 						break;
 					case UI.MessageBox.ResultType.Cancel:
-						IPC.Transmit(IPC.RefreshMessage).ConfigureAwait(false);
+						GlobalIPC.Send(IPC.IPCAction.Refresh);
 						break;
 				}
 

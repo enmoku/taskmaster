@@ -99,7 +99,7 @@ namespace Taskmaster
 					}
 				}
 
-				IPC.Close();
+				GlobalIPC.Dispose();
 			}
 			catch
 			{
@@ -328,6 +328,8 @@ namespace Taskmaster
 
 		//readonly static System.Threading.ManualResetEvent UIWaiter = new System.Threading.ManualResetEvent(false); // for splash
 
+		internal static IPC GlobalIPC;
+
 		internal static ModuleManager globalmodules;
 
 		// entry point to the application
@@ -336,6 +338,7 @@ namespace Taskmaster
 		static public int Main(string[] args)
 		{
 			var modules = globalmodules = new ModuleManager();
+			GlobalIPC = new IPC();
 
 			AppDomain.CurrentDomain.ProcessExit += (_, _ea) => ExitCleanup(modules);
 
