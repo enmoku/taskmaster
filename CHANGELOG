@@ -3,6 +3,8 @@ Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
 ## [0.14...]
+### 2020-06-05
+	Changed: Several internal changes to IPC, modules, number formatting, and others. These should have no notable end-user impact.
 ### 2020-05-29
 	Fixed: Smart path was not working correctly.
 ### 2020-05-24
