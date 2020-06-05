@@ -252,9 +252,11 @@ namespace Taskmaster
 
 		static DirectoryInfo? TempRunningDir = null;
 
+		const string RunningTestFile = ".running-TM0";
+
 		static void MonitorCleanShutdown()
 		{
-			TempRunningDir = new System.IO.DirectoryInfo(System.IO.Path.Combine(DataPath, ".running-TM0"));
+			TempRunningDir = new System.IO.DirectoryInfo(System.IO.Path.Combine(DataPath, RunningTestFile));
 
 			if (!TempRunningDir.Exists)
 			{
@@ -265,7 +267,7 @@ namespace Taskmaster
 				Log.Warning("Unclean shutdown.");
 		}
 
-		static void CleanShutdown() => TempRunningDir.Delete();
+		static void CleanShutdown() => TempRunningDir?.Delete();
 
 		static void LicenseBoiler()
 		{

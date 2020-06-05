@@ -226,9 +226,9 @@ namespace Taskmaster.UI
 			if (PowerManagerEnabled)
 			{
 				power_auto = new ToolStripMenuItem(HumanReadable.Hardware.Power.AutoAdjust, null, SetAutoPower) { Checked = false, CheckOnClick = true, Enabled = false };
-				power_highperf = new ToolStripMenuItem(Power.Utility.GetModeName(Power.Mode.HighPerformance), null, (_, _ea) => SetPower(Power.Mode.HighPerformance));
-				power_balanced = new ToolStripMenuItem(Power.Utility.GetModeName(Power.Mode.Balanced), null, (_, _ea) => SetPower(Power.Mode.Balanced));
-				power_saving = new ToolStripMenuItem(Power.Utility.GetModeName(Power.Mode.PowerSaver), null, (_, _ea) => SetPower(Power.Mode.PowerSaver));
+				power_highperf = new ToolStripMenuItem(Power.Utility.GetModeName(Power.Mode.HighPerformance), null, (_, _2) => SetPower(Power.Mode.HighPerformance));
+				power_balanced = new ToolStripMenuItem(Power.Utility.GetModeName(Power.Mode.Balanced), null, (_, _2) => SetPower(Power.Mode.Balanced));
+				power_saving = new ToolStripMenuItem(Power.Utility.GetModeName(Power.Mode.PowerSaver), null, (_, _2) => SetPower(Power.Mode.PowerSaver));
 				power_manual = new ToolStripMenuItem("Manual override", null, SetManualPower) { CheckOnClick = true };
 
 				menu_power.DropDownItems.AddRange(new ToolStripItem[] {
@@ -261,7 +261,7 @@ namespace Taskmaster.UI
 				Checked = AutoOpenMenus,
 				CheckOnClick = true,
 			};
-			menu_config_behaviour_autoopen.Click += (_, _ea) =>
+			menu_config_behaviour_autoopen.Click += (_, _2) =>
 			{
 				AutoOpenMenus = menu_config_behaviour_autoopen.Checked;
 
@@ -274,7 +274,7 @@ namespace Taskmaster.UI
 				Checked = ShowInTaskbar,
 				CheckOnClick = true,
 			};
-			menu_config_behaviour_taskbar.Click += (_, _ea) =>
+			menu_config_behaviour_taskbar.Click += (_, _2) =>
 			{
 				ShowInTaskbar = menu_config_behaviour_taskbar.Checked;
 
@@ -287,7 +287,7 @@ namespace Taskmaster.UI
 				Checked = ExitConfirmation,
 				CheckOnClick = true,
 			};
-			menu_config_behaviour_exitconfirm.Click += (_, _ea) =>
+			menu_config_behaviour_exitconfirm.Click += (_, _2) =>
 			{
 				ExitConfirmation = menu_config_behaviour_exitconfirm.Checked;
 
@@ -326,7 +326,7 @@ namespace Taskmaster.UI
 				menu_config_visuals_rowalternate_devices,
 			});
 
-			menu_config_visuals_rowalternate_log.Click += (_, _ea) =>
+			menu_config_visuals_rowalternate_log.Click += (_, _2) =>
 			{
 				AlternateRowColorsLog = menu_config_visuals_rowalternate_log.Checked;
 
@@ -335,7 +335,7 @@ namespace Taskmaster.UI
 
 				AlternateListviewRowColors(EventLogList, AlternateRowColorsLog);
 			};
-			menu_config_visuals_rowalternate_watchlist.Click += (_, _ea) =>
+			menu_config_visuals_rowalternate_watchlist.Click += (_, _2) =>
 			{
 				AlternateRowColorsWatchlist = menu_config_visuals_rowalternate_watchlist.Checked;
 
@@ -344,7 +344,7 @@ namespace Taskmaster.UI
 
 				WatchlistColor();
 			};
-			menu_config_visuals_rowalternate_devices.Click += (_, _ea) =>
+			menu_config_visuals_rowalternate_devices.Click += (_, _2) =>
 			{
 				AlternateRowColorsDevices = menu_config_visuals_rowalternate_devices.Checked;
 
@@ -365,7 +365,7 @@ namespace Taskmaster.UI
 				Checked = false,
 				CheckOnClick = true,
 			};
-			menu_config_visuals_topmost_volume.Click += (_, _ea) =>
+			menu_config_visuals_topmost_volume.Click += (_, _2) =>
 			{
 				using var corecfg = Application.Config.Load(CoreConfigFilename);
 				corecfg.Config[Constants.VolumeMeter][TopmostName].Bool = menu_config_visuals_topmost_volume.Checked;
@@ -388,7 +388,7 @@ namespace Taskmaster.UI
 				Checked = VisualStyling,
 				CheckOnClick = true,
 			};
-			menu_config_visuals_styling.Click += (_, _ea) =>
+			menu_config_visuals_styling.Click += (_, _2) =>
 			{
 				using var uicfg = Application.Config.Load(UIConfigFilename);
 				uicfg.Config[Constants.Windows]["Styling"].Bool = menu_config_visuals_styling.Checked;
@@ -409,7 +409,7 @@ namespace Taskmaster.UI
 				Checked = ShowProcessAdjusts,
 				CheckOnClick = true,
 			};
-			menu_config_logging_adjusts.Click += (_, _ea) =>
+			menu_config_logging_adjusts.Click += (_, _2) =>
 			{
 				ShowProcessAdjusts = menu_config_logging_adjusts.Checked;
 
@@ -422,7 +422,7 @@ namespace Taskmaster.UI
 				Checked = ShowSessionActions,
 				CheckOnClick = true,
 			};
-			menu_config_logging_session.Click += (_, _ea) =>
+			menu_config_logging_session.Click += (_, _2) =>
 			{
 				ShowSessionActions = menu_config_logging_session.Checked;
 
@@ -435,7 +435,7 @@ namespace Taskmaster.UI
 				Checked = Process.Manager.ShowUnmodifiedPortions,
 				CheckOnClick = true,
 			};
-			menu_config_logging_showunmodified.Click += (_, _ea) =>
+			menu_config_logging_showunmodified.Click += (_, _2) =>
 			{
 				Process.Manager.ShowUnmodifiedPortions = menu_config_logging_showunmodified.Checked;
 
@@ -448,7 +448,7 @@ namespace Taskmaster.UI
 				Checked = Process.Manager.ShowOnlyFinalState,
 				CheckOnClick = true,
 			};
-			menu_config_logging_showonlyfinal.Click += (_, _ea) =>
+			menu_config_logging_showonlyfinal.Click += (_, _2) =>
 			{
 				Process.Manager.ShowOnlyFinalState = menu_config_logging_showonlyfinal.Checked;
 				using var corecfg = Application.Config.Load(CoreConfigFilename);
@@ -461,7 +461,7 @@ namespace Taskmaster.UI
 				CheckOnClick = true,
 			};
 
-			menu_config_logging_neterrors.Click += (_, _ea) =>
+			menu_config_logging_neterrors.Click += (_, _2) =>
 			{
 				Network.Manager.ShowNetworkErrors = menu_config_logging_neterrors.Checked;
 
@@ -493,9 +493,9 @@ namespace Taskmaster.UI
 				loglevelswitch.MinimumLevel = level;
 			}
 
-			menu_config_logging_info.Click += (_, _ea) => SetLogLevel(Serilog.Events.LogEventLevel.Information);
-			menu_config_logging_debug.Click += (_, _ea) => SetLogLevel(Serilog.Events.LogEventLevel.Debug);
-			menu_config_logging_trace.Click += (_, _ea) => SetLogLevel(Serilog.Events.LogEventLevel.Verbose);
+			menu_config_logging_info.Click += (_, _2) => SetLogLevel(Serilog.Events.LogEventLevel.Information);
+			menu_config_logging_debug.Click += (_, _2) => SetLogLevel(Serilog.Events.LogEventLevel.Debug);
+			menu_config_logging_trace.Click += (_, _2) => SetLogLevel(Serilog.Events.LogEventLevel.Verbose);
 
 			var menu_config_logging_bitmask = new ToolStripMenuItem("Bitmask");
 
@@ -515,9 +515,9 @@ namespace Taskmaster.UI
 				corecfg.Config[HumanReadable.Generic.Logging]["Bitmask style"].Int = (int)LogBitmask;
 			}
 
-			menu_config_logging_bitmask_decimal.Click += (_, _ea) => SetLogBitmask(BitmaskStyle.Decimal);
-			menu_config_logging_bitmask_bits.Click += (_, _ea) => SetLogBitmask(BitmaskStyle.Bits);
-			menu_config_logging_bitmask_mixed.Click += (_, _ea) => SetLogBitmask(BitmaskStyle.Mixed);
+			menu_config_logging_bitmask_decimal.Click += (_, _2) => SetLogBitmask(BitmaskStyle.Decimal);
+			menu_config_logging_bitmask_bits.Click += (_, _2) => SetLogBitmask(BitmaskStyle.Bits);
+			menu_config_logging_bitmask_mixed.Click += (_, _2) => SetLogBitmask(BitmaskStyle.Mixed);
 
 			menu_config_logging_bitmask.DropDownItems.AddRange(new ToolStripItem[] {
 				menu_config_logging_bitmask_decimal,
@@ -550,7 +550,7 @@ namespace Taskmaster.UI
 			{
 				Checked = (AffinityStyle == BitmaskStyle.Decimal),
 			};
-			menu_config_bitmaskstyle_bitmask.Click += (_, _ea) =>
+			menu_config_bitmaskstyle_bitmask.Click += (_, _2) =>
 			{
 				AffinityStyle = BitmaskStyle.Bits;
 				menu_config_bitmaskstyle_bitmask.Checked = true;
@@ -560,7 +560,7 @@ namespace Taskmaster.UI
 				using var corecfg = Application.Config.Load(CoreConfigFilename);
 				corecfg.Config[HumanReadable.Generic.QualityOfLife][HumanReadable.Hardware.CPU.Settings.AffinityStyle].Int = 0;
 			};
-			menu_config_bitmaskstyle_decimal.Click += (_, _ea) =>
+			menu_config_bitmaskstyle_decimal.Click += (_, _2) =>
 			{
 				AffinityStyle = BitmaskStyle.Decimal;
 				menu_config_bitmaskstyle_bitmask.Checked = false;
@@ -576,22 +576,24 @@ namespace Taskmaster.UI
 			menu_config_bitmaskstyle.DropDownItems.Add(menu_config_bitmaskstyle_decimal);
 			//menu_config_bitmaskstyle.DropDownItems.Add(menu_config_bitmaskstyle_both);
 
-			var menu_config_advanced = new ToolStripMenuItem("Advanced", null, (_, _ea) => Config.AdvancedConfig.Reveal());
+			var menu_config_advanced = new ToolStripMenuItem("Advanced", null, (_, _2) => Config.AdvancedConfig.Reveal());
 
-			var menu_config_powermanagement = new ToolStripMenuItem("Power management", null, (_, _ea) => Config.PowerConfigWindow.Reveal(powermanager));
-			menu_config_powermanagement.Enabled = Application.PowerManagerEnabled;
+			var menu_config_powermanagement = new ToolStripMenuItem("Power management", null, (_, _2) => Config.PowerConfigWindow.Reveal(powermanager))
+			{
+				Enabled = PowerManagerEnabled
+			};
 			//menu_config_power.DropDownItems.Add(menu_config_power_autoadjust); // sub-menu removed
 
 			//
 
 			var menu_config_log = new ToolStripMenuItem(HumanReadable.Generic.Logging);
-			var menu_config_log_power = new ToolStripMenuItem("Power mode changes", null, (_, _ea) => { });
+			var menu_config_log_power = new ToolStripMenuItem("Power mode changes", null, (_, _2) => { });
 			menu_config_log.DropDownItems.Add(menu_config_log_power);
 
-			var menu_config_components = new ToolStripMenuItem("Components", null, (_, _ea) => Config.ComponentConfigurationWindow.Reveal()); // MODAL
-			var menu_config_experiments = new ToolStripMenuItem("Experiments", null, (_, _ea) => Config.ExperimentConfig.Reveal()); // MODAL
+			var menu_config_components = new ToolStripMenuItem("Components", null, (_, _2) => Config.ComponentConfigurationWindow.Reveal()); // MODAL
+			var menu_config_experiments = new ToolStripMenuItem("Experiments", null, (_, _2) => Config.ExperimentConfig.Reveal()); // MODAL
 
-			var menu_config_folder = new ToolStripMenuItem("Open in file manager", null, (_, _ea) => System.Diagnostics.Process.Start(DataPath));
+			var menu_config_folder = new ToolStripMenuItem("Open in file manager", null, (_, _2) => System.Diagnostics.Process.Start(DataPath));
 			// menu_config.DropDownItems.Add(menu_config_log);
 
 			menu_config.DropDownItems.AddRange(new ToolStripItem[] {
@@ -619,7 +621,7 @@ namespace Taskmaster.UI
 			LogIncludeLevel = MemoryLog.MemorySink.LevelSwitch; // HACK
 
 			menu_debug_loglevel_info = new ToolStripMenuItem(InfoName, null,
-			(_, _ea) =>
+			(_, _2) =>
 			{
 				LogIncludeLevel.MinimumLevel = Serilog.Events.LogEventLevel.Information;
 				Trace = false;
@@ -630,7 +632,7 @@ namespace Taskmaster.UI
 				Checked = (LogIncludeLevel.MinimumLevel == Serilog.Events.LogEventLevel.Information),
 			};
 			menu_debug_loglevel_debug = new ToolStripMenuItem(HumanReadable.Generic.Debug, null,
-			(_, _ea) =>
+			(_, _2) =>
 			{
 				LogIncludeLevel.MinimumLevel = Serilog.Events.LogEventLevel.Debug;
 				Trace = false;
@@ -642,7 +644,7 @@ namespace Taskmaster.UI
 			};
 #if DEBUG
 			menu_debug_loglevel_trace = new ToolStripMenuItem(TraceName, null,
-			(_, _ea) =>
+			(_, _2) =>
 			{
 				LogIncludeLevel.MinimumLevel = Serilog.Events.LogEventLevel.Verbose;
 				Trace = true;
@@ -663,16 +665,16 @@ namespace Taskmaster.UI
 			UpdateLogLevelSelection();
 
 			menu_debug_inaction = new ToolStripMenuItem("Show inaction") { Checked = ShowInaction, CheckOnClick = true };
-			menu_debug_inaction.Click += (_, _ea) => ShowInaction = menu_debug_inaction.Checked;
+			menu_debug_inaction.Click += (_, _2) => ShowInaction = menu_debug_inaction.Checked;
 			menu_debug_agency = new ToolStripMenuItem("Show agency") { Checked = ShowAgency, CheckOnClick = true };
-			menu_debug_agency.Click += (_, _ea) => ShowAgency = menu_debug_agency.Checked;
+			menu_debug_agency.Click += (_, _2) => ShowAgency = menu_debug_agency.Checked;
 			menu_debug_scanning = new ToolStripMenuItem("Scanning")
 			{
 				Checked = Process.Manager.DebugScan,
 				CheckOnClick = true,
 				Enabled = ProcessMonitorEnabled,
 			};
-			menu_debug_scanning.Click += (_, _ea) =>
+			menu_debug_scanning.Click += (_, _2) =>
 			{
 				Process.Manager.DebugScan = menu_debug_scanning.Checked;
 				if (Process.Manager.DebugScan) EnsureVerbosityLevel();
@@ -685,7 +687,7 @@ namespace Taskmaster.UI
 				Enabled = ProcessMonitorEnabled,
 			};
 
-			menu_debug_procs.Click += (_, _ea) =>
+			menu_debug_procs.Click += (_, _2) =>
 			{
 				processmanager.SetDebug(menu_debug_procs.Checked);
 				if (Process.Manager.DebugProcesses)
@@ -700,7 +702,7 @@ namespace Taskmaster.UI
 				CheckOnClick = true,
 				Enabled = ProcessMonitorEnabled,
 			};
-			menu_debug_adjustdelay.Click += (_, _ea) => Process.Manager.DebugAdjustDelay = menu_debug_adjustdelay.Checked;
+			menu_debug_adjustdelay.Click += (_, _2) => Process.Manager.DebugAdjustDelay = menu_debug_adjustdelay.Checked;
 
 			var menu_debug_foreground = new ToolStripMenuItem(HumanReadable.System.Process.Foreground)
 			{
@@ -708,7 +710,7 @@ namespace Taskmaster.UI
 				CheckOnClick = true,
 				Enabled = ActiveAppMonitorEnabled,
 			};
-			menu_debug_foreground.Click += (_, _ea) =>
+			menu_debug_foreground.Click += (_, _2) =>
 			{
 				DebugForeground = menu_debug_foreground.Checked;
 				if (DebugForeground)
@@ -723,7 +725,7 @@ namespace Taskmaster.UI
 				Checked = Process.Manager.DebugPaths,
 				CheckOnClick = true,
 			};
-			menu_debug_paths.Click += (_, _ea) =>
+			menu_debug_paths.Click += (_, _2) =>
 			{
 				Process.Manager.DebugPaths = menu_debug_paths.Checked;
 				if (Process.Manager.DebugPaths) EnsureVerbosityLevel();
@@ -735,7 +737,7 @@ namespace Taskmaster.UI
 				CheckOnClick = true,
 				Enabled = PowerManagerEnabled,
 			};
-			menu_debug_power.Click += (_, _ea) =>
+			menu_debug_power.Click += (_, _2) =>
 			{
 				DebugPower = menu_debug_power.Checked;
 				if (DebugPower)
@@ -766,7 +768,7 @@ namespace Taskmaster.UI
 				CheckOnClick = true,
 				Enabled = NetworkMonitorEnabled,
 			};
-			menu_debug_network.Click += (_, _ea) =>
+			menu_debug_network.Click += (_, _2) =>
 			{
 				if (netmonitor != null)
 				{
@@ -780,7 +782,7 @@ namespace Taskmaster.UI
 				CheckOnClick = true,
 				Enabled = PowerManagerEnabled,
 			};
-			menu_debug_session.Click += (_, _ea) =>
+			menu_debug_session.Click += (_, _2) =>
 			{
 				DebugSession = menu_debug_session.Checked;
 				if (DebugSession) EnsureVerbosityLevel();
@@ -791,7 +793,7 @@ namespace Taskmaster.UI
 				CheckOnClick = true,
 				Enabled = PowerManagerEnabled,
 			};
-			menu_debug_monitor.Click += (_, _ea) =>
+			menu_debug_monitor.Click += (_, _2) =>
 			{
 				DebugMonitor = menu_debug_monitor.Checked;
 				if (DebugMonitor) EnsureVerbosityLevel();
@@ -803,13 +805,13 @@ namespace Taskmaster.UI
 				CheckOnClick = true,
 				Enabled = AudioManagerEnabled,
 			};
-			menu_debug_audio.Click += (_, _ea) =>
+			menu_debug_audio.Click += (_, _2) =>
 			{
 				DebugAudio = menu_debug_audio.Checked;
 				if (DebugAudio) EnsureVerbosityLevel();
 			};
 
-			var menu_debug_clear = new ToolStripMenuItem("Clear UI log", null, (_, _ea) => ClearLog());
+			var menu_debug_clear = new ToolStripMenuItem("Clear UI log", null, (_, _2) => ClearLog());
 
 			// TODO: This menu needs to be clearer
 			menu_debug.DropDownItems.Add(menu_debug_loglevel);
@@ -838,10 +840,10 @@ namespace Taskmaster.UI
 
 			//menu_info.DropDownItems.Add(new ToolStripMenuItem("Changelog", null, OpenChangelog));
 			//menu_info.DropDownItems.Add(new ToolStripSeparator());
-			menu_info.DropDownItems.Add(new ToolStripMenuItem("Github", null, (_, _ea) => System.Diagnostics.Process.Start(GitURL.ToString())));
-			menu_info.DropDownItems.Add(new ToolStripMenuItem("Itch.io", null, (_, _ea) => System.Diagnostics.Process.Start(ItchURL.ToString())));
+			menu_info.DropDownItems.Add(new ToolStripMenuItem("Github", null, (_, _2) => System.Diagnostics.Process.Start(GitURL.ToString())));
+			menu_info.DropDownItems.Add(new ToolStripMenuItem("Itch.io", null, (_, _2) => System.Diagnostics.Process.Start(ItchURL.ToString())));
 			menu_info.DropDownItems.Add(new ToolStripSeparator());
-			menu_info.DropDownItems.Add(new ToolStripMenuItem(Constants.License, null, (_, _ea) => OpenLicenseDialog()));
+			menu_info.DropDownItems.Add(new ToolStripMenuItem(Constants.License, null, (_, _2) => OpenLicenseDialog()));
 			menu_info.DropDownItems.Add(new ToolStripMenuItem("3rd party licenses", null, ShowExternalLicenses));
 			menu_info.DropDownItems.Add(new ToolStripSeparator());
 			menu_info.DropDownItems.Add(new ToolStripMenuItem("About", null, ShowAboutDialog));
@@ -963,7 +965,7 @@ namespace Taskmaster.UI
 				AudioInputs.Columns.Add("Control", micwidths[4]);
 				AudioInputs.Columns.Add("State", micwidths[5]);
 
-				micpanel.SizeChanged += (_, _ea) => AudioInputs.Width = micpanel.Width - micpanel.Margin.Horizontal - micpanel.Padding.Horizontal;
+				micpanel.SizeChanged += (_, _2) => AudioInputs.Width = micpanel.Width - micpanel.Margin.Horizontal - micpanel.Padding.Horizontal;
 
 				micpanel.Controls.AddRange(new Control[] { micNameRow, miccntrl, AudioInputs });
 
@@ -975,8 +977,7 @@ namespace Taskmaster.UI
 			}
 
 			// Main Window row 4-5, internet status
-			Extensions.TableLayoutPanel netstatus = null;
-			if (NetworkMonitorEnabled) netstatus = BuildNetworkStatusUI(infopanel, ifacewidths);
+			var netstatus = NetworkMonitorEnabled ? BuildNetworkStatusUI(infopanel, ifacewidths) : null;
 			// End: Inet status
 
 			GotFocus += StartUIUpdates;
@@ -1273,9 +1274,9 @@ namespace Taskmaster.UI
 			Visible = true;
 		}
 
-		void OnShown(object _, EventArgs _ea)
+		void OnShown(object _, EventArgs _2)
 		{
-			if (!IsHandleCreated || Disposed) return;
+			if (!IsHandleCreated || _Disposed) return;
 
 			Logging.DebugMsg("<Main Window> Showing");
 
@@ -1284,7 +1285,7 @@ namespace Taskmaster.UI
 			ShowLastLog();
 		}
 
-		public void ExitRequest(object _, EventArgs _ea) => ConfirmExit(restart: false);
+		public void ExitRequest(object _, EventArgs _2) => ConfirmExit(restart: false);
 
 		void WindowClose(object _, FormClosingEventArgs ea)
 		{
@@ -1318,7 +1319,7 @@ namespace Taskmaster.UI
 			catch (Exception ex) { Logging.Stacktrace(ex); }
 		}
 
-		void SelfDispose(object _, EventArgs _ea) => Dispose(true);
+		void SelfDispose(object _, EventArgs _2) => Dispose(true);
 
 		// this restores the main window to a place where it can be easily found if it's lost
 		/// <summary>
@@ -1328,11 +1329,11 @@ namespace Taskmaster.UI
 		{
 			if (Trace) Log.Verbose("Making sure main window is not lost.");
 
-			if (!IsHandleCreated || Disposed) return;
+			if (!IsHandleCreated || _Disposed) return;
 
 			BeginInvoke(new Action(() =>
 			{
-				if (!IsHandleCreated || Disposed) return;
+				if (!IsHandleCreated || _Disposed) return;
 
 				Reveal(activate: true);
 				CenterToScreen();
@@ -1341,14 +1342,14 @@ namespace Taskmaster.UI
 
 		public void Reveal(bool activate = false)
 		{
-			if (!IsHandleCreated || Disposed) return;
+			if (!IsHandleCreated || _Disposed) return;
 
 			BeginInvoke(new Action(() => Reveal_Invoke(activate)));
 		}
 
 		void Reveal_Invoke(bool activate)
 		{
-			if (!IsHandleCreated || Disposed) return;
+			if (!IsHandleCreated || _Disposed) return;
 
 			WindowState = FormWindowState.Normal;
 
@@ -1366,7 +1367,7 @@ namespace Taskmaster.UI
 
 		void ShowLastLog()
 		{
-			if (!IsHandleCreated || Disposed) return;
+			if (!IsHandleCreated || _Disposed) return;
 
 			lock (LogListData_Lock)
 			{
@@ -1408,14 +1409,14 @@ namespace Taskmaster.UI
 
 		void SetDefaultCommDevice()
 		{
-			if (!IsHandleCreated || Disposed) return;
+			if (!IsHandleCreated || _Disposed) return;
 
 			BeginInvoke(new Action(SetDefaultCommDevice_Invoke));
 		}
 
 		void SetDefaultCommDevice_Invoke()
 		{
-			if (!IsHandleCreated || Disposed) return;
+			if (!IsHandleCreated || _Disposed) return;
 
 			try
 			{
@@ -1482,7 +1483,7 @@ namespace Taskmaster.UI
 
 		void UpdateAudioInputs()
 		{
-			if (!IsHandleCreated || Disposed) return;
+			if (!IsHandleCreated || _Disposed) return;
 
 			if (micmanager is null) return;
 
@@ -1507,7 +1508,7 @@ namespace Taskmaster.UI
 				audiomanager.StateChanged += AudioDeviceStateChanged;
 				audiomanager.Removed += AudioDeviceRemoved;
 				audiomanager.Added += AudioDeviceAdded;
-				audiomanager.OnDisposed += (_, _ea) => audiomanager = null;
+				audiomanager.OnDisposed += (_, _2) => audiomanager = null;
 			}
 			catch (OutOfMemoryException) { throw; }
 			catch (Exception ex)
@@ -1524,13 +1525,13 @@ namespace Taskmaster.UI
 			try
 			{
 				micmanager = manager;
-				micmanager.OnDisposed += (_, _ea) => micmanager = null;
+				micmanager.OnDisposed += (_, _2) => micmanager = null;
 
 				if (Trace) Log.Verbose("Hooking microphone monitor.");
 
 				BeginInvoke(new Action(() =>
 				{
-					if (Disposed || !IsHandleCreated) return;
+					if (_Disposed || !IsHandleCreated) return;
 
 					try
 					{
@@ -1548,7 +1549,7 @@ namespace Taskmaster.UI
 				micmanager.VolumeChanged += VolumeChangeDetected;
 				micmanager.DefaultChanged += MicrophoneDefaultChanged;
 
-				FormClosing += (_, _ea) => micmanager.VolumeChanged -= VolumeChangeDetected;
+				FormClosing += (_, _2) => micmanager.VolumeChanged -= VolumeChangeDetected;
 			}
 			catch (OutOfMemoryException) { throw; }
 			catch (Exception ex)
@@ -1560,7 +1561,7 @@ namespace Taskmaster.UI
 
 		void AudioDeviceAdded(object sender, Audio.DeviceEventArgs ea)
 		{
-			if (Disposed || !IsHandleCreated) return;
+			if (_Disposed || !IsHandleCreated) return;
 
 			switch (ea.Device.Flow)
 			{
@@ -1576,7 +1577,7 @@ namespace Taskmaster.UI
 
 		void AudioDeviceRemoved(object sender, Audio.DeviceEventArgs ea)
 		{
-			if (Disposed || !IsHandleCreated) return;
+			if (_Disposed || !IsHandleCreated) return;
 
 			if (micmanager is null) return;
 
@@ -1586,7 +1587,7 @@ namespace Taskmaster.UI
 
 		void MicrophoneDefaultChanged(object sender, Audio.DefaultDeviceEventArgs ea)
 		{
-			if (!IsHandleCreated || Disposed) return;
+			if (!IsHandleCreated || _Disposed) return;
 
 			DefaultAudioInput = ea.Device;
 
@@ -1595,7 +1596,7 @@ namespace Taskmaster.UI
 
 		void MicrophoneDefaultChanged_Update()
 		{
-			if (Disposed || !IsHandleCreated) return;
+			if (_Disposed || !IsHandleCreated) return;
 
 			try
 			{
@@ -1625,20 +1626,20 @@ namespace Taskmaster.UI
 
 		void AudioDeviceStateChanged(object sender, Audio.DeviceStateEventArgs ea)
 		{
-			if (!IsHandleCreated || Disposed) return;
+			if (!IsHandleCreated || _Disposed) return;
 
 			BeginInvoke(new Action(() => AudioDeviceStateChanged_Update(ea)));
 		}
 
 		void AudioDeviceStateChanged_Update(Audio.DeviceStateEventArgs ea)
 		{
-			if (Disposed || !IsHandleCreated) return;
+			if (_Disposed || !IsHandleCreated) return;
 
 			if (MicGuidToAudioInputs.TryGetValue(ea.GUID, out ListViewItem li))
 				li.SubItems[5].Text = ea.State.ToString();
 		}
 
-		void UserMicVol(object _, EventArgs _ea)
+		void UserMicVol(object _, EventArgs _2)
 		{
 			// TODO: Handle volume changes. Not really needed. Give presets?
 			// micMonitor.setVolume(micVol.Value);
@@ -1646,14 +1647,14 @@ namespace Taskmaster.UI
 
 		void VolumeChangeDetected(object _, VolumeChangedEventArgs ea)
 		{
-			if (!IsHandleCreated || Disposed) return;
+			if (!IsHandleCreated || _Disposed) return;
 
 			BeginInvoke(new Action(() => VolumeChangeDetected_Update(ea)));
 		}
 
 		void VolumeChangeDetected_Update(VolumeChangedEventArgs ea)
 		{
-			if (!IsHandleCreated || Disposed) return;
+			if (!IsHandleCreated || _Disposed) return;
 
 			AudioInputVolume.Value = Convert.ToInt32(ea.New); // this could throw ArgumentOutOfRangeException, but we trust the source
 			corCountLabel.Text = ea.Corrections.ToString(CultureInfo.CurrentCulture);
@@ -1662,14 +1663,14 @@ namespace Taskmaster.UI
 
 		public void ProcessTouchEvent(Process.ModificationInfo mi)
 		{
-			if (!IsHandleCreated || Disposed) return;
+			if (!IsHandleCreated || _Disposed) return;
 
 			BeginInvoke(new Action(() => ProcessTouchEvent_Update(mi)));
 		}
 
 		void ProcessTouchEvent_Update(Process.ModificationInfo pmi)
 		{
-			if (!IsHandleCreated || Disposed) return;
+			if (!IsHandleCreated || _Disposed) return;
 
 			//adjustcounter.Text = Statistics.TouchCount.ToString();
 
@@ -1705,7 +1706,7 @@ namespace Taskmaster.UI
 
 		public void OnActiveWindowChanged(object _, Process.WindowChangedArgs windowchangeev)
 		{
-			if (!IsHandleCreated || Disposed) return;
+			if (!IsHandleCreated || _Disposed) return;
 
 			if (windowchangeev.Process is null) return;
 
@@ -1726,7 +1727,7 @@ namespace Taskmaster.UI
 		{
 			storagemanager = manager;
 			storagemanager.TempScan = TempScanStats;
-			storagemanager.OnDisposed += (_, _ea) => storagemanager = null;
+			storagemanager.OnDisposed += (_, _2) => storagemanager = null;
 		}
 
 		public void Hook(Process.Manager manager)
@@ -1734,14 +1735,14 @@ namespace Taskmaster.UI
 			Debug.Assert(manager != null);
 
 			processmanager = manager;
-			processmanager.OnDisposed += (_, _ea) => processmanager = null;
+			processmanager.OnDisposed += (_, _2) => processmanager = null;
 
 			processmanager.ProcessStateChange += ExitWaitListHandler;
 			if (DebugCache) PathCacheUpdate(null, EventArgs.Empty);
 
 			UpdateTrackingCounter(this, EventArgs.Empty);
 
-			WatchlistRules.VisibleChanged += (_, _ea) => { if (WatchlistRules.Visible) WatchlistColor(); };
+			WatchlistRules.VisibleChanged += (_, _2) => { if (WatchlistRules.Visible) WatchlistColor(); };
 
 			if (manager.ScanFrequency.HasValue)
 			{
@@ -1776,13 +1777,13 @@ namespace Taskmaster.UI
 			processmanager.HandlingStateChange -= ProcessHandlingStateChangeEvent;
 		}
 
-		void UpdateWatchlist(object _, EventArgs _ea)
+		void UpdateWatchlist(object _, EventArgs _2)
 		{
-			if (!IsHandleCreated || Disposed) return;
+			if (!IsHandleCreated || _Disposed) return;
 
 			BeginInvoke(new Action(() =>
 			{
-				if (!IsHandleCreated || Disposed) return;
+				if (!IsHandleCreated || _Disposed) return;
 
 				foreach (var li in WatchlistMap)
 				{
@@ -1794,7 +1795,7 @@ namespace Taskmaster.UI
 			}));
 		}
 
-		void RescanRequestEvent(object _, EventArgs _ea) => processmanager?.HastenScan(TimeSpan.Zero).ConfigureAwait(false);
+		void RescanRequestEvent(object _, EventArgs _2) => processmanager?.HastenScan(TimeSpan.Zero).ConfigureAwait(false);
 
 		void RestartRequestEvent(object sender, EventArgs _ea) => ConfirmExit(restart: true, admin: sender == menu_action_restartadmin);
 
@@ -1895,14 +1896,14 @@ namespace Taskmaster.UI
 
 		void FormatWatchlist(ListViewItem litem, Process.Controller prc)
 		{
-			if (!IsHandleCreated || Disposed) return;
+			if (!IsHandleCreated || _Disposed) return;
 
 			BeginInvoke(new Action(() => FormatWatchlist_Invoke(litem, prc)));
 		}
 
 		void FormatWatchlist_Invoke(ListViewItem litem, Process.Controller prc)
 		{
-			if (!IsHandleCreated || Disposed) return;
+			if (!IsHandleCreated || _Disposed) return;
 
 			litem.SubItems[PrefColumn].Text = prc.OrderPreference.ToString(CultureInfo.InvariantCulture);
 			litem.SubItems[NameColumn].Text = prc.FriendlyName;
@@ -1925,7 +1926,7 @@ namespace Taskmaster.UI
 
 		void UpdateWatchlistRule(Process.Controller prc)
 		{
-			if (!IsHandleCreated || Disposed) return;
+			if (!IsHandleCreated || _Disposed) return;
 
 			if (WatchlistMap.TryGetValue(prc, out ListViewItem litem))
 				BeginInvoke(new Action(() => UpdateWatchlistRule_Invoke(litem, prc)));
@@ -1933,7 +1934,7 @@ namespace Taskmaster.UI
 
 		void UpdateWatchlistRule_Invoke(ListViewItem litem, Process.Controller prc)
 		{
-			if (!IsHandleCreated || Disposed) return;
+			if (!IsHandleCreated || _Disposed) return;
 
 			FormatWatchlist(litem, prc);
 
@@ -1969,9 +1970,9 @@ namespace Taskmaster.UI
 
 		MKAh.Synchronize.Atomic PathCacheUpdateLock = new MKAh.Synchronize.Atomic();
 
-		async void PathCacheUpdate(object _, EventArgs _ea)
+		async void PathCacheUpdate(object _, EventArgs _2)
 		{
-			if (!IsHandleCreated || Disposed) return;
+			if (!IsHandleCreated || _Disposed) return;
 
 			if (!PathCacheUpdateLock.TryLock()) return;
 			using var plock = PathCacheUpdateLock.ScopedUnlock();
@@ -1991,7 +1992,7 @@ namespace Taskmaster.UI
 		// BackColor = System.Drawing.Color.LightGoldenrodYellow
 		Extensions.Label netstatuslabel, inetstatuslabel, uptimestatuslabel, uptimeMeanLabel, netTransmit, netQueue;
 
-		public static Serilog.Core.LoggingLevelSwitch LogIncludeLevel;
+		internal static Serilog.Core.LoggingLevelSwitch LogIncludeLevel;
 
 		public int UIUpdateFrequency
 		{
@@ -2005,7 +2006,7 @@ namespace Taskmaster.UI
 
 		void StartUIUpdates(object sender, EventArgs _ea)
 		{
-			if (Disposed || !IsHandleCreated) StopUIUpdates(this, EventArgs.Empty);
+			if (_Disposed || !IsHandleCreated) StopUIUpdates(this, EventArgs.Empty);
 			else if (!UItimer.Enabled)
 			{
 				UpdateMemoryStats(sender, EventArgs.Empty);
@@ -2015,12 +2016,12 @@ namespace Taskmaster.UI
 			}
 		}
 
-		void StopUIUpdates(object _, EventArgs _ea)
+		void StopUIUpdates(object _, EventArgs _2)
 		{
 			if (UItimer.Enabled) UItimer.Stop();
 		}
 
-		void Cleanup(object _, EventArgs _ea)
+		void Cleanup(object _, EventArgs _2)
 		{
 			if (!IsHandleCreated) return;
 
@@ -2030,9 +2031,9 @@ namespace Taskmaster.UI
 			}
 		}
 
-		void UpdateRescanCountdown(object _, EventArgs _ea)
+		void UpdateRescanCountdown(object _, EventArgs _2)
 		{
-			if (Disposed || !IsHandleCreated) return;
+			if (_Disposed || !IsHandleCreated) return;
 
 			if (processmanager is null) return; // not yet assigned
 
@@ -2043,9 +2044,9 @@ namespace Taskmaster.UI
 				processingtimer.Text = HumanReadable.Generic.NotAvailable;
 		}
 
-		void UpdateNetwork(object _, EventArgs _ea)
+		void UpdateNetwork(object _, EventArgs _2)
 		{
-			if (Disposed || !IsHandleCreated) return;
+			if (_Disposed || !IsHandleCreated) return;
 
 			if (netmonitor is null) return;
 
@@ -2063,7 +2064,7 @@ namespace Taskmaster.UI
 		ContextMenuStrip ifacems, watchlistms;
 		ToolStripMenuItem watchlistenable, watchlistadd;
 
-		void InterfaceContextMenuOpen(object _, EventArgs _ea)
+		void InterfaceContextMenuOpen(object _, EventArgs _2)
 		{
 			try
 			{
@@ -2073,25 +2074,25 @@ namespace Taskmaster.UI
 			catch { } // discard
 		}
 
-		void CopyIPv4AddressToClipboard(object _, EventArgs _ea)
+		void CopyIPv4AddressToClipboard(object _, EventArgs _2)
 		{
 			if (NetworkDevices.SelectedItems.Count == 1)
 				Clipboard.SetText(NetworkDevices.SelectedItems[0].SubItems[IPv4Column].Text, TextDataFormat.UnicodeText);
 		}
 
-		void CopyIPv6AddressToClipboard(object _, EventArgs _ea)
+		void CopyIPv6AddressToClipboard(object _, EventArgs _2)
 		{
 			if (NetworkDevices.SelectedItems.Count == 1)
 				Clipboard.SetText($"[{NetworkDevices.SelectedItems[0].SubItems[IPv6Column].Text}]", TextDataFormat.UnicodeText);
 		}
 
-		void CopyIfaceToClipboard(object _, EventArgs _ea)
+		void CopyIfaceToClipboard(object _, EventArgs _2)
 		{
 			if (NetworkDevices.SelectedItems.Count == 1)
 				Clipboard.SetText(netmonitor.GetDeviceData(NetworkDevices.SelectedItems[0].SubItems[0].Text), TextDataFormat.UnicodeText);
 		}
 
-		void CopyLogToClipboard(object _, EventArgs _ea)
+		void CopyLogToClipboard(object _, EventArgs _2)
 		{
 			var selected = EventLogList.SelectedIndices;
 			if (selected.Count == 0) return;
@@ -2290,9 +2291,9 @@ namespace Taskmaster.UI
 			return li;
 		}
 
-		void UpdateTrackingCounter(object _, EventArgs _ea)
+		void UpdateTrackingCounter(object _, EventArgs _2)
 		{
-			if (Disposed || !IsHandleCreated) return;
+			if (_Disposed || !IsHandleCreated) return;
 
 			processingcount.Text = processmanager?.HandlingCount.ToString(CultureInfo.CurrentCulture) ?? "n/a";
 			trackingcount.Text = processmanager?.RunningCount.ToString(CultureInfo.CurrentCulture) ?? "n/a";
@@ -2318,10 +2319,10 @@ namespace Taskmaster.UI
 			changelog.ShowDialog();
 		}
 
-		void SetAutoPower(object _, EventArgs _ea)
+		void SetAutoPower(object _, EventArgs _2)
 			=> powermanager.SetBehaviour(powermanager.Behaviour != Power.PowerBehaviour.Auto ? Power.PowerBehaviour.Auto : Power.PowerBehaviour.RuleBased);
 
-		void SetManualPower(object _, EventArgs _ea)
+		void SetManualPower(object _, EventArgs _2)
 			=> powermanager.SetBehaviour(powermanager.Behaviour != Power.PowerBehaviour.Manual ? Power.PowerBehaviour.Manual : Power.PowerBehaviour.RuleBased);
 
 		void HighlightPowerMode()
@@ -2675,7 +2676,7 @@ namespace Taskmaster.UI
 
 			lastmodifypanel.Controls.Add(lastmodifylist);
 			var lastmodifyms = new ContextMenuStrip();
-			var lastmodifycopy = new ToolStripMenuItem("Copy path to clipboard", null, (_, _ea) =>
+			var lastmodifycopy = new ToolStripMenuItem("Copy path to clipboard", null, (_, _2) =>
 			{
 				if (lastmodifylist.SelectedItems.Count > 0)
 				{
@@ -2684,7 +2685,7 @@ namespace Taskmaster.UI
 						Clipboard.SetText(path, TextDataFormat.UnicodeText);
 				}
 			});
-			lastmodifyms.Opened += (_, _ea) => lastmodifycopy.Enabled = (lastmodifylist.SelectedItems.Count == 1);
+			lastmodifyms.Opened += (_, _2) => lastmodifycopy.Enabled = (lastmodifylist.SelectedItems.Count == 1);
 			lastmodifyms.Items.Add(lastmodifycopy);
 			lastmodifylist.ContextMenuStrip = lastmodifyms;
 			return lastmodifypanel;
@@ -2787,7 +2788,7 @@ namespace Taskmaster.UI
 				Height = 64,
 			};
 
-			infopanel.SizeChanged += (_, _ea) => NetworkDevices.Width = infopanel.ClientSize.Width - infopanel.Padding.Horizontal - infopanel.Margin.Vertical;
+			infopanel.SizeChanged += (_, _2) => NetworkDevices.Width = infopanel.ClientSize.Width - infopanel.Padding.Horizontal - infopanel.Margin.Vertical;
 
 			ifacems = new ContextMenuStrip();
 			ifacems.Opened += InterfaceContextMenuOpen;
@@ -2900,7 +2901,7 @@ namespace Taskmaster.UI
 
 		void WatchlistSearchTimer_Tick(object sender, EventArgs e)
 		{
-			if (Disposed || !IsHandleCreated) return;
+			if (_Disposed || !IsHandleCreated) return;
 
 			bool foundprimary = false, found = false;
 
@@ -2938,9 +2939,9 @@ namespace Taskmaster.UI
 				WatchlistSearchTimer.Stop();
 		}
 
-		public void CPULoadEvent(object _, Hardware.CPUSensorEventArgs ea)
+		public void CPULoadEvent(object _, Hardware.CPUSensorEventArgs _2)
 		{
-			if (!IsHandleCreated || Disposed) return;
+			if (!IsHandleCreated || _Disposed) return;
 
 			BeginInvoke(new Action(() =>
 			{
@@ -2948,16 +2949,16 @@ namespace Taskmaster.UI
 			}));
 		}
 
-		public void GPULoadEvent(object _, Hardware.GPUSensorEventArgs ea)
+		public void GPULoadEvent(object _, Hardware.GPUSensorEventArgs _2)
 		{
-			if (!IsHandleCreated || Disposed) return;
+			if (!IsHandleCreated || _Disposed) return;
 
 			BeginInvoke(new Action(() => GPULoadEvent_Invoke(ea)));
 		}
 
 		void GPULoadEvent_Invoke(Hardware.GPUSensorEventArgs ea)
 		{
-			if (!IsHandleCreated || Disposed) return;
+			if (!IsHandleCreated || _Disposed) return;
 
 			try
 			{
@@ -2972,7 +2973,7 @@ namespace Taskmaster.UI
 
 		void GPULoadPoller(object sender, EventArgs e)
 		{
-			if (Disposed || !IsHandleCreated) return;
+			if (_Disposed || !IsHandleCreated) return;
 
 			if (hardwaremonitor is null)
 			{
@@ -3154,7 +3155,7 @@ namespace Taskmaster.UI
 
 		void ProcessHandlingStateChangeEvent(object _, Process.HandlingStateChangeEventArgs ea)
 		{
-			if (!IsHandleCreated || Disposed) return;
+			if (!IsHandleCreated || _Disposed) return;
 
 			if (!Process.Manager.DebugProcesses && !DebugForeground) return;
 
@@ -3179,7 +3180,7 @@ namespace Taskmaster.UI
 
 		void ProcessHandlingStateChangeEvent_Invoke(Process.HandlingStateChangeEventArgs ea, ListViewItem item, bool newitem = false)
 		{
-			if (!IsHandleCreated || Disposed) return;
+			if (!IsHandleCreated || _Disposed) return;
 
 			int key = ea.Info.Id;
 
@@ -3203,18 +3204,18 @@ namespace Taskmaster.UI
 
 		void RemoveOldProcessingEntry(int key)
 		{
-			if (!IsHandleCreated || Disposed) return;
+			if (!IsHandleCreated || _Disposed) return;
 
 			BeginInvoke(new Action(async () => await RemoveOldProcessingEntry_Invoke(key).ConfigureAwait(true)));
 		}
 
 		async Task RemoveOldProcessingEntry_Invoke(int key)
 		{
-			if (!IsHandleCreated || Disposed) return;
+			if (!IsHandleCreated || _Disposed) return;
 
 			await Task.Delay(TimeSpan.FromSeconds(15)).ConfigureAwait(true);
 
-			if (!IsHandleCreated || Disposed) return;
+			if (!IsHandleCreated || _Disposed) return;
 
 			if (ProcessEventMap.TryRemove(key, out ListViewItem item))
 				ProcessingList.Items.Remove(item);
@@ -3249,7 +3250,7 @@ namespace Taskmaster.UI
 			});
 		}
 
-		void FreeMemoryRequest(object _, EventArgs _ea)
+		void FreeMemoryRequest(object _, EventArgs _2)
 		{
 			try
 			{
@@ -3268,14 +3269,14 @@ namespace Taskmaster.UI
 		public void ExitWaitListHandler(Process.ProcessEx ea)
 		{
 			//if (activeappmonitor is null) return;
-			if (!IsHandleCreated || Disposed) return;
+			if (!IsHandleCreated || _Disposed) return;
 
 			BeginInvoke(new Action(() => ExitWaitListHandler_Invoke(ea)));
 		}
 
 		void ExitWaitListHandler_Invoke(Process.ProcessEx info)
 		{
-			if (!IsHandleCreated || Disposed) return;
+			if (!IsHandleCreated || _Disposed) return;
 
 			try
 			{
@@ -3329,9 +3330,9 @@ namespace Taskmaster.UI
 		}
 
 		// Called by UI update timer, should be UI thread by default
-		void UpdateMemoryStats(object _, EventArgs _ea)
+		void UpdateMemoryStats(object _, EventArgs _2)
 		{
-			if (!IsHandleCreated || Disposed) return;
+			if (!IsHandleCreated || _Disposed) return;
 			if (!ramload.Visible) return;
 
 			Memory.Update(); // TODO: this is kinda dumb way to do things
@@ -3350,7 +3351,7 @@ namespace Taskmaster.UI
 		// TODO: Reverse this design, make the UI poll instead
 		void CPULoadHandler(object _, Hardware.ProcessorLoadEventArgs ea)
 		{
-			if (!IsHandleCreated || Disposed) return;
+			if (!IsHandleCreated || _Disposed) return;
 			if (!cpuload.Visible) return;
 
 			BeginInvoke(new Action(() => CPULoadHandler_Invoke(ea)));
@@ -3358,7 +3359,7 @@ namespace Taskmaster.UI
 
 		void CPULoadHandler_Invoke(Hardware.ProcessorLoadEventArgs ea)
 		{
-			if (!IsHandleCreated || Disposed) return;
+			if (!IsHandleCreated || _Disposed) return;
 
 			var load = ea.Load;
 
@@ -3373,14 +3374,14 @@ namespace Taskmaster.UI
 
 		public void PowerLoadDebugHandler(object _, Power.AutoAdjustReactionEventArgs ea)
 		{
-			if (!IsHandleCreated || Disposed) return;
+			if (!IsHandleCreated || _Disposed) return;
 
 			BeginInvoke(new Action(() => PowerLoadDebugHandler_Invoke(ea)));
 		}
 
 		void PowerLoadDebugHandler_Invoke(Power.AutoAdjustReactionEventArgs ea)
 		{
-			if (!IsHandleCreated || Disposed) return;
+			if (!IsHandleCreated || _Disposed) return;
 
 			try
 			{
@@ -3424,7 +3425,7 @@ namespace Taskmaster.UI
 			catch (Exception ex) { Logging.Stacktrace(ex); }
 		}
 
-		void WatchlistContextMenuOpen(object _, EventArgs _ea)
+		void WatchlistContextMenuOpen(object _, EventArgs _2)
 		{
 			bool oneitem = (WatchlistRules.SelectedItems.Count == 1);
 
@@ -3450,7 +3451,7 @@ namespace Taskmaster.UI
 			catch (Exception ex) { Logging.Stacktrace(ex); }
 		}
 
-		void EnableWatchlistRule(object _, EventArgs _ea)
+		void EnableWatchlistRule(object _, EventArgs _2)
 		{
 			try
 			{
@@ -3479,7 +3480,7 @@ namespace Taskmaster.UI
 			catch (Exception ex) { Logging.Stacktrace(ex); }
 		}
 
-		void EditWatchlistRule(object _, EventArgs _ea)
+		void EditWatchlistRule(object _, EventArgs _2)
 		{
 			if (WatchlistRules.SelectedItems.Count == 1)
 			{
@@ -3498,7 +3499,7 @@ namespace Taskmaster.UI
 			}
 		}
 
-		void AddWatchlistRule(object _, EventArgs _ea)
+		void AddWatchlistRule(object _, EventArgs _2)
 		{
 			try
 			{
@@ -3521,7 +3522,7 @@ namespace Taskmaster.UI
 			catch (Exception ex) { Logging.Stacktrace(ex); }
 		}
 
-		void DeleteWatchlistRule(object _, EventArgs _ea)
+		void DeleteWatchlistRule(object _, EventArgs _2)
 		{
 			if (WatchlistRules.SelectedItems.Count != 1) return;
 
@@ -3552,7 +3553,7 @@ namespace Taskmaster.UI
 
 		// This should be somewhere else
 		// TODO: Make this better
-		void CopyRuleToClipboard(object _, EventArgs _ea)
+		void CopyRuleToClipboard(object _, EventArgs _2)
 		{
 			if (WatchlistRules.SelectedItems.Count == 1)
 			{
@@ -3645,14 +3646,14 @@ namespace Taskmaster.UI
 
 		public void TempScanStats(StorageManager.ScanState state, StorageManager.DirectoryStats stats)
 		{
-			if (!IsHandleCreated || Disposed) return;
+			if (!IsHandleCreated || _Disposed) return;
 
 			BeginInvoke(new Action(() => TempScanStats_Invoke(state, stats)));
 		}
 
 		void TempScanStats_Invoke(StorageManager.ScanState state, StorageManager.DirectoryStats stats)
 		{
-			if (!IsHandleCreated || Disposed) return;
+			if (!IsHandleCreated || _Disposed) return;
 
 			tempObjectSize.Text = (stats.Size / 1_000_000).ToString(CultureInfo.CurrentCulture);
 			tempObjectCount.Text = (stats.Dirs + stats.Files).ToString(CultureInfo.CurrentCulture);
@@ -3690,7 +3691,7 @@ namespace Taskmaster.UI
 			if (Trace) Log.Verbose("Hooking active app manager.");
 
 			activeappmonitor = manager;
-			activeappmonitor.OnDisposed += (_, _ea) => activeappmonitor = null;
+			activeappmonitor.OnDisposed += (_, _2) => activeappmonitor = null;
 
 			if (DebugForeground || Process.Manager.DebugProcesses)
 				StartProcessDebug();
@@ -3703,7 +3704,7 @@ namespace Taskmaster.UI
 			if (Trace) Log.Verbose("Hooking power manager.");
 
 			powermanager = manager;
-			powermanager.OnDisposed += (_, _ea) => powermanager = null;
+			powermanager.OnDisposed += (_, _2) => powermanager = null;
 
 			powermanager.BehaviourChange += PowerBehaviourEvent;
 			powermanager.PlanChange += PowerPlanEvent;
@@ -3763,14 +3764,14 @@ namespace Taskmaster.UI
 
 		void PowerBehaviourEvent(object sender, Power.PowerBehaviourEventArgs e)
 		{
-			if (!IsHandleCreated || Disposed) return;
+			if (!IsHandleCreated || _Disposed) return;
 
 			BeginInvoke(new Action(() => PowerBehaviourEvent_Invoke(e)));
 		}
 
 		void PowerBehaviourEvent_Invoke(Power.PowerBehaviourEventArgs e)
 		{
-			if (!IsHandleCreated || Disposed) return;
+			if (!IsHandleCreated || _Disposed) return;
 
 			UpdatePowerBehaviourHighlight(e.Behaviour);
 			pwbehaviour.Text = Power.Utility.GetBehaviourName(e.Behaviour);
@@ -3780,14 +3781,14 @@ namespace Taskmaster.UI
 
 		void PowerPlanEvent(object sender, Power.ModeEventArgs ea)
 		{
-			if (!IsHandleCreated || Disposed) return;
+			if (!IsHandleCreated || _Disposed) return;
 
 			BeginInvoke(new Action(() => PowerPlanEvent_Invoke(ea)));
 		}
 
 		void PowerPlanEvent_Invoke(Power.ModeEventArgs e)
 		{
-			if (!IsHandleCreated || Disposed) return;
+			if (!IsHandleCreated || _Disposed) return;
 
 			HighlightPowerMode();
 
@@ -3801,7 +3802,7 @@ namespace Taskmaster.UI
 		public void Hook(Hardware.Monitor monitor)
 		{
 			hardwaremonitor = monitor;
-			hardwaremonitor.OnDisposed += (_, _ea) => hardwaremonitor = null;
+			hardwaremonitor.OnDisposed += (_, _2) => hardwaremonitor = null;
 
 			//hw.GPUPolling += GPULoadEvent;
 			UItimer.Tick += GPULoadPoller;
@@ -3813,7 +3814,7 @@ namespace Taskmaster.UI
 		{
 			cpumonitor = monitor;
 			cpumonitor.Sampling += CPULoadHandler;
-			cpumonitor.OnDisposed += (_, _ea) => cpumonitor = null;
+			cpumonitor.OnDisposed += (_, _2) => cpumonitor = null;
 
 			CPULoadHandler(this, new Hardware.ProcessorLoadEventArgs() { Load = cpumonitor.GetLoad });
 		}
@@ -3823,7 +3824,7 @@ namespace Taskmaster.UI
 		public void Hook(HealthMonitor monitor)
 		{
 			healthmonitor = monitor;
-			healthmonitor.OnDisposed += (_, _ea) => healthmonitor = null;
+			healthmonitor.OnDisposed += (_, _2) => healthmonitor = null;
 
 			healthmonitor.Poll();
 
@@ -3857,7 +3858,7 @@ namespace Taskmaster.UI
 
 		async void UpdateHealthMon(object sender, EventArgs e)
 		{
-			if (!IsHandleCreated || Disposed) return;
+			if (!IsHandleCreated || _Disposed) return;
 
 			if (powermanager?.SessionLocked ?? false) return;
 
@@ -3865,7 +3866,7 @@ namespace Taskmaster.UI
 
 			await Task.Delay(100).ConfigureAwait(false);
 
-			if (Disposed) return; // recheck
+			if (_Disposed) return; // recheck
 
 			try
 			{
@@ -3977,7 +3978,7 @@ namespace Taskmaster.UI
 
 		public void PowerBehaviourDebugEvent(object _, Power.PowerBehaviourEventArgs ea)
 		{
-			if (!IsHandleCreated || Disposed) return;
+			if (!IsHandleCreated || _Disposed) return;
 
 			if (!DebugPower) return;
 
@@ -3986,7 +3987,7 @@ namespace Taskmaster.UI
 
 		void PowerBehaviourDebugEvent_Invoke(Power.PowerBehaviourEventArgs ea)
 		{
-			if (!IsHandleCreated || Disposed) return;
+			if (!IsHandleCreated || _Disposed) return;
 
 			powerbalancer_behaviour.Text = Power.Utility.GetBehaviourName(ea.Behaviour);
 			if (ea.Behaviour != Power.PowerBehaviour.Auto)
@@ -3995,7 +3996,7 @@ namespace Taskmaster.UI
 
 		public void PowerPlanDebugEvent(object _, Power.ModeEventArgs ea)
 		{
-			if (!IsHandleCreated || Disposed) return;
+			if (!IsHandleCreated || _Disposed) return;
 
 			if (!DebugPower) return;
 
@@ -4004,21 +4005,21 @@ namespace Taskmaster.UI
 
 		void PowerPlanDebugEvent_Invoke(Power.ModeEventArgs ea)
 		{
-			if (!IsHandleCreated || Disposed) return;
+			if (!IsHandleCreated || _Disposed) return;
 
 			powerbalancer_plan.Text = Power.Utility.GetModeName(ea.NewMode);
 		}
 
-		public void UpdateNetworkDevices(object _, EventArgs _ea)
+		public void UpdateNetworkDevices(object _, EventArgs _2)
 		{
-			if (!IsHandleCreated || Disposed) return;
+			if (!IsHandleCreated || _Disposed) return;
 
 			BeginInvoke(new Action(UpdateNetworkDevices_Invoke));
 		}
 
 		void UpdateNetworkDevices_Invoke()
 		{
-			if (!IsHandleCreated || Disposed) return;
+			if (!IsHandleCreated || _Disposed) return;
 
 			InetStatusLabel(netmonitor.InternetAvailable);
 			NetStatusLabelUpdate(netmonitor.NetworkAvailable);
@@ -4071,7 +4072,7 @@ namespace Taskmaster.UI
 			if (Trace) Log.Verbose("Hooking network monitor.");
 
 			netmonitor = manager;
-			netmonitor.OnDisposed += (_, _ea) => netmonitor = null;
+			netmonitor.OnDisposed += (_, _2) => netmonitor = null;
 
 			UpdateNetworkDevices(this, EventArgs.Empty);
 
@@ -4101,14 +4102,14 @@ namespace Taskmaster.UI
 
 		void NetSampleHandler(object _, Network.DeviceTrafficEventArgs ea)
 		{
-			if (!IsHandleCreated || Disposed) return;
+			if (!IsHandleCreated || _Disposed) return;
 
 			BeginInvoke(new Action(() => NetSampleHandler_Invoke(ea)));
 		}
 
 		void NetSampleHandler_Invoke(Network.DeviceTrafficEventArgs ea)
 		{
-			if (!IsHandleCreated || Disposed) return;
+			if (!IsHandleCreated || _Disposed) return;
 
 			try
 			{
@@ -4128,14 +4129,14 @@ namespace Taskmaster.UI
 
 		void InetStatusLabel(bool available)
 		{
-			if (!IsHandleCreated || Disposed) return;
+			if (!IsHandleCreated || _Disposed) return;
 
 			BeginInvoke(new Action(() => InetStatusLabel_Invoke(available)));
 		}
 
 		void InetStatusLabel_Invoke(bool available)
 		{
-			if (!IsHandleCreated || Disposed) return;
+			if (!IsHandleCreated || _Disposed) return;
 
 			inetstatuslabel.Text = available ? HumanReadable.Hardware.Network.Connected : HumanReadable.Hardware.Network.Disconnected;
 			// inetstatuslabel.BackColor = available ? System.Drawing.Color.LightGoldenrodYellow : System.Drawing.Color.Red;
@@ -4156,14 +4157,14 @@ namespace Taskmaster.UI
 
 		void NetStatusLabelUpdate(bool available)
 		{
-			if (!IsHandleCreated || Disposed) return;
+			if (!IsHandleCreated || _Disposed) return;
 
 			BeginInvoke(new Action(() => NetStatusLabelUpdate_Invoke(available)));
 		}
 
 		void NetStatusLabelUpdate_Invoke(bool available)
 		{
-			if (!IsHandleCreated || Disposed) return;
+			if (!IsHandleCreated || _Disposed) return;
 
 			netstatuslabel.Text = available ? HumanReadable.Hardware.Network.Connected : HumanReadable.Hardware.Network.Disconnected;
 			// netstatuslabel.BackColor = available ? System.Drawing.Color.LightGoldenrodYellow : System.Drawing.Color.Red;
@@ -4196,7 +4197,7 @@ namespace Taskmaster.UI
 
 		async void NewLogReceived(object _, LogEventArgs logmsg)
 		{
-			if (!IsHandleCreated || Disposed
+			if (!IsHandleCreated || _Disposed
 				|| (LogIncludeLevel.MinimumLevel > logmsg.Level)) return;
 
 			await Task.Delay(0).ConfigureAwait(false);
@@ -4265,7 +4266,7 @@ namespace Taskmaster.UI
 				count = LogListData.Count;
 			}
 
-			if (!IsHandleCreated || Disposed) return;
+			if (!IsHandleCreated || _Disposed) return;
 
 			//Logging.DebugMsg("LogList new size: " + newSize.ToString());
 
@@ -4334,12 +4335,12 @@ namespace Taskmaster.UI
 		}
 
 		#region IDispose
-		public bool Disposed { get; internal set; } = false;
+		public bool _Disposed { get; internal set; } = false;
 
 		protected override void Dispose(bool disposing)
 		{
-			if (Disposed) return;
-			Disposed= true;
+			if (_Disposed) return;
+			_Disposed = true;
 
 			DestroyHandle();
 

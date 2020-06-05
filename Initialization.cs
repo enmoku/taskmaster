@@ -566,7 +566,7 @@ namespace Taskmaster
 			// Parallel loading, cuts down startup time some. C# ensures parallelism is not enforced.
 			// This is really bad if something fails
 
-			T Initialize<T>() where T : IComponent, new()
+			static T Initialize<T>() where T : IComponent, new()
 			{
 				try
 				{
@@ -600,32 +600,39 @@ namespace Taskmaster
 					}, cts.Token) : Task.CompletedTask),
 				tProcMon = (ProcessMonitorEnabled ? Task.Run(() => {
 						modules.processmanager = Initialize<Process.Manager>();
+						modules.processmanager.OnDisposed += (_, _ea) => modules.processmanager = null;
 						LoadEvent?.Invoke(null, new LoadEventArgs("Process manager processed.", LoadEventType.SubLoaded));
 					}, cts.Token) : Task.CompletedTask),
 				tFgMon = (ActiveAppMonitorEnabled ? Task.Run(() => {
 						modules.activeappmonitor = Initialize<Process.ForegroundManager>();
+						modules.activeappmonitor.OnDisposed += (_, _ea) => modules.activeappmonitor = null;
 						LoadEvent?.Invoke(null, new LoadEventArgs("Foreground manager processed.", LoadEventType.SubLoaded));
 					}, cts.Token) : Task.CompletedTask),
 				tNetMon = (NetworkMonitorEnabled ? Task.Run(() => {
 						modules.netmonitor = Initialize<Network.Manager>();
+						modules.netmonitor.OnDisposed += (_, _ea) => modules.netmonitor = null;
 						LoadEvent?.Invoke(null, new LoadEventArgs("Network monitor processed.", LoadEventType.SubLoaded));
 					}, cts.Token) : Task.CompletedTask),
 				tStorMon = (StorageMonitorEnabled ? Task.Run(() => {
 						modules.storagemanager = Initialize<StorageManager>();
+						modules.storagemanager.OnDisposed += (_, _ea) => modules.storagemanager = null;
 						LoadEvent?.Invoke(null, new LoadEventArgs("Storage monitor processed.", LoadEventType.SubLoaded));
 					}, cts.Token) : Task.CompletedTask),
 				tHpMon = (HealthMonitorEnabled ? Task.Run(() => {
 						modules.healthmonitor = Initialize<HealthMonitor>();
+						modules.healthmonitor.OnDisposed += (_, _ea) => modules.healthmonitor = null;
 						LoadEvent?.Invoke(null, new LoadEventArgs("Health monitor processed.", LoadEventType.SubLoaded));
 					}, cts.Token) : Task.CompletedTask),
 				tHwMon = (HardwareMonitorEnabled ? Task.Run(() => {
 						modules.hardware = Initialize<Hardware.Monitor>();
+						modules.hardware.OnDisposed += (_, _ea) => modules.hardware = null;
 						LoadEvent?.Invoke(null, new LoadEventArgs("Hardware monitor processed.", LoadEventType.SubLoaded));
 					}, cts.Token) : Task.CompletedTask),
 				//AlMan = (AlertManagerEnabled ? Task.Run(() => LogInit(() => alerts = new AlertManager()), cts.Token) : Task.CompletedTask)
 				//	.ContinueWith(_ => LoadEvent?.Invoke(null, new LoadEventArgs("Alert manager processed.", LoadEventType.SubLoaded)), TaskContinuationOptions.OnlyOnRanToCompletion),
 				tSelfMaint = (Task.Run(() => {
 						modules.selfmaintenance = Initialize<SelfMaintenance>();
+						modules.selfmaintenance.OnDisposed += (_, ea) => modules.selfmaintenance = null;
 						LoadEvent?.Invoke(null, new LoadEventArgs("Self-maintenance manager processed.", LoadEventType.SubLoaded));
 					}, cts.Token));
 			
@@ -743,7 +750,7 @@ namespace Taskmaster
 						throw new InitFailure($"Component initialization taking excessively long ({timer.ElapsedMilliseconds} ms), aborting.", voluntary:true);
 				}
 			}
-			catch (AggregateException ex)
+			catch (AggregateException)
 			{
 				// These only give TaskCanceledExceptions which are very unhelpful as they don't bundle the unhandled exception that caused them.
 
