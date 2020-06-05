@@ -143,23 +143,6 @@ namespace Taskmaster
 			{
 				if (modules.volumemeter is null)
 				{
-					volumemeter = new UI.VolumeMeter(audiomanager);
-					volumemeter.OnDisposed += (_, _ea) => volumemeter = null;
-				}
-			}
-		}
-
-		internal static void BuildLoaderBox()
-		{
-			lock (window_creation_lock)
-			{
-
-				if (loaderdisplay is null)
-				{
-					loaderdisplay = new UI.LoaderDisplay(processmanager);
-					loaderdisplay.OnDisposed += (_, _ea) => loaderdisplay = null;
-
-					processmanager?.GenerateLoadTrackers();
 					modules.volumemeter = new UI.VolumeMeter(modules.audiomanager);
 					modules.volumemeter.OnDisposed += (_, _ea) => modules.volumemeter = null;
 				}

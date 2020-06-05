@@ -4,7 +4,7 @@
 // Author:
 //       M.A. (https://github.com/mkahvi)
 //
-// Copyright (c) 2016–2019 M.A.
+// Copyright (c) 2016–2020 M.A.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -2370,9 +2370,34 @@ namespace Taskmaster.UI
 				Properties.Resources.ExternalLicenses,
 				MessageBox.Buttons.OK, MessageBox.Type.Rich, parent: this);
 
-		void ShowVolumeBox(object sender, EventArgs e) => BuildVolumeMeter();
+		void ShowVolumeBox(object sender, EventArgs e) => BuildVolumeMeter(modules);
 
-		void ShowLoaderBox(object sender, EventArgs e) => BuildLoaderBox();
+		public static void BuildVolumeMeter(ModuleManager modules)
+		{
+			if (!AudioManagerEnabled) return;
+
+			lock (window_creation_lock)
+			{
+				if (modules.volumemeter is null)
+				{
+					modules.volumemeter = new UI.VolumeMeter(modules.audiomanager);
+					modules.volumemeter.OnDisposed += (_, _2) => modules.volumemeter = null;
+				}
+			}
+		}
+
+		void ShowLoaderBox(object sender, EventArgs e) => BuildLoaderBox(modules);
+
+		public static void BuildLoaderBox(ModuleManager modules)
+		{
+			if (modules.loaderdisplay is null)
+			{
+				modules.loaderdisplay = new UI.LoaderDisplay(modules.processmanager);
+				modules.loaderdisplay.OnDisposed += (_, _2) => modules.loaderdisplay = null;
+
+				modules.processmanager?.GenerateLoadTrackers();
+			}
+		}
 
 		void ToolStripMenuAutoOpen(object sender, EventArgs _)
 		{
