@@ -228,7 +228,7 @@ namespace Taskmaster.Hardware
 		public void Hook(Process.Manager manager)
 		{
 			//processmanager = manager;
-			//processmanager.OnDisposed += (_, _ea) => processmanager = null;
+			//processmanager.OnDisposed += (_, _2) => processmanager = null;
 
 			if (CPULoaderMonitoring)
 			{

@@ -481,7 +481,7 @@ namespace Taskmaster.Process
 		{
 			activeappmonitor = manager;
 			activeappmonitor.ActiveChanged += ForegroundAppChangedEvent;
-			activeappmonitor.OnDisposed += (_, _ea) => activeappmonitor = null;
+			activeappmonitor.OnDisposed += (_, _2) => activeappmonitor = null;
 		}
 
 		Power.Manager? powermanager = null;
@@ -490,7 +490,7 @@ namespace Taskmaster.Process
 		{
 			powermanager = manager;
 			powermanager.BehaviourChange += PowerBehaviourEvent;
-			powermanager.OnDisposed += (_, _ea) => powermanager = null;
+			powermanager.OnDisposed += (_, _2) => powermanager = null;
 		}
 
 		readonly ConcurrentDictionary<int, int> IgnorePids = new ConcurrentDictionary<int, int>();
@@ -1681,7 +1681,7 @@ namespace Taskmaster.Process
 
 				try
 				{
-					info.Process.Exited += (_, _ea) => WaitForExitTriggered(info);
+					info.Process.Exited += (_, _2) => WaitForExitTriggered(info);
 					info.HookExit();
 
 					// TODO: Just in case check if it exited while we were doing this.
@@ -2147,7 +2147,7 @@ namespace Taskmaster.Process
 							else
 								Log.Information(str);
 
-							info.Process.Exited += (_, _ea) =>
+							info.Process.Exited += (_, _2) =>
 							{
 								var str = info.ToFullFormattedString() + " Exited (run time: " + info.Start.To(DateTimeOffset.UtcNow).ToString("g") + ").";
 								if (prc.Warn)
@@ -2241,7 +2241,7 @@ namespace Taskmaster.Process
 
 			if (!WaitForExit(info))
 			{
-				info.Process.Exited += (_, _ea) => AttemptColorReset(info);
+				info.Process.Exited += (_, _2) => AttemptColorReset(info);
 				info.HookExit();
 
 				info.Process.Refresh();
@@ -2515,7 +2515,7 @@ namespace Taskmaster.Process
 
 		public const string WatchlistFile = "Watchlist.ini";
 
-		async void CleanupTick(object _sender, System.Timers.ElapsedEventArgs _ea)
+		async void CleanupTick(object _sender, System.Timers.ElapsedEventArgs _2)
 		{
 			if (disposed) throw new ObjectDisposedException(nameof(Manager), "CleanupTick called when ProcessManager was already disposed");
 

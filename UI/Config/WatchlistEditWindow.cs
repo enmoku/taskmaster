@@ -124,7 +124,7 @@ namespace Taskmaster.UI.Config
 				//Width = 46,
 				//Height = 20,
 			};
-			findexecbutton.Click += (_, _ea) =>
+			findexecbutton.Click += (_, _2) =>
 			{
 				using var exselectdialog = new ProcessSelectDialog(modules.processmanager);
 				try
@@ -168,7 +168,7 @@ namespace Taskmaster.UI.Config
 				//Width = 46,
 				//Height = 20,
 			};
-			findpathbutton.Click += (_, _ea) =>
+			findpathbutton.Click += (_, _2) =>
 			{
 				try
 				{
@@ -250,7 +250,7 @@ namespace Taskmaster.UI.Config
 			ignorelist.Columns.Add(HumanReadable.System.Process.Executable, ignorelist.Width - 24); // arbitrary -24 to eliminate horizontal scrollbar
 
 			tooltip.SetToolTip(ignorelist, "Executables to ignore for matching with this rule.\nOnly exact matches work.\n\nRequires path to be defined.\nHas no effect if executable is defined.");
-			execName.TextChanged += (_, _ea) => ignorelist.Enabled = (execName.Text.Length == 0);
+			execName.TextChanged += (_, _2) => ignorelist.Enabled = (execName.Text.Length == 0);
 
 			if (Controller.IgnoreList.Length > 0)
 			{
@@ -260,7 +260,7 @@ namespace Taskmaster.UI.Config
 
 			var ignorelistmenu = new ContextMenuStrip();
 			ignorelist.ContextMenuStrip = ignorelistmenu;
-			ignorelistmenu.Items.Add(new ToolStripMenuItem("Add", null, (_, _ea) =>
+			ignorelistmenu.Items.Add(new ToolStripMenuItem("Add", null, (_, _2) =>
 			{
 				try
 				{
@@ -273,7 +273,7 @@ namespace Taskmaster.UI.Config
 					Logging.Stacktrace(ex);
 				}
 			}));
-			ignorelistmenu.Items.Add(new ToolStripMenuItem("Remove", null, (_, _ea) =>
+			ignorelistmenu.Items.Add(new ToolStripMenuItem("Remove", null, (_, _2) =>
 			{
 				if (ignorelist.SelectedItems.Count == 1)
 					ignorelist.Items.Remove(ignorelist.SelectedItems[0]);
@@ -319,7 +319,7 @@ namespace Taskmaster.UI.Config
 			layout.Controls.Add(priorityClass);
 			layout.Controls.Add(priorityClassMethod);
 
-			priorityClass.SelectedIndexChanged += (_, _ea) => priorityClassMethod.Enabled = priorityClass.SelectedIndex != 5; // disable method selection
+			priorityClass.SelectedIndexChanged += (_, _2) => priorityClassMethod.Enabled = priorityClass.SelectedIndex != 5; // disable method selection
 
 			// AFFINITY
 
@@ -335,7 +335,7 @@ namespace Taskmaster.UI.Config
 			};
 			affstrategy.Items.AddRange(new string[] { HumanReadable.Generic.Ignore, "Limit (Default)", "Force" });
 			tooltip.SetToolTip(affstrategy, "Limit constrains cores to the defined range but does not increase used cores beyond what the app is already using.\nForce sets the affinity mask to the defined regardless of anything.");
-			affstrategy.SelectedIndexChanged += (_, _ea) =>
+			affstrategy.SelectedIndexChanged += (_, _2) =>
 			{
 				bool enabled = affstrategy.SelectedIndex != 0;
 				affinityMask.Enabled = enabled;
@@ -376,7 +376,7 @@ namespace Taskmaster.UI.Config
 					Checked = ((Math.Max(0, cpumask) & (1 << lbit)) != 0),
 					AutoSize = true,
 				};
-				box.CheckedChanged += (_, _ea) =>
+				box.CheckedChanged += (_, _2) =>
 				{
 					if (cpumask < 0) cpumask = 0;
 
@@ -400,19 +400,19 @@ namespace Taskmaster.UI.Config
 
 			var affbuttonpanel = new Extensions.TableLayoutPanel() { ColumnCount = 1, AutoSize = true };
 			clearbutton = new Extensions.Button() { Text = "None" };
-			clearbutton.Click += (_, _ea) =>
+			clearbutton.Click += (_, _2) =>
 			{
 				foreach (var litem in corelist) litem.Checked = false;
 			};
 			allbutton = new Extensions.Button() { Text = "All" };
-			allbutton.Click += (_, _ea) =>
+			allbutton.Click += (_, _2) =>
 			{
 				foreach (var litem in corelist) litem.Checked = true;
 			};
 			affbuttonpanel.Controls.Add(allbutton);
 			affbuttonpanel.Controls.Add(clearbutton);
 
-			affinityMask.ValueChanged += (_, _ea) =>
+			affinityMask.ValueChanged += (_, _2) =>
 			{
 				var bitoff = 0;
 				try { cpumask = (int)affinityMask.Value; }
@@ -559,7 +559,7 @@ namespace Taskmaster.UI.Config
 			bool fge = ForegroundModeSelect.SelectedIndex != 0;
 			//bool pwe = powerPlan.SelectedIndex != 3;
 
-			ForegroundModeSelect.SelectedIndexChanged += (_, _ea) =>
+			ForegroundModeSelect.SelectedIndexChanged += (_, _2) =>
 			{
 				fge = ForegroundModeSelect.SelectedIndex != 0;
 				bgAffinityMask.Enabled = bgPriorityClass.Enabled = fge && ForegroundModeSelect.SelectedIndex != 3;
@@ -628,7 +628,7 @@ namespace Taskmaster.UI.Config
 
 				// disable volume control if method is to ignore it
 				volume.Enabled = volumeMethod.SelectedIndex != 5;
-				volumeMethod.SelectedIndexChanged += (_, _ea) => volume.Enabled = volumeMethod.SelectedIndex != 5;
+				volumeMethod.SelectedIndexChanged += (_, _2) => volume.Enabled = volumeMethod.SelectedIndex != 5;
 			}
 
 			if (!PowerManagerEnabled) powerPlan.Enabled = false;
@@ -685,7 +685,7 @@ namespace Taskmaster.UI.Config
 			finalizebuttons.Controls.Add(saveButton);
 			// lt.Controls.Add(saveButton);
 			var cancelButton = new Extensions.Button() { Text = "Cancel" }; // CLOSE
-			cancelButton.Click += (_, _ea) =>
+			cancelButton.Click += (_, _2) =>
 			{
 				DialogResult = DialogResult.Cancel;
 				Close();
@@ -706,7 +706,7 @@ namespace Taskmaster.UI.Config
 			ResumeLayout(performLayout: false);
 		}
 
-		void SaveInfo(object _, System.EventArgs _ea)
+		void SaveInfo(object _, System.EventArgs _2)
 		{
 			var enOrig = Controller.Enabled;
 			Controller.Enabled = false;
@@ -969,7 +969,7 @@ namespace Taskmaster.UI.Config
 			}
 		}
 
-		void ValidateWatchedItem(object _sender, EventArgs _ea)
+		void ValidateWatchedItem(object _sender, EventArgs _2)
 		{
 			var fnlen = (friendlyName.Text.Length > 0);
 			var exnam = (execName.Text.Length > 0);

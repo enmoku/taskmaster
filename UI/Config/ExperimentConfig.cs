@@ -208,7 +208,7 @@ namespace Taskmaster.UI.Config
 			var cancelbutton = new Extensions.Button() { Text = "Cancel", };
 			cancelbutton.Click += Cancelbutton_Click;
 
-			savebutton.Click += (_, _ea) =>
+			savebutton.Click += (_, _2) =>
 			{
 				// Set to current use
 

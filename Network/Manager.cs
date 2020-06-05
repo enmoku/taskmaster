@@ -4,7 +4,7 @@
 // Author:
 //       M.A. (https://github.com/mkahvi)
 //
-// Copyright (c) 2016-2019 M.A.
+// Copyright (c) 2016-2020 M.A.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -598,7 +598,7 @@ namespace Taskmaster.Network
 		long errorsSinceLastReport = 0;
 		DateTimeOffset lastErrorReport;
 
-		void AnalyzeTrafficBehaviour(object _, EventArgs _ea)
+		void AnalyzeTrafficBehaviour(object _, EventArgs _2)
 		{
 			if (disposed) return;
 
@@ -948,7 +948,7 @@ namespace Taskmaster.Network
 		//NetworkInterface IPv4Interface, IPv6Interface;
 
 		// 
-		async void NetAddrChanged(object _, EventArgs _ea)
+		async void NetAddrChanged(object _, EventArgs _2)
 		{
 			if (disposed) return;
 
@@ -996,7 +996,7 @@ namespace Taskmaster.Network
 
 					// bad since if it's not clicked, we react to other tooltip clicks, too
 					// TODO: Need replaceable callback or something.
-					//Tray.TrayTooltipClicked += (_, _ea) => { /* something */ };
+					//Tray.TrayTooltipClicked += (_, _2) => { /* something */ };
 
 					if (DynamicDNS) StartDynDNSUpdates().ConfigureAwait(false);
 

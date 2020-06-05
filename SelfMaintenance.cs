@@ -28,6 +28,7 @@ using MKAh;
 using MKAh.Synchronize;
 using Serilog;
 using System;
+using System.Globalization;
 using System.Threading.Tasks;
 
 namespace Taskmaster
@@ -69,7 +70,7 @@ namespace Taskmaster
 		void Hook(Process.Manager procman)
 		{
 			processmanager = procman;
-			processmanager.OnDisposed += (_, _ea) => processmanager = null;
+			processmanager.OnDisposed += (_, _2) => processmanager = null;
 		}
 
 		int CallbackLimiter = 0;

@@ -213,7 +213,7 @@ namespace Taskmaster.Power
 			cpumonitor.Sampling += CPULoadHandler;
 		}
 
-		void Unhook(object _, EventArgs _ea)
+		void Unhook(object _, EventArgs _2)
 		{
 			cpumonitor.Sampling -= CPULoadHandler;
 			cpumonitor = null;

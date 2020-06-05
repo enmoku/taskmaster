@@ -457,7 +457,7 @@ namespace Taskmaster.Process
 			}
 		}
 
-		public void SetupEventHookEvent(object _, ModificationInfo _ea)
+		public void SetupEventHookEvent(object _, ModificationInfo _2)
 		{
 			// SetupEventHook();
 		}

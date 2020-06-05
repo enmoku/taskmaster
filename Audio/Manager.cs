@@ -331,7 +331,7 @@ namespace Taskmaster.Audio
 		public void Hook(Process.Manager procman)
 		{
 			processmanager = procman;
-			processmanager.OnDisposed += (_, _ea) => processmanager = null;
+			processmanager.OnDisposed += (_, _2) => processmanager = null;
 		}
 
 		void OnSessionCreated(object _, NAudio.CoreAudioApi.Interfaces.IAudioSessionControl ea)

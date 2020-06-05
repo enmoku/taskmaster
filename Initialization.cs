@@ -169,7 +169,7 @@ namespace Taskmaster
 			if (tracelistener != null) MemoryLog.MemorySink.SetListener(tracelistener);
 #endif
 
-			AppDomain.CurrentDomain.ProcessExit += (_, _ea) => Log.CloseAndFlush();
+			AppDomain.CurrentDomain.ProcessExit += (_, _2) => Log.CloseAndFlush();
 
 			LoadEvent?.Invoke(null, new LoadEventArgs("Logger initialized.", LoadEventType.Loaded));
 
@@ -589,43 +589,43 @@ namespace Taskmaster
 
 			Task
 				tPowMan = (PowerManagerEnabled ? Task.Run(() => {
-						modules.powermanager.OnDisposed += (_, _ea) => modules.powermanager = null;
 						modules.powermanager = Initialize(() => new Power.Manager());
+						modules.powermanager.OnDisposed += (_, _2) => modules.powermanager = null;
 						LoadEvent?.Invoke(null, new LoadEventArgs("Power manager processed.", LoadEventType.SubLoaded));
 					}) : Task.CompletedTask),
 				tCpuMon = (PowerManagerEnabled ? Task.Run(() => {
-						modules.cpumonitor.OnDisposed += (_, _ea) => modules.cpumonitor = null;
 						modules.cpumonitor = Initialize(() => new Hardware.CPUMonitor());
+						modules.cpumonitor.OnDisposed += (_, _2) => modules.cpumonitor = null;
 						LoadEvent?.Invoke(null, new LoadEventArgs("CPU monitor processed.", LoadEventType.SubLoaded));
 					}, cts.Token) : Task.CompletedTask),
 				tProcMon = (ProcessMonitorEnabled ? Task.Run(() => {
-						modules.processmanager.OnDisposed += (_, _ea) => modules.processmanager = null;
 						modules.processmanager = Initialize(() => new Process.Manager());
+						modules.processmanager.OnDisposed += (_, _2) => modules.processmanager = null;
 						LoadEvent?.Invoke(null, new LoadEventArgs("Process manager processed.", LoadEventType.SubLoaded));
 					}, cts.Token) : Task.CompletedTask),
 				tFgMon = (ActiveAppMonitorEnabled ? Task.Run(() => {
-						modules.activeappmonitor.OnDisposed += (_, _ea) => modules.activeappmonitor = null;
 						modules.activeappmonitor = Initialize(() => new Process.ForegroundManager(modules));
+						modules.activeappmonitor.OnDisposed += (_, _2) => modules.activeappmonitor = null;
 						LoadEvent?.Invoke(null, new LoadEventArgs("Foreground manager processed.", LoadEventType.SubLoaded));
 					}, cts.Token) : Task.CompletedTask),
 				tNetMon = (NetworkMonitorEnabled ? Task.Run(() => {
-						modules.netmonitor.OnDisposed += (_, _ea) => modules.netmonitor = null;
 						modules.netmonitor = Initialize(() => new Network.Manager());
+						modules.netmonitor.OnDisposed += (_, _2) => modules.netmonitor = null;
 						LoadEvent?.Invoke(null, new LoadEventArgs("Network monitor processed.", LoadEventType.SubLoaded));
 					}, cts.Token) : Task.CompletedTask),
 				tStorMon = (StorageMonitorEnabled ? Task.Run(() => {
-						modules.storagemanager.OnDisposed += (_, _ea) => modules.storagemanager = null;
 						modules.storagemanager = Initialize(() => new StorageManager());
+						modules.storagemanager.OnDisposed += (_, _2) => modules.storagemanager = null;
 						LoadEvent?.Invoke(null, new LoadEventArgs("Storage monitor processed.", LoadEventType.SubLoaded));
 					}, cts.Token) : Task.CompletedTask),
 				tHpMon = (HealthMonitorEnabled ? Task.Run(() => {
-						modules.healthmonitor.OnDisposed += (_, _ea) => modules.healthmonitor = null;
 						modules.healthmonitor = Initialize(() => new HealthMonitor(modules));
+						modules.healthmonitor.OnDisposed += (_, _2) => modules.healthmonitor = null;
 						LoadEvent?.Invoke(null, new LoadEventArgs("Health monitor processed.", LoadEventType.SubLoaded));
 					}, cts.Token) : Task.CompletedTask),
 				tHwMon = (HardwareMonitorEnabled ? Task.Run(() => {
-						modules.hardware.OnDisposed += (_, _ea) => modules.hardware = null;
 						modules.hardware = Initialize(() => new Hardware.Monitor());
+						modules.hardware.OnDisposed += (_, _2) => modules.hardware = null;
 						LoadEvent?.Invoke(null, new LoadEventArgs("Hardware monitor processed.", LoadEventType.SubLoaded));
 					}, cts.Token) : Task.CompletedTask),
 				//AlMan = (AlertManagerEnabled ? Task.Run(() => LogInit(() => alerts = new AlertManager()), cts.Token) : Task.CompletedTask)
@@ -661,14 +661,14 @@ namespace Taskmaster
 				{
 					modules.audiomanager = new Audio.Manager();
 					RegisterForExit(modules.audiomanager);
-					modules.audiomanager.OnDisposed += (_, _ea) => modules.audiomanager = null;
+					modules.audiomanager.OnDisposed += (_, _2) => modules.audiomanager = null;
 
 					if (MicrophoneManagerEnabled)
 					{
 						modules.micmonitor = new Audio.MicManager();
 						RegisterForExit(modules.micmonitor);
 						modules.micmonitor.Hook(modules.audiomanager);
-						modules.micmonitor.OnDisposed += (_, _ea) => modules.micmonitor = null;
+						modules.micmonitor.OnDisposed += (_, _2) => modules.micmonitor = null;
 					}
 				}
 			}
@@ -781,19 +781,19 @@ namespace Taskmaster
 			LoadEvent?.Invoke(null, new LoadEventArgs("Components loaded.", LoadEventType.Loaded));
 
 			if (modules.processmanager != null)
-				modules.processmanager.OnDisposed += (_, _ea) => modules.processmanager = null;
+				modules.processmanager.OnDisposed += (_, _2) => modules.processmanager = null;
 			if (modules.activeappmonitor != null)
-				modules.activeappmonitor.OnDisposed += (_, _ea) => modules.activeappmonitor = null;
+				modules.activeappmonitor.OnDisposed += (_, _2) => modules.activeappmonitor = null;
 			if (modules.powermanager != null)
-				modules.powermanager.OnDisposed += (_, _ea) => modules.powermanager = null;
+				modules.powermanager.OnDisposed += (_, _2) => modules.powermanager = null;
 			if (modules.hardware != null)
-				modules.hardware.OnDisposed += (_, _ea) => modules.hardware = null;
+				modules.hardware.OnDisposed += (_, _2) => modules.hardware = null;
 			if (modules.healthmonitor != null)
-				modules.healthmonitor.OnDisposed += (_, _ea) => modules.healthmonitor = null;
+				modules.healthmonitor.OnDisposed += (_, _2) => modules.healthmonitor = null;
 			if (modules.storagemanager != null)
-				modules.storagemanager.OnDisposed += (_, _ea) => modules.storagemanager = null;
+				modules.storagemanager.OnDisposed += (_, _2) => modules.storagemanager = null;
 			if (modules.netmonitor != null)
-				modules.netmonitor.OnDisposed += (_, _ea) => modules.netmonitor = null;
+				modules.netmonitor.OnDisposed += (_, _2) => modules.netmonitor = null;
 
 			// HOOKING
 			// Probably should transition to weak events

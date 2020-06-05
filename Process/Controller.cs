@@ -491,7 +491,7 @@ namespace Taskmaster.Process
 			FriendlyName = newName;
 		}
 
-		void ProcessExitEvent(object sender, EventArgs _ea)
+		void ProcessExitEvent(object sender, EventArgs _2)
 		{
 			if (sender is System.Diagnostics.Process process)
 				RecentlyModified.TryRemove(process.Id, out _);
@@ -500,7 +500,7 @@ namespace Taskmaster.Process
 		/// <summary>
 		/// End various things for the given process
 		/// </summary>
-		public void End(object sender, EventArgs _ea)
+		public void End(object sender, EventArgs _2)
 		{
 			var process = sender as System.Diagnostics.Process;
 
@@ -1022,7 +1022,7 @@ namespace Taskmaster.Process
 
 		// -----------------------------------------------
 
-		void ProcessEnd(object _, EventArgs _ea)
+		void ProcessEnd(object _, EventArgs _2)
 		{
 
 		}

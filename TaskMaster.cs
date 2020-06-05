@@ -145,7 +145,7 @@ namespace Taskmaster
 				if (modules.volumemeter is null)
 				{
 					modules.volumemeter = new UI.VolumeMeter(modules.audiomanager);
-					modules.volumemeter.OnDisposed += (_, _ea) => modules.volumemeter = null;
+					modules.volumemeter.OnDisposed += (_, _2) => modules.volumemeter = null;
 				}
 			}
 		}
@@ -168,7 +168,7 @@ namespace Taskmaster
 					mainwindow = modules.mainwindow = mainwindow = new UI.MainWindow(modules);
 					//mainwindow = new UI.MainWindow();
 
-					mainwindow.FormClosed += (_, _ea) => mainwindow = null;
+					mainwindow.FormClosed += (_, _2) => mainwindow = null;
 
 					try
 					{
@@ -206,8 +206,8 @@ namespace Taskmaster
 						modules.trayaccess.Hook(mainwindow);
 
 						// .GotFocus and .LostFocus are apparently unreliable as per the API
-						mainwindow.Activated += (_, _ea) => OptimizeResponsiviness(true);
-						mainwindow.Deactivate += (_, _ea) => OptimizeResponsiviness(false);
+						mainwindow.Activated += (_, _2) => OptimizeResponsiviness(true);
+						mainwindow.Deactivate += (_, _2) => OptimizeResponsiviness(false);
 
 						mainwindow.FormClosing += (_, ea) => Logging.DebugMsg($"Main Window Closing: {ea.CloseReason.ToString()}");
 					}
@@ -326,7 +326,7 @@ namespace Taskmaster
 			var modules = globalmodules = new ModuleManager();
 			GlobalIPC = new IPC();
 
-			AppDomain.CurrentDomain.ProcessExit += (_, _ea) => ExitCleanup(modules);
+			AppDomain.CurrentDomain.ProcessExit += (_, _2) => ExitCleanup(modules);
 
 			try
 			{

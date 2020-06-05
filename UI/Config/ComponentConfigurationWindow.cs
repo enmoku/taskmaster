@@ -112,11 +112,11 @@ namespace Taskmaster.UI.Config
 			};
 			tooltip.SetToolTip(micmon, "Monitor default communications device and keep its volume.\nRequires audio manager to be enabled.");
 
-			audioman.CheckedChanged += (_, _ea) => micmon.Enabled = audioman.Checked;
+			audioman.CheckedChanged += (_, _2) => micmon.Enabled = audioman.Checked;
 
 			layout.Controls.Add(new Extensions.Label { Text = "Microphone manager", Padding = BigPadding });
 			layout.Controls.Add(micmon);
-			micmon.Click += (_, _ea) =>
+			micmon.Click += (_, _2) =>
 			{
 			};
 
@@ -130,7 +130,7 @@ namespace Taskmaster.UI.Config
 			layout.Controls.Add(new Extensions.Label { Text = "Network monitor", Padding = BigPadding });
 			layout.Controls.Add(netmon);
 			netmon.Checked = NetworkMonitorEnabled;
-			netmon.Click += (_, _ea) =>
+			netmon.Click += (_, _2) =>
 			{
 			};
 
@@ -167,7 +167,7 @@ namespace Taskmaster.UI.Config
 				Width = 60,
 			};
 			var defaultBackColor = scanfrequency.BackColor;
-			scanfrequency.ValueChanged += (_, _ea) =>
+			scanfrequency.ValueChanged += (_, _2) =>
 			{
 				if (ScanOrWMI.SelectedIndex == 0 && scanfrequency.Value == 0)
 					scanfrequency.Value = 1;
@@ -192,7 +192,7 @@ namespace Taskmaster.UI.Config
 			};
 			layout.Controls.Add(wmipolling);
 			tooltip.SetToolTip(wmipolling, "In seconds.");
-			ScanOrWMI.SelectedIndexChanged += (_, _ea) =>
+			ScanOrWMI.SelectedIndexChanged += (_, _2) =>
 			{
 				scanfrequency.Enabled = ScanOrWMI.SelectedIndex != 1; // 0 or 2
 				wmipolling.Enabled = ScanOrWMI.SelectedIndex != 0; // 1 or 2
@@ -345,7 +345,7 @@ namespace Taskmaster.UI.Config
 				Dock = DockStyle.Right
 			};
 			// l.Controls.Add(savebutton);
-			savebutton.Click += (_, _ea) =>
+			savebutton.Click += (_, _2) =>
 			{
 				using var cfg = Config.Load(CoreConfigFilename);
 				var mainsec = cfg.Config[Constants.Core];
@@ -422,7 +422,7 @@ namespace Taskmaster.UI.Config
 			ResumeLayout(performLayout: false);
 		}
 
-		void EndButtonClick(object _, EventArgs _ea)
+		void EndButtonClick(object _, EventArgs _2)
 		{
 			DialogResult = DialogResult.Abort;
 			Close();

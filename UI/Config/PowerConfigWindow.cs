@@ -112,7 +112,7 @@ namespace Taskmaster.UI.Config
 				"Rule-based = Watchlist rules\n" +
 				"Manual = Fully user controlled");
 
-			behaviour.SelectedIndexChanged += (_, _ea) =>
+			behaviour.SelectedIndexChanged += (_, _2) =>
 				NewLaunchBehaviour = behaviour.SelectedIndex switch
 				{
 					0 => Power.PowerBehaviour.Auto,
@@ -139,7 +139,7 @@ namespace Taskmaster.UI.Config
 				"Saved = as detected before new mode is set");
 
 			// "Original", "Default", "Saved", powermodes[0], powermodes[1], powermodes[2] },
-			restore.SelectedIndexChanged += (_, _ea) =>
+			restore.SelectedIndexChanged += (_, _2) =>
 			{
 				switch (restore.SelectedIndex)
 				{
@@ -334,13 +334,13 @@ namespace Taskmaster.UI.Config
 			ResumeLayout(performLayout: false);
 		}
 
-		void Cancel(object _, EventArgs _ea)
+		void Cancel(object _, EventArgs _2)
 		{
 			DialogResult = DialogResult.Cancel;
 			Close();
 		}
 
-		void Save(object _, EventArgs _ea)
+		void Save(object _, EventArgs _2)
 		{
 			DialogResult = DialogResult.OK;
 
@@ -417,7 +417,7 @@ namespace Taskmaster.UI.Config
 			Close();
 		}
 
-		void Reset(object _, EventArgs _ea)
+		void Reset(object _, EventArgs _2)
 		{
 			NewLaunchBehaviour = Power.PowerBehaviour.RuleBased;
 			NewRestoreMethod = Power.RestoreModeMethod.Default;

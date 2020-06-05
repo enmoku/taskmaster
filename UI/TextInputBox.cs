@@ -79,7 +79,7 @@ namespace Taskmaster.UI
 				Text = "OK",
 			};
 
-			okbutton.Click += (_, _ea) =>
+			okbutton.Click += (_, _2) =>
 			{
 				DialogResult = DialogResult.OK;
 				Value = textbox.Text;
@@ -91,7 +91,7 @@ namespace Taskmaster.UI
 				Text = "Cancel",
 			};
 
-			cancelbutton.Click += (_, _ea) =>
+			cancelbutton.Click += (_, _2) =>
 			{
 				DialogResult = DialogResult.Cancel;
 				Value = string.Empty;

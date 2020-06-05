@@ -27,6 +27,7 @@
 using MKAh;
 using Serilog;
 using System;
+using System.Net.Configuration;
 using System.Windows.Forms;
 
 namespace Taskmaster.UI.Config
@@ -326,7 +327,7 @@ namespace Taskmaster.UI.Config
 
 			// ---- SAVE --------------------------------------------------------------------------------------------------------
 
-			savebutton.Click += (_, _ea) =>
+			savebutton.Click += (_, _2) =>
 			{
 				// Record for restarts
 				using var corecfg = Config.Load(CoreConfigFilename);

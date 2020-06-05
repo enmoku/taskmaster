@@ -139,7 +139,7 @@ namespace Taskmaster.Audio
 				audiomanager.Added += DeviceAdded;
 				audiomanager.Removed += DeviceRemoved;
 				audiomanager.DefaultChanged += ChangeDefaultDevice;
-				audiomanager.OnDisposed += (_, _ea) => audiomanager = null;
+				audiomanager.OnDisposed += (_, _2) => audiomanager = null;
 
 				EnumerateDevices();
 

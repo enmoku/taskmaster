@@ -103,16 +103,16 @@ namespace Taskmaster.UI
 			buttonlayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33f));
 
 			okbutton = new Extensions.Button() { Text = "OK", Margin = BigPadding };
-			okbutton.Click += (_, _ea) => { Result = ResultType.OK; Close(); };
+			okbutton.Click += (_, _2) => { Result = ResultType.OK; Close(); };
 
 			cancelbutton = new Extensions.Button() { Text = "Cancel", Margin = BigPadding };
-			cancelbutton.Click += (_, _ea) => { Result = ResultType.Cancel; Close(); };
+			cancelbutton.Click += (_, _2) => { Result = ResultType.Cancel; Close(); };
 
 			retrybutton = new Extensions.Button() { Text = "Retry", Margin = BigPadding };
-			retrybutton.Click += (_, _ea) => { Result = ResultType.Retry; Close(); };
+			retrybutton.Click += (_, _2) => { Result = ResultType.Retry; Close(); };
 
 			endbutton = new Extensions.Button() { Text = "End", Margin = BigPadding };
-			endbutton.Click += (_, _ea) => { Result = ResultType.End; Close(); };
+			endbutton.Click += (_, _2) => { Result = ResultType.End; Close(); };
 
 			switch (buttons)
 			{

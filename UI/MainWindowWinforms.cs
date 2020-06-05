@@ -1797,7 +1797,7 @@ namespace Taskmaster.UI
 
 		void RescanRequestEvent(object _, EventArgs _2) => processmanager?.HastenScan(TimeSpan.Zero).ConfigureAwait(false);
 
-		void RestartRequestEvent(object sender, EventArgs _ea) => ConfirmExit(restart: true, admin: sender == menu_action_restartadmin);
+		void RestartRequestEvent(object sender, EventArgs _2) => ConfirmExit(restart: true, admin: sender == menu_action_restartadmin);
 
 		/// <summary>
 		///
@@ -2004,7 +2004,7 @@ namespace Taskmaster.UI
 
 		readonly System.Windows.Forms.Timer UItimer = new System.Windows.Forms.Timer();
 
-		void StartUIUpdates(object sender, EventArgs _ea)
+		void StartUIUpdates(object sender, EventArgs _2)
 		{
 			if (_Disposed || !IsHandleCreated) StopUIUpdates(this, EventArgs.Empty);
 			else if (!UItimer.Enabled)
@@ -2949,7 +2949,7 @@ namespace Taskmaster.UI
 			}));
 		}
 
-		public void GPULoadEvent(object _, Hardware.GPUSensorEventArgs _2)
+		public void GPULoadEvent(object _, Hardware.GPUSensorEventArgs ea)
 		{
 			if (!IsHandleCreated || _Disposed) return;
 

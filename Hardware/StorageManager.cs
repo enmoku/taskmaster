@@ -179,7 +179,7 @@ namespace Taskmaster
 
 		int scantemp_lock = 0;
 
-		async void ScanTempRequest(object _, EventArgs _ea) => await ScanTemp().ConfigureAwait(false);
+		async void ScanTempRequest(object _, EventArgs _2) => await ScanTemp().ConfigureAwait(false);
 
 		async Task ScanTemp()
 		{

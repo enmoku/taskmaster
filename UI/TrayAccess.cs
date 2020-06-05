@@ -92,7 +92,7 @@ namespace Taskmaster.UI
 			{
 				Enabled = AudioManagerEnabled,
 			};
-			var menu_rescan = new ToolStripMenuItem(HumanReadable.System.Process.Rescan, null, (_, _ea) => RescanRequest?.Invoke(this, EventArgs.Empty));
+			var menu_rescan = new ToolStripMenuItem(HumanReadable.System.Process.Rescan, null, (_, _2) => RescanRequest?.Invoke(this, EventArgs.Empty));
 			var menu_configuration = new ToolStripMenuItem("Configuration");
 
 			var menu_runatstart_sch = new ToolStripMenuItem("Schedule at login (Admin)", null, RunAtStartMenuClick_Sch);
@@ -105,17 +105,17 @@ namespace Taskmaster.UI
 			var powercfg = new ToolStripMenuItem(HumanReadable.Hardware.Power.Section, null, (_, _2) => Config.PowerConfigWindow.Reveal(modules, centerOnScreen: true));
 			powercfg.Enabled = Application.PowerManagerEnabled;
 			menu_configuration.DropDownItems.Add(powercfg);
-			menu_configuration.DropDownItems.Add(new ToolStripMenuItem("Advanced", null, (_, _ea) => Config.AdvancedConfig.Reveal(centerOnScreen: true)));
+			menu_configuration.DropDownItems.Add(new ToolStripMenuItem("Advanced", null, (_, _2) => Config.AdvancedConfig.Reveal(centerOnScreen: true)));
 			menu_configuration.DropDownItems.Add(new ToolStripMenuItem("Components", null, (_, _2) => Config.ComponentConfigurationWindow.Reveal(modules, centerOnScreen: true))); // FIXME: MODAL
 			menu_configuration.DropDownItems.Add(new ToolStripSeparator());
-			menu_configuration.DropDownItems.Add(new ToolStripMenuItem("Experiments", null, (_, _ea) => Config.ExperimentConfig.Reveal(centerOnScreen: true)));
+			menu_configuration.DropDownItems.Add(new ToolStripMenuItem("Experiments", null, (_, _2) => Config.ExperimentConfig.Reveal(centerOnScreen: true)));
 			menu_configuration.DropDownItems.Add(new ToolStripSeparator());
 			menu_configuration.DropDownItems.Add(menu_runatstart_sch);
 			menu_configuration.DropDownItems.Add(new ToolStripSeparator());
-			menu_configuration.DropDownItems.Add(new ToolStripMenuItem("Open in file manager", null, (_, _ea) => System.Diagnostics.Process.Start(DataPath)));
+			menu_configuration.DropDownItems.Add(new ToolStripMenuItem("Open in file manager", null, (_, _2) => System.Diagnostics.Process.Start(DataPath)));
 
-			var menu_restart = new ToolStripMenuItem(HumanReadable.System.Process.Restart, null, (_s, _ea) => ConfirmExit(restart: true));
-			var menu_exit = new ToolStripMenuItem(HumanReadable.System.Process.Exit, null, (_s, _ea) => ConfirmExit(restart: false));
+			var menu_restart = new ToolStripMenuItem(HumanReadable.System.Process.Restart, null, (_s, _2) => ConfirmExit(restart: true));
+			var menu_exit = new ToolStripMenuItem(HumanReadable.System.Process.Exit, null, (_s, _2) => ConfirmExit(restart: false));
 
 			ms.Items.Add(menu_windowopen);
 			ms.Items.Add(menu_volumeopen);
@@ -128,9 +128,9 @@ namespace Taskmaster.UI
 			{
 				power_auto = new ToolStripMenuItem(HumanReadable.Hardware.Power.AutoAdjust, null, SetAutoPower) { Checked = false, CheckOnClick = true, Enabled = false };
 
-				power_highperf = new ToolStripMenuItem(Power.Utility.GetModeName(Power.Mode.HighPerformance), null, (_, _ea) => SetPower(Power.Mode.HighPerformance));
-				power_balanced = new ToolStripMenuItem(Power.Utility.GetModeName(Power.Mode.Balanced), null, (_, _ea) => SetPower(Power.Mode.Balanced));
-				power_saving = new ToolStripMenuItem(Power.Utility.GetModeName(Power.Mode.PowerSaver), null, (_, _ea) => SetPower(Power.Mode.PowerSaver));
+				power_highperf = new ToolStripMenuItem(Power.Utility.GetModeName(Power.Mode.HighPerformance), null, (_, _2) => SetPower(Power.Mode.HighPerformance));
+				power_balanced = new ToolStripMenuItem(Power.Utility.GetModeName(Power.Mode.Balanced), null, (_, _2) => SetPower(Power.Mode.Balanced));
+				power_saving = new ToolStripMenuItem(Power.Utility.GetModeName(Power.Mode.PowerSaver), null, (_, _2) => SetPower(Power.Mode.PowerSaver));
 				power_manual = new ToolStripMenuItem("Manual override", null, SetManualPower) { CheckOnClick = true };
 
 				ms.Items.Add(new ToolStripSeparator());
@@ -222,7 +222,7 @@ namespace Taskmaster.UI
 		}
 		*/
 
-		void MenuVisibilityChangedEvent(object sender, EventArgs _ea)
+		void MenuVisibilityChangedEvent(object sender, EventArgs _2)
 		{
 			if (sender is ContextMenuStrip ms)
 				TrayMenuShown?.Invoke(ms.Visible);
@@ -245,7 +245,7 @@ namespace Taskmaster.UI
 		public void Hook(Process.Manager pman)
 		{
 			processmanager = pman;
-			RescanRequest += (_, _ea) => processmanager?.HastenScan(TimeSpan.FromSeconds(15));
+			RescanRequest += (_, _2) => processmanager?.HastenScan(TimeSpan.FromSeconds(15));
 
 			RegisterExplorerExit();
 		}
@@ -274,7 +274,7 @@ namespace Taskmaster.UI
 			HighlightPowerMode();
 		}
 
-		void SetAutoPower(object _, EventArgs _ea)
+		void SetAutoPower(object _, EventArgs _2)
 		{
 			if (powermanager.Behaviour != Power.PowerBehaviour.Auto)
 				powermanager.SetBehaviour(Power.PowerBehaviour.Auto);
@@ -282,7 +282,7 @@ namespace Taskmaster.UI
 				powermanager.SetBehaviour(Power.PowerBehaviour.RuleBased);
 		}
 
-		void SetManualPower(object _, EventArgs _ea)
+		void SetManualPower(object _, EventArgs _2)
 		{
 			if (powermanager.Behaviour != Power.PowerBehaviour.Manual)
 				powermanager.SetBehaviour(Power.PowerBehaviour.Manual);
@@ -290,7 +290,7 @@ namespace Taskmaster.UI
 				powermanager.SetBehaviour(Power.PowerBehaviour.RuleBased);
 		}
 
-		void HighlightPowerModeEvent(object _, Power.ModeEventArgs _ea) => HighlightPowerMode();
+		void HighlightPowerModeEvent(object _, Power.ModeEventArgs _2) => HighlightPowerMode();
 
 		void PowerBehaviourEvent(object sender, Power.PowerBehaviourEventArgs ea)
 		{
@@ -416,7 +416,7 @@ namespace Taskmaster.UI
 
 		TimeSpan? ExplorerRestartHelpDelay { get; } = null;
 
-		async void ExplorerCrashEvent(object sender, EventArgs _ea)
+		async void ExplorerCrashEvent(object sender, EventArgs _2)
 		{
 			await ExplorerCrashHandler((sender as System.Diagnostics.Process).Id).ConfigureAwait(false);
 		}
@@ -608,7 +608,7 @@ namespace Taskmaster.UI
 			}
 		}
 
-		void RunAtStartMenuClick_Sch(object sender, EventArgs _ea)
+		void RunAtStartMenuClick_Sch(object sender, EventArgs _2)
 		{
 			if (sender is ToolStripMenuItem menu_runatstart_sch)
 			{

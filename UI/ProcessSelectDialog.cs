@@ -116,7 +116,7 @@ namespace Taskmaster.UI
 				AutoSize = true,
 				Dock = DockStyle.Top,
 			};
-			cancelbutton.Click += (_, _ea) =>
+			cancelbutton.Click += (_, _2) =>
 			{
 				DialogResult = DialogResult.Abort;
 				Close();
@@ -129,7 +129,7 @@ namespace Taskmaster.UI
 				Enabled = false,
 				Dock = DockStyle.Top,
 			};
-			refreshbutton.Click += (_, _ea) =>
+			refreshbutton.Click += (_, _2) =>
 			{
 				selectbutton.Enabled = false;
 				refreshbutton.Enabled = false;
@@ -154,7 +154,7 @@ namespace Taskmaster.UI
 			Controls.Add(layout);
 			#endregion // Build UI
 
-			Shown += (_, _ea) => Populate().ConfigureAwait(false);
+			Shown += (_, _2) => Populate().ConfigureAwait(false);
 
 			ResumeLayout(performLayout: false);
 		}
@@ -229,7 +229,7 @@ namespace Taskmaster.UI
 			}
 		}
 
-		void SaveSelection(object _, EventArgs _ea)
+		void SaveSelection(object _, EventArgs _2)
 		{
 			try
 			{

@@ -305,7 +305,7 @@ namespace Taskmaster.UI
 
 		readonly Process.InstanceGroupLoad freeLoad, usedLoad, selfLoad, untrackedLoad;
 
-		void UIUpdate(object _sender, EventArgs _ea)
+		void UIUpdate(object _sender, EventArgs _2)
 		{
 			if (!IsHandleCreated || disposed) return;
 
