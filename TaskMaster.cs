@@ -168,7 +168,7 @@ namespace Taskmaster
 					mainwindow = modules.mainwindow = mainwindow = new UI.MainWindow(modules);
 					//mainwindow = new UI.MainWindow();
 
-					mainwindow.FormClosed += (_, _2) => mainwindow = null;
+					mainwindow.FormClosed += (_, _2) => modules.mainwindow = null;
 
 					try
 					{
