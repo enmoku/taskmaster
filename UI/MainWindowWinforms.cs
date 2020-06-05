@@ -37,6 +37,7 @@ using System.Windows.Forms;
 
 namespace Taskmaster.UI
 {
+	using System.Globalization;
 	using System.Text;
 	using static Application;
 
@@ -1424,7 +1425,7 @@ namespace Taskmaster.UI
 
 				AudioInputDevice.Text = !string.IsNullOrEmpty(devname) ? devname : HumanReadable.Generic.NotAvailable;
 
-				corCountLabel.Text = micmanager.Corrections.ToString();
+				corCountLabel.Text = micmanager.Corrections.ToString(CultureInfo.CurrentCulture);
 
 				AudioInputVolume.Maximum = Convert.ToDecimal(Audio.MicManager.Maximum);
 				AudioInputVolume.Minimum = Convert.ToDecimal(Audio.MicManager.Minimum);
@@ -1655,7 +1656,7 @@ namespace Taskmaster.UI
 			if (!IsHandleCreated || Disposed) return;
 
 			AudioInputVolume.Value = Convert.ToInt32(ea.New); // this could throw ArgumentOutOfRangeException, but we trust the source
-			corCountLabel.Text = ea.Corrections.ToString();
+			corCountLabel.Text = ea.Corrections.ToString(CultureInfo.CurrentCulture);
 		}
 		#endregion // Microphone control code
 
@@ -1676,7 +1677,7 @@ namespace Taskmaster.UI
 
 			if (WatchlistMap.TryGetValue(prc, out ListViewItem item))
 			{
-				item.SubItems[AdjustColumn].Text = prc.Adjusts.ToString();
+				item.SubItems[AdjustColumn].Text = prc.Adjusts.ToString(CultureInfo.CurrentCulture);
 				// item.SubItems[SeenColumn].Text = prc.LastSeen.ToLocalTime().ToString();
 			}
 			else
@@ -1717,7 +1718,7 @@ namespace Taskmaster.UI
 				activeExec.Text = windowchangeev.Executable;
 				//activeFullscreen.Text = windowchangeev.Fullscreen ? "Full" : "Window";
 				activeFullscreen.Text = "?";
-				activePID.Text = windowchangeev.Id.ToString();
+				activePID.Text = windowchangeev.Id.ToString(CultureInfo.InvariantCulture);
 			}));
 		}
 
@@ -1785,7 +1786,7 @@ namespace Taskmaster.UI
 
 				foreach (var li in WatchlistMap)
 				{
-					li.Value.SubItems[0].Text = (li.Key.ActualOrder + 1).ToString();
+					li.Value.SubItems[0].Text = (li.Key.ActualOrder + 1).ToString(CultureInfo.InvariantCulture);
 					WatchlistItemColor(li.Value, li.Key);
 				}
 
@@ -1864,17 +1865,17 @@ namespace Taskmaster.UI
 		{
 			string aff = string.Empty;
 			if (prc.AffinityMask > 0)
-				aff = AffinityStyle == BitmaskStyle.Bits ? HumanInterface.BitMask(prc.AffinityMask, Hardware.Utility.ProcessorCount) : prc.AffinityMask.ToString();
+				aff = AffinityStyle == BitmaskStyle.Bits ? HumanInterface.BitMask(prc.AffinityMask, Hardware.Utility.ProcessorCount) : prc.AffinityMask.ToString(CultureInfo.InvariantCulture);
 
 			var litem = new ListViewItem(new string[] {
-				(prc.ActualOrder+1).ToString(),
-				prc.OrderPreference.ToString(),
+				(prc.ActualOrder+1).ToString(CultureInfo.InvariantCulture),
+				prc.OrderPreference.ToString(CultureInfo.InvariantCulture),
 				prc.FriendlyName,
 				prc.Executables.Length > 0 ? string.Join(", ", prc.Executables) : string.Empty,
 				string.Empty,
 				aff,
 				string.Empty,
-				prc.Adjusts.ToString(),
+				prc.Adjusts.ToString(CultureInfo.CurrentCulture),
 				string.Empty
 			});
 
@@ -1903,7 +1904,7 @@ namespace Taskmaster.UI
 		{
 			if (!IsHandleCreated || Disposed) return;
 
-			litem.SubItems[PrefColumn].Text = prc.OrderPreference.ToString();
+			litem.SubItems[PrefColumn].Text = prc.OrderPreference.ToString(CultureInfo.InvariantCulture);
 			litem.SubItems[NameColumn].Text = prc.FriendlyName;
 			litem.SubItems[ExeColumn].Text = (prc.Executables.Length > 0) ? string.Join(", ", prc.Executables) : string.Empty;
 			litem.SubItems[PrioColumn].Text = prc.Priority.HasValue ? MKAh.Readable.ProcessPriority(prc.Priority.Value) : string.Empty;
@@ -1915,7 +1916,7 @@ namespace Taskmaster.UI
 				else if (AffinityStyle == 0)
 					aff = HumanInterface.BitMask(prc.AffinityMask, Hardware.Utility.ProcessorCount);
 				else
-					aff = prc.AffinityMask.ToString();
+					aff = prc.AffinityMask.ToString(CultureInfo.InvariantCulture);
 			}
 			litem.SubItems[AffColumn].Text = aff;
 			litem.SubItems[PowerColumn].Text = (prc.PowerPlan != Power.Mode.Undefined ? Power.Utility.GetModeName(prc.PowerPlan) : string.Empty);
@@ -1982,7 +1983,7 @@ namespace Taskmaster.UI
 
 		void PathCacheUpdate_Invoke()
 		{
-			cacheObjects.Text = Statistics.PathCacheCurrent.ToString();
+			cacheObjects.Text = Statistics.PathCacheCurrent.ToString(CultureInfo.CurrentCulture);
 			double ratio = (Statistics.PathCacheMisses > 0 ? ((double)Statistics.PathCacheHits / (double)Statistics.PathCacheMisses) : 1d);
 			cacheRatio.Text = ratio <= 99.99f ? $"{ratio:N2}" : ">99.99"; // let's just not overflow the UI
 		}
@@ -2246,7 +2247,7 @@ namespace Taskmaster.UI
 				catch (ArgumentOutOfRangeException ex)
 				{
 					Logging.Stacktrace(ex);
-					Log.Error("<UI> Log retrieve item – index (" + index.ToString() + ") out of range – items: " + count.ToString());
+					Log.Error("<UI> Log retrieve item – index (" + index.ToString(CultureInfo.InvariantCulture) + ") out of range – items: " + count.ToString(CultureInfo.InvariantCulture));
 				}
 				catch (Exception ex)
 				{
@@ -2293,8 +2294,8 @@ namespace Taskmaster.UI
 		{
 			if (Disposed || !IsHandleCreated) return;
 
-			processingcount.Text = processmanager?.HandlingCount.ToString() ?? "n/a";
-			trackingcount.Text = processmanager?.RunningCount.ToString() ?? "n/a";
+			processingcount.Text = processmanager?.HandlingCount.ToString(CultureInfo.CurrentCulture) ?? "n/a";
+			trackingcount.Text = processmanager?.RunningCount.ToString(CultureInfo.CurrentCulture) ?? "n/a";
 		}
 
 		void ResizeLogList(object sender, EventArgs ev)
@@ -2834,7 +2835,7 @@ namespace Taskmaster.UI
 			var sbs = new StringBuilder(1024)
 				.AppendLine(Application.Name)
 				.Append("Version: ").AppendLine(Version)
-				.Append("Built: ").Append(builddate.ToString("yyyy/MM/dd HH:mm")).Append(" [").AppendFormat("{0:N0}", age).AppendLine(" days old]")
+				.Append("Built: ").Append(builddate.ToString("yyyy/MM/dd HH:mm", CultureInfo.InvariantCulture)).Append(" [").AppendFormat(CultureInfo.InvariantCulture, "{0:N0}", age).AppendLine(" days old]")
 				.AppendLine()
 				.AppendLine("Created by M.A., 2016–2019")
 				.AppendLine()
@@ -3163,7 +3164,7 @@ namespace Taskmaster.UI
 				bool newitem = false;
 				if (!ProcessEventMap.TryGetValue(key, out ListViewItem item))
 				{
-					item = new ListViewItem(new string[] { key.ToString(), ea.Info.Name, string.Empty, string.Empty });
+					item = new ListViewItem(new string[] { key.ToString(CultureInfo.InvariantCulture), ea.Info.Name, string.Empty, string.Empty });
 					newitem = true;
 					ProcessEventMap.TryAdd(key, item);
 				}
@@ -3185,7 +3186,7 @@ namespace Taskmaster.UI
 			try
 			{
 				// 0 = Id, 1 = Name, 2 = State
-				item.SubItems[0].Text = ea.Info.Id.ToString();
+				item.SubItems[0].Text = ea.Info.Id.ToString(CultureInfo.InvariantCulture);
 				item.SubItems[2].Text = ea.Info.State.ToString();
 				item.SubItems[3].Text = DateTime.Now.ToLongTimeString();
 
@@ -3313,7 +3314,7 @@ namespace Taskmaster.UI
 				else
 				{
 					li = new ListViewItem(new string[] {
-							info.Id.ToString(),
+							info.Id.ToString(CultureInfo.InvariantCulture),
 							info.Name,
 							fgonlytext,
 							powertext,
@@ -3392,7 +3393,7 @@ namespace Taskmaster.UI
 					$"{load.Low:N2} %",
 					ea.Reaction.ToString(),
 					Power.Utility.GetModeName(ea.Mode),
-					ea.Enacted.ToString(),
+					ea.Enacted.ToString(CultureInfo.InvariantCulture),
 					$"{ea.Pressure * 100f:N1} %"
 				})
 				{
@@ -3418,7 +3419,7 @@ namespace Taskmaster.UI
 					powerbalancerlog.Items.RemoveAt(0);
 				powerbalancerlog.Items.Add(li);
 
-				powerbalancer_forcedcount.Text = powermanager.ForceCount.ToString();
+				powerbalancer_forcedcount.Text = powermanager.ForceCount.ToString(CultureInfo.InvariantCulture);
 			}
 			catch (Exception ex) { Logging.Stacktrace(ex); }
 		}
@@ -3608,7 +3609,7 @@ namespace Taskmaster.UI
 
 					if (prc.VolumeStrategy != Audio.VolumeStrategy.Ignore)
 					{
-						sbs.Append("Volume = ").AppendFormat("{0:N2}", prc.Volume).AppendLine();
+						sbs.Append("Volume = ").AppendFormat(CultureInfo.InvariantCulture, "{0:N2}", prc.Volume).AppendLine();
 						sbs.Append("Volume strategy = ").Append((int)prc.VolumeStrategy).AppendLine();
 					}
 
@@ -3653,8 +3654,8 @@ namespace Taskmaster.UI
 		{
 			if (!IsHandleCreated || Disposed) return;
 
-			tempObjectSize.Text = (stats.Size / 1_000_000).ToString();
-			tempObjectCount.Text = (stats.Dirs + stats.Files).ToString();
+			tempObjectSize.Text = (stats.Size / 1_000_000).ToString(CultureInfo.CurrentCulture);
+			tempObjectCount.Text = (stats.Dirs + stats.Files).ToString(CultureInfo.CurrentCulture);
 		}
 
 		readonly Panel LogPanel;
@@ -3669,7 +3670,7 @@ namespace Taskmaster.UI
 
 			// Log.Verbose("Filling GUI log.");
 			var logbuffer = MemoryLog.MemorySink.ToArray();
-			Logging.DebugMsg("Filling backlog of messages: " + logbuffer.Length.ToString());
+			Logging.DebugMsg("Filling backlog of messages: " + logbuffer.Length.ToString(CultureInfo.InvariantCulture));
 
 			lock (LogListData_Lock)
 			{
@@ -4112,10 +4113,10 @@ namespace Taskmaster.UI
 			try
 			{
 				var item = NetworkDevices.Items[ea.Traffic.Index];
-				item.SubItems[PacketDeltaColumn].Text = "+" + ea.Traffic.Delta.Unicast.ToString();
-				item.SubItems[ErrorDeltaColumn].Text = "+" + ea.Traffic.Delta.Errors.ToString();
+				item.SubItems[PacketDeltaColumn].Text = "+" + ea.Traffic.Delta.Unicast.ToString(CultureInfo.InvariantCulture);
+				item.SubItems[ErrorDeltaColumn].Text = "+" + ea.Traffic.Delta.Errors.ToString(CultureInfo.InvariantCulture);
 				item.SubItems[ErrorDeltaColumn].ForeColor = ea.Traffic.Delta.Errors > 0 ? System.Drawing.Color.OrangeRed : System.Drawing.SystemColors.ControlText;
-				item.SubItems[ErrorTotalColumn].Text = ea.Traffic.Total.Errors.ToString();
+				item.SubItems[ErrorTotalColumn].Text = ea.Traffic.Total.Errors.ToString(CultureInfo.CurrentCulture);
 			}
 			catch (Exception ex)
 			{
@@ -4346,7 +4347,7 @@ namespace Taskmaster.UI
 			{
 				if (Trace) Log.Verbose("Disposing main window...");
 
-				Logging.DebugMsg("<Window> Log list cache - hits: " + LogListCache.Hits.ToString() + ", misses: " + LogListCache.Misses.ToString() + ", ratio: " + ((float)LogListCache.Hits / LogListCache.Misses).ToString("N1"));
+				Logging.DebugMsg("<Window> Log list cache - hits: " + LogListCache.Hits.ToString(CultureInfo.InvariantCulture) + ", misses: " + LogListCache.Misses.ToString(CultureInfo.InvariantCulture) + ", ratio: " + ((float)LogListCache.Hits / LogListCache.Misses).ToString("N1", CultureInfo.InvariantCulture));
 
 				UItimer.Stop();
 

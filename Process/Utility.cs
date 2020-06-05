@@ -4,7 +4,7 @@
 // Author:
 //       M.A. (https://github.com/mkahvi)
 //
-// Copyright (c) 2018–2019 M.A.
+// Copyright (c) 2018–2020 M.A.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -30,6 +30,7 @@ using Serilog;
 using System;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Globalization;
 using System.Text;
 
 namespace Taskmaster.Process
@@ -47,9 +48,9 @@ namespace Taskmaster.Process
 			=> style switch
 			{
 				BitmaskStyle.Bits => HumanInterface.BitMask(mask, length),
-				BitmaskStyle.Mixed => HumanInterface.BitMask(mask, length) + " [" + mask.ToString() + "]",
+				BitmaskStyle.Mixed => HumanInterface.BitMask(mask, length) + " [" + mask.ToString(CultureInfo.InvariantCulture) + "]",
 				//BitmaskStyle.Decimal =>
-				_ => mask.ToString(),
+				_ => mask.ToString(CultureInfo.InvariantCulture),
 			};
 
 		public static bool IsFullscreen(IntPtr hwnd)
@@ -295,7 +296,7 @@ namespace Taskmaster.Process
 				if (excesscores > 0)
 				{
 					result = Bit.Unfill(result, targetmask, excesscores);
-					sbs?.Append("; excess: ").Append(excesscores.ToString())
+					sbs?.Append("; excess: ").Append(excesscores.ToString(CultureInfo.InvariantCulture))
 						.Append(" pruned to: ").Append(HumanInterface.BitMask(result, cores))
 						.Append(" [").Append(result).Append(']');
 				}
@@ -316,7 +317,7 @@ namespace Taskmaster.Process
 					//if (curCores < targetCores)
 					//	result = Bit.Fill(result, targetmask, excesscores);
 
-					sbs?.Append(" ×").Append(incorrectCount.ToString())
+					sbs?.Append(" ×").Append(incorrectCount.ToString(CultureInfo.InvariantCulture))
 						.Append("; corrected to ").Append(HumanInterface.BitMask(result, cores))
 						.Append(" [").Append(result).Append(']');
 				}
@@ -360,7 +361,7 @@ namespace Taskmaster.Process
 		{
 			Taskmaster.NativeMethods.HANDLE handle = null;
 			int original = -1;
-			System.Diagnostics.Debug.Assert(target >= 0 && target <= 2, "I/O target set to undefined value: " + target.ToString());
+			System.Diagnostics.Debug.Assert(target >= 0 && target <= 2, "I/O target set to undefined value: " + target.ToString(CultureInfo.InvariantCulture));
 
 			target = target.Constrain(0, 2); // ensure no invalid data is used.
 
@@ -472,8 +473,8 @@ namespace Taskmaster.Process
 
 		[Conditional("DEBUG")]
 		public static void PathCacheStats()
-			=> Log.Debug("Path cache state: " + Statistics.PathCacheCurrent.ToString() + " items (Hits: " + Statistics.PathCacheHits.ToString() +
-				", Misses: " + Statistics.PathCacheMisses.ToString() +
+			=> Log.Debug("Path cache state: " + Statistics.PathCacheCurrent.ToString(CultureInfo.InvariantCulture) + " items (Hits: " + Statistics.PathCacheHits.ToString(CultureInfo.InvariantCulture) +
+				", Misses: " + Statistics.PathCacheMisses.ToString(CultureInfo.InvariantCulture) +
 				", Ratio: " + $"{(Statistics.PathCacheMisses > 0 ? (Statistics.PathCacheHits / Statistics.PathCacheMisses) : 1):N2})");
 	}
 }

@@ -30,6 +30,7 @@ using Serilog.Events;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Text;
 
@@ -269,7 +270,7 @@ namespace Taskmaster
 		static void LicenseBoiler()
 		{
 			using var cfg = Config.Load(CoreConfigFilename);
-			if (cfg.Config.Get(Constants.Core)?.Get(Constants.License)?.String.Equals(Constants.Accepted) ?? false) return;
+			if (cfg.Config.Get(Constants.Core)?.Get(Constants.License)?.String.Equals(Constants.Accepted, StringComparison.InvariantCulture) ?? false) return;
 
 			using var license = new UI.LicenseDialog();
 			license.ShowDialog();
@@ -363,7 +364,7 @@ namespace Taskmaster
 
 				Config.Dispose();
 
-				Log.Information(Name + "! #" + System.Diagnostics.Process.GetCurrentProcess().Id.ToString() + " END! [Clean]");
+				Log.Information(Name + "! #" + System.Diagnostics.Process.GetCurrentProcess().Id.ToString(CultureInfo.InvariantCulture) + " END! [Clean]");
 
 				if (State == Runstate.Restart) // happens only on power resume (waking from hibernation) or when manually set
 				{
@@ -454,16 +455,16 @@ namespace Taskmaster
 
 		static void PrintStats()
 		{
-			Log.Information($"<Stat> WMI polling: {Statistics.WMIPollTime:N2}s [{Statistics.WMIPolling.ToString()}]");
-			Log.Information($"<Stat> Self-maintenance: {Statistics.MaintenanceTime:N2}s [{Statistics.MaintenanceCount.ToString()}]");
-			Log.Information($"<Stat> Path cache: {Statistics.PathCacheHits.ToString()} hits, {Statistics.PathCacheMisses.ToString()} misses");
+			Log.Information($"<Stat> WMI polling: {Statistics.WMIPollTime:N2}s [{Statistics.WMIPolling.ToString(CultureInfo.InvariantCulture)}]");
+			Log.Information($"<Stat> Self-maintenance: {Statistics.MaintenanceTime:N2}s [{Statistics.MaintenanceCount.ToString(CultureInfo.InvariantCulture)}]");
+			Log.Information($"<Stat> Path cache: {Statistics.PathCacheHits.ToString(CultureInfo.InvariantCulture)} hits, {Statistics.PathCacheMisses.ToString(CultureInfo.InvariantCulture)} misses");
 			var sbs = new StringBuilder("<Stat> Path finding: ", 256)
 				.Append(Statistics.PathFindAttempts).Append(" total attempts; ")
 				.Append(Statistics.PathFindViaModule).Append(" via module info, ")
 				.Append(Statistics.PathFindViaC).Append(" via C call, ")
 				.Append(Statistics.PathNotFound).Append(" not found");
 			Log.Information(sbs.ToString());
-			Log.Information($"<Stat> Processes modified: {Statistics.TouchCount.ToString()}; Ignored for remodification: {Statistics.TouchIgnore.ToString()}");
+			Log.Information($"<Stat> Processes modified: {Statistics.TouchCount.ToString(CultureInfo.InvariantCulture)}; Ignored for remodification: {Statistics.TouchIgnore.ToString(CultureInfo.InvariantCulture)}");
 		}
 
 		public static void Refresh(ModuleManager modules)

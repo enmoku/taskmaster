@@ -140,7 +140,7 @@ namespace Taskmaster.UI
 					break;
 			}
 
-			if (type == Type.Auto && message.StartsWith(@"{\rtf1")) type = Type.Rich;
+			if (type == Type.Auto && message.StartsWith(@"{\rtf1", System.StringComparison.Ordinal)) type = Type.Rich;
 
 			if (type == Type.Rich)
 			{

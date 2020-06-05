@@ -29,6 +29,7 @@ using Serilog;
 using Serilog.Events;
 using System;
 using System.Diagnostics;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -66,7 +67,7 @@ namespace Taskmaster
 			if (Array.Exists(args, arg => arg == "--trace"))
 			{
 				var lnow = DateTime.Now;
-				var tracefile = System.IO.Path.Combine(LogPath, string.Format("{0:0000}-{1:00}-{2:00}.trace", lnow.Year, lnow.Month, lnow.Day));
+				var tracefile = System.IO.Path.Combine(LogPath, string.Format(CultureInfo.InvariantCulture, "{0:0000}-{1:00}-{2:00}.trace", lnow.Year, lnow.Month, lnow.Day));
 				tracelistener = new TextWriterTraceListener(tracefile);
 				
 				Debug.Listeners.Add(tracelistener);
@@ -184,8 +185,8 @@ namespace Taskmaster
 				.Append(Name).Append("! #").Append(System.Diagnostics.Process.GetCurrentProcess().Id)
 				.Append(MKAh.Execution.IsAdministrator ? " [ADMIN]" : "").Append(Portable ? " [PORTABLE]" : "")
 				.Append(" – Version: ").Append(Version)
-				.Append(" – Built: ").Append(builddate.ToString("yyyy/MM/dd HH:mm"))
-				.Append(" [").AppendFormat("{0:N0}", age).Append(" days old]");
+				.Append(" – Built: ").Append(builddate.ToString("yyyy/MM/dd HH:mm", CultureInfo.InvariantCulture))
+				.Append(" [").AppendFormat(CultureInfo.InvariantCulture, "{0:N0}", age).Append(" days old]");
 			Log.Information(sbs.ToString());
 
 			if (TraceLog) Log.Warning("<Log> Trace log enabled!");
@@ -204,7 +205,7 @@ namespace Taskmaster
 
 			Config.Flush(); // early save of configs
 
-			if (RestartCounter > 0 && Trace) Log.Debug($"<Core> Restarted {RestartCounter.ToString()} time(s)");
+			if (RestartCounter > 0 && Trace) Log.Debug($"<Core> Restarted {RestartCounter.ToString(CultureInfo.InvariantCulture)} time(s)");
 			startTimer.Stop();
 
 			Log.Information($"<Core> Initialization complete ({startTimer.ElapsedMilliseconds} ms)...");
@@ -841,7 +842,7 @@ namespace Taskmaster
 
 			LoadEvent?.Invoke(null, new LoadEventArgs("UI loaded.", LoadEventType.Loaded));
 
-			Log.Information($"<Core> Component loading finished ({timer.ElapsedMilliseconds} ms). {DisposalChute.Count.ToString()} initialized.");
+			Log.Information($"<Core> Component loading finished ({timer.ElapsedMilliseconds} ms). {DisposalChute.Count.ToString(CultureInfo.InvariantCulture)} initialized.");
 		}
 
 		static async Task CheckNGENAsync()
