@@ -1,5 +1,6 @@
 ﻿using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Runtime.CompilerServices;
 
 [assembly: AssemblyTitle("Taskmaster!")]
 [assembly: AssemblyDescription("Maintenance and sanitation of unruly minions.")]
@@ -16,3 +17,6 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyFileVersion("0.14.*")]
 [assembly: System.Resources.NeutralResourcesLanguage("en")]
 [assembly: Guid("088f7210-51b2-4e06-9bd4-93c27a973874")] // this is pointless, yes?
+
+// for unit tests
+[assembly: InternalsVisibleTo("TaskmasterUnitTests")]
