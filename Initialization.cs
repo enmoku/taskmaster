@@ -428,14 +428,14 @@ namespace Taskmaster
 				.InitComment("How many minutes to wait before rescanning temp after crossing the threshold.")
 				.Int * 60_000;
 
-			PathCacheLimit = perfsec.GetOrSet("Path cache", 60)
+			Process.Utility._PathCacheSettings.MaxItems = perfsec.GetOrSet("Path cache", 60)
 				.InitComment("Path searching is very heavy process; this configures how many processes to remember paths for. The cache is allowed to occasionally overflow for half as much.")
 				.Int.Constrain(20, 200);
 
 			var pathcachemaxage_t = perfsec.GetOrSet("Path cache max age", 15)
 				.InitComment("Maximum age, in minutes, of cached objects. Min: 1 (1min), Max: 1440 (1day). These will be removed even if the cache is appropriate size.")
 				.Int;
-			PathCacheMaxAge = new TimeSpan(0, pathcachemaxage_t.Constrain(1, 1440), 0);
+			Process.Utility._PathCacheSettings.MaxAge = new TimeSpan(0, pathcachemaxage_t.Constrain(1, 1440), 0);
 
 			// OPTIONS
 			if (optsec.TryGet(Constants.ShowOnStart, out var sosv)) // REPRECATED
@@ -517,7 +517,7 @@ namespace Taskmaster
 			if (Trace)
 			{
 				Log.Debug($"<Core> Privilege level: {(isadmin ? "Admin" : "User")}");
-				Log.Debug($"<Core> Path cache: {(PathCacheLimit == 0 ? HumanReadable.Generic.Disabled : PathCacheLimit.ToString())} items");
+				Log.Debug($"<Core> Path cache: {(Process.Utility._PathCacheSettings.MaxItems == 0 ? HumanReadable.Generic.Disabled : Process.Utility._PathCacheSettings.MaxItems.ToString(CultureInfo.InvariantCulture))} items");
 				Log.Debug($"<Core> Paging: {(PagingEnabled ? HumanReadable.Generic.Enabled : HumanReadable.Generic.Disabled)}");
 			}
 

@@ -1211,7 +1211,7 @@ namespace Taskmaster.UI
 			GotFocus += UpdateTrackingCounter;
 			UpdateTrackingCounter(this, EventArgs.Empty);
 
-			if (DebugCache && PathCacheLimit > 0)
+			if (DebugCache && Process.Utility._PathCacheSettings.MaxItems > 0)
 			{
 				UItimer.Tick += PathCacheUpdate;
 				GotFocus += PathCacheUpdate;

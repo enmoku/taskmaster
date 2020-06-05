@@ -93,8 +93,10 @@ namespace Taskmaster.Process
 
 		static MKAh.Cache.SimpleCache<int, PathCacheObject> PathCache;
 
+		internal static PathCacheSettings _PathCacheSettings = new PathCacheSettings();
+
 		internal static void InitializeCache()
-			=> PathCache = new MKAh.Cache.SimpleCache<int, PathCacheObject>(PathCacheLimit, (PathCacheLimit / 10).Constrain(10, 100), PathCacheMaxAge);
+			=> PathCache = new MKAh.Cache.SimpleCache<int, PathCacheObject>(_PathCacheSettings.MaxItems, (_PathCacheSettings.MaxItems / 10).Constrain(10, 100), _PathCacheSettings.MaxAge);
 
 		public static bool FindPath(ProcessEx info)
 		{

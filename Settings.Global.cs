@@ -29,9 +29,14 @@ using System.Diagnostics;
 
 namespace Taskmaster
 {
+	public class PathCacheSettings
+	{
+		public int MaxItems { get; set; } = 200;
+		public TimeSpan MaxAge { get; set; } = new TimeSpan(30, 0, 0);
+	}
+
 	public static partial class Application
 	{
-
 		public static bool NoLogging { get; set; } = false;
 
 		public static bool ShowSplash { get; set; } = true;
@@ -81,9 +86,6 @@ namespace Taskmaster
 
 		public static int TempRescanDelay { get; set; } = 60 * 60_000; // 60 minutes
 		public static int TempRescanThreshold { get; set; } = 1000;
-
-		public static int PathCacheLimit { get; set; } = 200;
-		public static TimeSpan PathCacheMaxAge { get; set; } = new TimeSpan(30, 0, 0);
 
 		public static bool ExitConfirmation { get; set; } = true;
 		public static BitmaskStyle AffinityStyle { get; set; } = BitmaskStyle.Bits;
