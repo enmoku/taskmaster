@@ -105,7 +105,7 @@ namespace Taskmaster
 				throw new RunstateException("Already running", Runstate.QuickExit);
 			}
 
-			IPC.Listen();
+			GlobalIPC.Listen();
 
 			// Multi-core JIT
 			// https://docs.microsoft.com/en-us/dotnet/api/system.runtime.profileoptimization
