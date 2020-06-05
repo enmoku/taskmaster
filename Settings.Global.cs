@@ -4,7 +4,7 @@
 // Author:
 //       M.A. (https://github.com/mkahvi)
 //
-// Copyright (c) 2019 M.A.
+// Copyright (c) 2019–2020 M.A.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -31,22 +31,6 @@ namespace Taskmaster
 {
 	public static partial class Application
 	{
-		public static Audio.MicManager? micmonitor = null;
-		public static UI.MainWindow? mainwindow = null;
-		public static UI.VolumeMeter? volumemeter = null;
-		public static UI.LoaderDisplay? loaderdisplay = null;
-		public static Process.Manager? processmanager = null;
-		public static UI.TrayAccess trayaccess;
-		public static Network.Manager? netmonitor = null;
-		public static StorageManager? storagemanager = null;
-		public static Power.Manager? powermanager = null;
-		public static Process.ForegroundManager? activeappmonitor = null;
-		public static HealthMonitor? healthmonitor = null;
-		public static SelfMaintenance selfmaintenance;
-		public static Audio.Manager? audiomanager = null;
-		public static Hardware.CPUMonitor? cpumonitor = null;
-		public static Hardware.Monitor? hardware = null;
-		//public static AlertManager alerts = null;
 
 		public static bool NoLogging { get; set; } = false;
 
@@ -75,20 +59,6 @@ namespace Taskmaster
 		public static bool UniqueCrashLogs { get; set; } = false;
 		public static bool ShowInaction { get; set; } = false;
 		public static bool ShowAgency { get; set; } = false;
-
-		public static bool ProcessMonitorEnabled { get; private set; } = true;
-		public static bool MicrophoneManagerEnabled { get; private set; } = false;
-		// public static bool MediaMonitorEnabled { get; private set; } = true;
-		public static bool NetworkMonitorEnabled { get; private set; } = false;
-		public static bool PagingEnabled { get; private set; } = false;
-		public static bool ActiveAppMonitorEnabled { get; private set; } = false;
-		public static bool PowerManagerEnabled { get; private set; } = false;
-		public static bool MaintenanceMonitorEnabled { get; private set; } = false;
-		public static bool StorageMonitorEnabled { get; private set; } = false;
-		public static bool HealthMonitorEnabled { get; private set; } = true;
-		public static bool AudioManagerEnabled { get; private set; } = false;
-		public static bool HardwareMonitorEnabled { get; private set; } = false;
-		public static bool AlertManagerEnabled { get; private set; } = false;
 
 		// EXPERIMENTAL FEATURES
 		public static bool TempMonitorEnabled { get; private set; } = false;

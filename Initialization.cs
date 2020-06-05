@@ -4,7 +4,7 @@
 // Author:
 //       M.A. (https://github.com/mkahvi)
 //
-// Copyright (c) 2019 M.A.
+// Copyright (c) 2019–2020 M.A.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -42,7 +42,7 @@ namespace Taskmaster
 
 		static TraceListener? tracelistener = null;
 
-		static System.Threading.Mutex Initialize(ref string[] args)
+		static System.Threading.Mutex Initialize(ref string[] args, ModuleManager modules)
 		{
 			var startTimer = Stopwatch.StartNew();
 
@@ -200,7 +200,7 @@ namespace Taskmaster
 
 			//if (ShowSplash) splash.Invoke(new Action(() => splash.Show()));
 
-			InitializeComponents(transientsettings);
+			InitializeComponents(transientsettings, modules);
 
 			Config.Flush(); // early save of configs
 
@@ -526,7 +526,7 @@ namespace Taskmaster
 			LoadEvent?.Invoke(null, new LoadEventArgs("Core configuration loaded.", LoadEventType.Loaded));
 		}
 
-		static void InitializeComponents(StartupSettings transientsettings)
+		static void InitializeComponents(StartupSettings transientsettings, ModuleManager modules)
 		{
 			if (Trace) Log.Debug("<Core> Loading components...");
 
@@ -588,43 +588,43 @@ namespace Taskmaster
 
 			Task
 				tPowMan = (PowerManagerEnabled ? Task.Run(() => {
-						powermanager = Initialize<Power.Manager>();
-						powermanager.OnDisposed += (_, _ea) => powermanager = null;
+						modules.powermanager = Initialize<Power.Manager>();
+						modules.powermanager.OnDisposed += (_, _ea) => modules.powermanager = null;
 						LoadEvent?.Invoke(null, new LoadEventArgs("Power manager processed.", LoadEventType.SubLoaded));
 					}) : Task.CompletedTask),
 				tCpuMon = (PowerManagerEnabled ? Task.Run(() => {
-						cpumonitor = Initialize<Hardware.CPUMonitor>();
-						cpumonitor.OnDisposed += (_, _ea) => cpumonitor = null;
+						modules.cpumonitor = Initialize<Hardware.CPUMonitor>();
+						modules.cpumonitor.OnDisposed += (_, _ea) => modules.cpumonitor = null;
 						LoadEvent?.Invoke(null, new LoadEventArgs("CPU monitor processed.", LoadEventType.SubLoaded));
 					}, cts.Token) : Task.CompletedTask),
 				tProcMon = (ProcessMonitorEnabled ? Task.Run(() => {
-						processmanager = Initialize<Process.Manager>();
+						modules.processmanager = Initialize<Process.Manager>();
 						LoadEvent?.Invoke(null, new LoadEventArgs("Process manager processed.", LoadEventType.SubLoaded));
 					}, cts.Token) : Task.CompletedTask),
 				tFgMon = (ActiveAppMonitorEnabled ? Task.Run(() => {
-						activeappmonitor = Initialize<Process.ForegroundManager>();
+						modules.activeappmonitor = Initialize<Process.ForegroundManager>();
 						LoadEvent?.Invoke(null, new LoadEventArgs("Foreground manager processed.", LoadEventType.SubLoaded));
 					}, cts.Token) : Task.CompletedTask),
 				tNetMon = (NetworkMonitorEnabled ? Task.Run(() => {
-						netmonitor = Initialize<Network.Manager>();
+						modules.netmonitor = Initialize<Network.Manager>();
 						LoadEvent?.Invoke(null, new LoadEventArgs("Network monitor processed.", LoadEventType.SubLoaded));
 					}, cts.Token) : Task.CompletedTask),
 				tStorMon = (StorageMonitorEnabled ? Task.Run(() => {
-						storagemanager = Initialize<StorageManager>();
+						modules.storagemanager = Initialize<StorageManager>();
 						LoadEvent?.Invoke(null, new LoadEventArgs("Storage monitor processed.", LoadEventType.SubLoaded));
 					}, cts.Token) : Task.CompletedTask),
 				tHpMon = (HealthMonitorEnabled ? Task.Run(() => {
-						healthmonitor = Initialize<HealthMonitor>();
+						modules.healthmonitor = Initialize<HealthMonitor>();
 						LoadEvent?.Invoke(null, new LoadEventArgs("Health monitor processed.", LoadEventType.SubLoaded));
 					}, cts.Token) : Task.CompletedTask),
 				tHwMon = (HardwareMonitorEnabled ? Task.Run(() => {
-						hardware = Initialize<Hardware.Monitor>();
+						modules.hardware = Initialize<Hardware.Monitor>();
 						LoadEvent?.Invoke(null, new LoadEventArgs("Hardware monitor processed.", LoadEventType.SubLoaded));
 					}, cts.Token) : Task.CompletedTask),
 				//AlMan = (AlertManagerEnabled ? Task.Run(() => LogInit(() => alerts = new AlertManager()), cts.Token) : Task.CompletedTask)
 				//	.ContinueWith(_ => LoadEvent?.Invoke(null, new LoadEventArgs("Alert manager processed.", LoadEventType.SubLoaded)), TaskContinuationOptions.OnlyOnRanToCompletion),
 				tSelfMaint = (Task.Run(() => {
-						selfmaintenance = Initialize<SelfMaintenance>();
+						modules.selfmaintenance = Initialize<SelfMaintenance>();
 						LoadEvent?.Invoke(null, new LoadEventArgs("Self-maintenance manager processed.", LoadEventType.SubLoaded));
 					}, cts.Token));
 			
@@ -641,7 +641,7 @@ namespace Taskmaster
 
 			// WinForms makes the following components not load nicely if not done here (main thread).
 			//hiddenwindow.BeginInvoke(new Action(() => { trayaccess = new UI.TrayAccess(); })); // is there a point to this?
-			trayaccess = new UI.TrayAccess
+			modules.trayaccess = new UI.TrayAccess
 			{
 				TrayMenuShown = visible => OptimizeResponsiviness(visible)
 			};
@@ -651,16 +651,16 @@ namespace Taskmaster
 			{
 				if (AudioManagerEnabled)
 				{
-					audiomanager = new Audio.Manager();
-					RegisterForExit(audiomanager);
-					audiomanager.OnDisposed += (_, _ea) => audiomanager = null;
+					modules.audiomanager = new Audio.Manager();
+					RegisterForExit(modules.audiomanager);
+					modules.audiomanager.OnDisposed += (_, _ea) => modules.audiomanager = null;
 
 					if (MicrophoneManagerEnabled)
 					{
-						micmonitor = new Audio.MicManager();
-						RegisterForExit(micmonitor);
-						micmonitor.Hook(audiomanager);
-						micmonitor.OnDisposed += (_, _ea) => micmonitor = null;
+						modules.micmonitor = new Audio.MicManager();
+						RegisterForExit(modules.micmonitor);
+						modules.micmonitor.Hook(modules.audiomanager);
+						modules.micmonitor.OnDisposed += (_, _ea) => modules.micmonitor = null;
 					}
 				}
 			}
@@ -668,15 +668,15 @@ namespace Taskmaster
 			{
 				Log.Fatal("<Init> Error: " + ex.Message);
 
-				if (micmonitor != null)
+				if (modules.micmonitor != null)
 				{
-					micmonitor.Dispose();
-					micmonitor = null;
+					modules.micmonitor.Dispose();
+					modules.micmonitor = null;
 				}
-				if (audiomanager != null)
+				if (modules.audiomanager != null)
 				{
-					audiomanager.Dispose();
-					audiomanager = null;
+					modules.audiomanager.Dispose();
+					modules.audiomanager = null;
 				}
 
 				Logging.DebugMsg("AudioManager initialization failed");
@@ -685,7 +685,7 @@ namespace Taskmaster
 				throw;
 			}
 
-			Task.WhenAll(tProcMon, tFgMon).ContinueWith(_ => { if (ActiveAppMonitorEnabled) activeappmonitor?.Hook(processmanager); }, cts.Token, TaskContinuationOptions.OnlyOnRanToCompletion, TaskScheduler.Default);
+			Task.WhenAll(tProcMon, tFgMon).ContinueWith(_ => { if (ActiveAppMonitorEnabled) modules.activeappmonitor?.Hook(modules.processmanager); }, cts.Token, TaskContinuationOptions.OnlyOnRanToCompletion, TaskScheduler.Default);
 			if (cts.IsCancellationRequested) throw new InitFailure("Initialization failed", (cex?[0]), cex);
 
 			try
@@ -694,20 +694,20 @@ namespace Taskmaster
 				{
 					Task.WhenAll(tPowMan, tCpuMon, tProcMon).ContinueWith((task) =>
 					{
-						if (task.IsFaulted || processmanager is null)
+						if (task.IsFaulted || modules.processmanager is null)
 						{
 							Log.Fatal("Process, CPU or Power manager failed to initialize.");
 							throw new TaskCanceledException("task canceled", task.Exception);
 						}
 
-						if (cpumonitor != null)
+						if (modules.cpumonitor != null)
 						{
-							cpumonitor.Hook(processmanager);
-							powermanager?.Hook(cpumonitor);
+							modules.cpumonitor.Hook(modules.processmanager);
+							modules.powermanager?.Hook(modules.cpumonitor);
 						}
 
-						if (powermanager != null)
-							processmanager.Hook(powermanager);
+						if (modules.powermanager != null)
+							modules.processmanager.Hook(modules.powermanager);
 					}, cts.Token, TaskContinuationOptions.OnlyOnRanToCompletion, TaskScheduler.Default);
 
 					var tr = Task.WhenAny(init);
@@ -726,12 +726,12 @@ namespace Taskmaster
 
 				tNetMon.ContinueWith(_ =>
 				{
-					if (NetworkMonitorEnabled) netmonitor.Tray = trayaccess;
+					if (NetworkMonitorEnabled) modules.netmonitor.Tray = modules.trayaccess;
 				}, cts.Token, TaskContinuationOptions.OnlyOnRanToCompletion, TaskScheduler.Default);
 
 				if (AudioManagerEnabled) tProcMon.ContinueWith(_ =>
 				{
-					if (AudioManagerEnabled) audiomanager?.Hook(processmanager);
+					if (AudioManagerEnabled) modules.audiomanager?.Hook(modules.processmanager);
 				}, cts.Token, TaskContinuationOptions.OnlyOnRanToCompletion, TaskScheduler.Default);
 
 				// WAIT for component initialization
@@ -767,37 +767,37 @@ namespace Taskmaster
 				//throw; // because compiler is dumb and doesn't understand the above
 			}
 
-			trayaccess.Hook(processmanager);
-			if (powermanager != null) trayaccess.Hook(powermanager);
+			modules.trayaccess.Hook(modules.processmanager);
+			if (modules.powermanager != null) modules.trayaccess.Hook(modules.powermanager);
 
 			LoadEvent?.Invoke(null, new LoadEventArgs("Components loaded.", LoadEventType.Loaded));
 
-			if (processmanager != null)
-				processmanager.OnDisposed += (_, _ea) => processmanager = null;
-			if (activeappmonitor != null)
-				activeappmonitor.OnDisposed += (_, _ea) => activeappmonitor = null;
-			if (powermanager != null)
-				powermanager.OnDisposed += (_, _ea) => powermanager = null;
-			if (hardware != null)
-				hardware.OnDisposed += (_, _ea) => hardware = null;
-			if (healthmonitor != null)
-				healthmonitor.OnDisposed += (_, _ea) => healthmonitor = null;
-			if (storagemanager != null)
-				storagemanager.OnDisposed += (_, _ea) => storagemanager = null;
-			if (netmonitor != null)
-				netmonitor.OnDisposed += (_, _ea) => netmonitor = null;
+			if (modules.processmanager != null)
+				modules.processmanager.OnDisposed += (_, _ea) => modules.processmanager = null;
+			if (modules.activeappmonitor != null)
+				modules.activeappmonitor.OnDisposed += (_, _ea) => modules.activeappmonitor = null;
+			if (modules.powermanager != null)
+				modules.powermanager.OnDisposed += (_, _ea) => modules.powermanager = null;
+			if (modules.hardware != null)
+				modules.hardware.OnDisposed += (_, _ea) => modules.hardware = null;
+			if (modules.healthmonitor != null)
+				modules.healthmonitor.OnDisposed += (_, _ea) => modules.healthmonitor = null;
+			if (modules.storagemanager != null)
+				modules.storagemanager.OnDisposed += (_, _ea) => modules.storagemanager = null;
+			if (modules.netmonitor != null)
+				modules.netmonitor.OnDisposed += (_, _ea) => modules.netmonitor = null;
 
 			// HOOKING
 			// Probably should transition to weak events
 
 			Log.Information($"<Core> Components loaded ({timer.ElapsedMilliseconds} ms); Hooking event handlers.");
 
-			activeappmonitor?.SetupEventHooks();
-			powermanager?.SetupEventHooks();
-			audiomanager?.SetupEventHooks();
-			netmonitor?.SetupEventHooks();
+			modules.activeappmonitor?.SetupEventHooks();
+			modules.powermanager?.SetupEventHooks();
+			modules.audiomanager?.SetupEventHooks();
+			modules.netmonitor?.SetupEventHooks();
 
-			if (GlobalHotkeys) trayaccess.RegisterGlobalHotkeys();
+			if (GlobalHotkeys) modules.trayaccess.RegisterGlobalHotkeys();
 
 			LoadEvent?.Invoke(null, new LoadEventArgs("Events hooked.", LoadEventType.Loaded));
 
@@ -833,8 +833,8 @@ namespace Taskmaster
 			// UI
 			if (State == Runstate.Normal)
 			{
-				if (ShowOnStart) BuildMainWindow(reveal: true, top: false);
-				if (ShowVolOnStart) BuildVolumeMeter();
+				if (ShowOnStart) BuildMainWindow(modules, reveal: true, top: false);
+				if (ShowVolOnStart) BuildVolumeMeter(modules);
 			}
 
 			timer.Stop();

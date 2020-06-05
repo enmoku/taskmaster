@@ -159,6 +159,7 @@
     <Compile Include="MKAh\Types\Trinary.cs" />
     <Compile Include="MKAh\Units\Natural.cs" />
     <Compile Include="MKAh\Wrapper\Windows\PerformanceCounter.cs" />
+    <Compile Include="ModuleManager.cs" />
     <Compile Include="NativeMethods.cs" />
     <Compile Include="Network\ConfigConstants.cs" />
     <Compile Include="Network\Device.cs" />

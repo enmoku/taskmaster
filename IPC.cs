@@ -75,7 +75,7 @@ namespace Taskmaster
 				else if (line.StartsWith(RefreshMessage))
 				{
 					Log.Information("<IPC> Refresh.");
-					Refresh();
+					Refresh(globalmodules);
 					return;
 				}
 				else

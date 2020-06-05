@@ -59,10 +59,14 @@ namespace Taskmaster.UI
 		// UI elements for non-lambda/constructor access.
 		ToolStripMenuItem menu_view_loaders;
 
+		ModuleManager modules;
+
 		// constructor
-		public MainWindow()
+		public MainWindow(ModuleManager modules)
 		{
 			_ = Handle; // HACK
+
+			this.modules = modules;
 
 			SuspendLayout();
 			Visible = false;
@@ -365,8 +369,8 @@ namespace Taskmaster.UI
 				using var corecfg = Application.Config.Load(CoreConfigFilename);
 				corecfg.Config[Constants.VolumeMeter][TopmostName].Bool = menu_config_visuals_topmost_volume.Checked;
 
-				if (volumemeter != null)
-					volumemeter.TopMost = menu_config_visuals_topmost_volume.Checked;
+				if (modules.volumemeter != null)
+					modules.volumemeter.TopMost = menu_config_visuals_topmost_volume.Checked;
 			};
 			/*
 			var menu_config_visuals_topmost_main = new ToolStripMenuItem("Main window")

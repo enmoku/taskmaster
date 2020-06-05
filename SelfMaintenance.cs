@@ -4,7 +4,7 @@
 // Author:
 //       M.A. (https://github.com/mkahvi)
 //
-// Copyright (c) 2018–2019 M.A.
+// Copyright (c) 2018–2020 M.A.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -94,7 +94,7 @@ namespace Taskmaster
 
 				long newmem = GC.GetTotalMemory(true);
 
-				Log.Debug("<Self-Maintenance> Done, saved " + ((oldmem - newmem) / 1_000).ToString() + " kB.");
+				Log.Debug("<Self-Maintenance> Done, saved " + ((oldmem - newmem) / 1_000).ToString(CultureInfo.CurrentCulture) + " kB.");
 
 				if (Trace) Log.Verbose("Running periodic cleanup");
 

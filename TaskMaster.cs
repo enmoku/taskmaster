@@ -4,7 +4,7 @@
 // Author:
 //       M.A. (https://github.com/mkahvi)
 //
-// Copyright (c) 2016-2019 M.A.
+// Copyright (c) 2016-2020 M.A.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -77,14 +77,14 @@ namespace Taskmaster
 
 		static bool CleanedUp = false;
 
-		internal static void ExitCleanup()
+		internal static void ExitCleanup(ModuleManager modules)
 		{
 			if (CleanedUp) return;
 
 			try
 			{
-				if (!(mainwindow?.IsDisposed ?? true)) mainwindow.Enabled = false;
-				if (!(trayaccess?.IsDisposed ?? true)) trayaccess?.Close();
+				if (!(modules.mainwindow?._Disposed ?? true)) modules.mainwindow.Enabled = false;
+				if (!(modules.trayaccess?.IsDisposed ?? true)) modules.trayaccess?.Close();
 
 				while (DisposalChute.Count > 0)
 				{
@@ -135,13 +135,13 @@ namespace Taskmaster
 			// nothing else should be needed.
 		}
 
-		internal static void BuildVolumeMeter()
+		internal static void BuildVolumeMeter(ModuleManager modules)
 		{
 			if (!AudioManagerEnabled) return;
 
 			lock (window_creation_lock)
 			{
-				if (volumemeter is null)
+				if (modules.volumemeter is null)
 				{
 					volumemeter = new UI.VolumeMeter(audiomanager);
 					volumemeter.OnDisposed += (_, _ea) => volumemeter = null;
@@ -160,6 +160,8 @@ namespace Taskmaster
 					loaderdisplay.OnDisposed += (_, _ea) => loaderdisplay = null;
 
 					processmanager?.GenerateLoadTrackers();
+					modules.volumemeter = new UI.VolumeMeter(modules.audiomanager);
+					modules.volumemeter.OnDisposed += (_, _ea) => modules.volumemeter = null;
 				}
 			}
 		}
@@ -169,8 +171,9 @@ namespace Taskmaster
 		/// <summary>
 		/// Constructs and hooks the main window
 		/// </summary>
-		internal static void BuildMainWindow(bool reveal = false, bool top = false)
+		internal static void BuildMainWindow(ModuleManager modules, bool reveal = false, bool top = false)
 		{
+			var mainwindow = modules.mainwindow;
 			Logging.DebugMsg("<Main Window> Building: " + !(mainwindow is null));
 
 			try
@@ -178,46 +181,45 @@ namespace Taskmaster
 				lock (window_creation_lock)
 				{
 					if (mainwindow != null) return;
-
-					mainwindow = new UI.MainWindow();
+					mainwindow = modules.mainwindow = mainwindow = new UI.MainWindow(modules);
 					//mainwindow = new UI.MainWindow();
 
 					mainwindow.FormClosed += (_, _ea) => mainwindow = null;
 
 					try
 					{
-						if (storagemanager != null)
-							mainwindow.Hook(storagemanager);
+						if (modules.storagemanager != null)
+							mainwindow.Hook(modules.storagemanager);
 
-						if (processmanager != null)
-							mainwindow.Hook(processmanager);
+						if (modules.processmanager != null)
+							mainwindow.Hook(modules.processmanager);
 
-						if (audiomanager != null)
+						if (modules.audiomanager != null)
 						{
-							mainwindow.Hook(audiomanager);
-							if (micmonitor != null)
-								mainwindow.Hook(micmonitor);
+							mainwindow.Hook(modules.audiomanager);
+							if (modules.micmonitor != null)
+								mainwindow.Hook(modules.micmonitor);
 						}
 
-						if (netmonitor != null)
-							mainwindow.Hook(netmonitor);
+						if (modules.netmonitor != null)
+							mainwindow.Hook(modules.netmonitor);
 
-						if (activeappmonitor != null)
-							mainwindow.Hook(activeappmonitor);
+						if (modules.activeappmonitor != null)
+							mainwindow.Hook(modules.activeappmonitor);
 
-						if (powermanager != null)
-							mainwindow.Hook(powermanager);
+						if (modules.powermanager != null)
+							mainwindow.Hook(modules.powermanager);
 
-						if (cpumonitor != null)
-							mainwindow.Hook(cpumonitor);
+						if (modules.cpumonitor != null)
+							mainwindow.Hook(modules.cpumonitor);
 
-						if (hardware != null)
-							mainwindow.Hook(hardware);
+						if (modules.hardware != null)
+							mainwindow.Hook(modules.hardware);
 
-						if (healthmonitor != null)
-							mainwindow.Hook(healthmonitor);
+						if (modules.healthmonitor != null)
+							mainwindow.Hook(modules.healthmonitor);
 
-						trayaccess.Hook(mainwindow);
+						modules.trayaccess.Hook(mainwindow);
 
 						// .GotFocus and .LostFocus are apparently unreliable as per the API
 						mainwindow.Activated += (_, _ea) => OptimizeResponsiviness(true);
@@ -326,16 +328,20 @@ namespace Taskmaster
 
 		//readonly static System.Threading.ManualResetEvent UIWaiter = new System.Threading.ManualResetEvent(false); // for splash
 
+		internal static ModuleManager globalmodules;
+
 		// entry point to the application
 		[LoaderOptimization(LoaderOptimization.SingleDomain)] // lol, what's the point of this anyway?
 		[STAThread] // supposedly needed to avoid shit happening with the WinForms GUI and other GUI toolkits
 		static public int Main(string[] args)
 		{
-			AppDomain.CurrentDomain.ProcessExit += (_, _ea) => ExitCleanup();
+			var modules = globalmodules = new ModuleManager();
+
+			AppDomain.CurrentDomain.ProcessExit += (_, _ea) => ExitCleanup(modules);
 
 			try
 			{
-				using var singleton = Initialize(ref args);
+				using var singleton = Initialize(ref args, modules);
 
 				CheckNGEN();
 
@@ -363,7 +369,7 @@ namespace Taskmaster
 
 				Log.Information("Exiting...");
 
-				ExitCleanup();
+				ExitCleanup(modules);
 
 				PrintStats();
 
@@ -410,7 +416,7 @@ namespace Taskmaster
 				if (msg == UI.MessageBox.ResultType.OK)
 				{
 					Log.Information("<Init> User requested restart.");
-					Close();
+					Close(modules);
 					Application.Restart();
 				}
 
@@ -448,7 +454,7 @@ namespace Taskmaster
 			{
 				try
 				{
-					Close();
+					Close(modules);
 				}
 				catch (Exception ex)
 				{
@@ -474,7 +480,7 @@ namespace Taskmaster
 			Log.Information($"<Stat> Processes modified: {Statistics.TouchCount.ToString()}; Ignored for remodification: {Statistics.TouchIgnore.ToString()}");
 		}
 
-		public static void Refresh()
+		public static void Refresh(ModuleManager modules)
 		{
 			if (State != Runstate.Normal) return;
 
@@ -482,7 +488,7 @@ namespace Taskmaster
 			{
 				hiddenwindow?.InvokeAsync(new Action(async () =>
 				{
-					await trayaccess.EnsureVisible().ConfigureAwait(true);
+					await modules.trayaccess.EnsureVisible().ConfigureAwait(true);
 				}));
 				Config.Flush();
 			}
@@ -530,17 +536,17 @@ namespace Taskmaster
 
 				try
 				{
-					Close();
+					Close(globalmodules);
 				}
 				catch { }
 			}
 		}
 
-		static void Close()
+		static void Close(ModuleManager modules)
 		{
 			try
 			{
-				ExitCleanup();
+				ExitCleanup(modules);
 				Config.Dispose();
 				Log.CloseAndFlush();
 			}
