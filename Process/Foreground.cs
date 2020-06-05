@@ -51,6 +51,8 @@ namespace Taskmaster.Process
 
 		ModuleManager modules;
 
+		public ForegroundManager() => throw new InvalidOperationException(); // required by templates
+
 		/// <summary>Manager for foreground/active process specific events.</summary>
 		/// <exception cref="InitFailure">Event hook creation failed.</exception>
 		public ForegroundManager(ModuleManager modules)

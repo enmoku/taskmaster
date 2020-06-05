@@ -107,6 +107,8 @@ namespace Taskmaster
 
 		ModuleManager modules;
 
+		public HealthMonitor() => throw new InvalidOperationException(); // needed by templates
+
 		public HealthMonitor(ModuleManager modules)
 		{
 			this.modules = modules;
