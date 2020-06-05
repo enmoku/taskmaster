@@ -317,7 +317,7 @@ namespace Taskmaster.Process
 				case ForegroundMode.Standard:
 					foreach (var info in ActiveWait.Values)
 						if (info.PowerWait)
-							powermanager?.Release(info);
+							globalmodules.powermanager?.Release(info);
 					break;
 				case ForegroundMode.Full:
 					break;
@@ -1042,7 +1042,7 @@ namespace Taskmaster.Process
 			{
 				info.PowerWait = true;
 
-				bool rv = powermanager.Force(PowerPlan, info.Id);
+				bool rv = globalmodules.powermanager.Force(PowerPlan, info.Id);
 
 				WaitForExit(info);
 
@@ -1061,7 +1061,7 @@ namespace Taskmaster.Process
 
 		static void UndoPower(ProcessEx info)
 		{
-			if (info.PowerWait) powermanager?.Release(info);
+			if (info.PowerWait) globalmodules.powermanager?.Release(info);
 		}
 
 		static readonly string[] UnwantedPathBits = new string[] { "x64", "x86", "bin", "debug", "release", "win32", "win64", "common", "binaries" };
@@ -1180,7 +1180,7 @@ namespace Taskmaster.Process
 		}
 
 		[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
-		bool IsForeground(int pid) => Foreground == ForegroundMode.Ignore || (activeappmonitor?.ForegroundId.Equals(pid) ?? true);
+		bool IsForeground(int pid) => Foreground == ForegroundMode.Ignore || (globalmodules.activeappmonitor?.ForegroundId.Equals(pid) ?? true);
 
 		bool WaitForExit(ProcessEx info)
 		{

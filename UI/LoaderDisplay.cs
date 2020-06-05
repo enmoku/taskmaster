@@ -40,17 +40,19 @@ namespace Taskmaster.UI
 	public class LoaderDisplay : UniForm
 	{
 		readonly Process.Manager processmanager;
+		readonly Hardware.CPUMonitor cpumonitor;
 
 		readonly System.Diagnostics.Process Self = System.Diagnostics.Process.GetCurrentProcess();
 		readonly Process.CpuUsage SelfCPU;
 
 		readonly LoaderListPairSorter sorter;
 
-		public LoaderDisplay(Process.Manager manager)
+		public LoaderDisplay(ModuleManager modules)
 		{
 			Text = "System loaders – " + ProductName;
 
-			processmanager = manager;
+			cpumonitor = modules.cpumonitor;
+			processmanager = modules.processmanager;
 			processmanager.ScanEnd += ScanEndEventHandler;
 
 			SelfCPU = new Process.CpuUsage(Self);

@@ -37,7 +37,7 @@ namespace Taskmaster.UI.Config
 	{
 		readonly ToolTip tooltip;
 
-		internal ComponentConfigurationWindow(bool initial = false, bool center = false)
+		internal ComponentConfigurationWindow(ModuleManager modules, bool initial = false, bool center = false)
 			: base(centerOnScreen: initial || center)
 		{
 			// TODO: bool initial should be determined here programmatically instead of based on sender
@@ -61,7 +61,7 @@ namespace Taskmaster.UI.Config
 			int ScanFrequency = 180;
 			bool scan = true;
 
-			if (processmanager is null)
+			if (modules.processmanager is null)
 			{
 				using var corecfg = Config.Load(CoreConfigFilename);
 				var perfsec = corecfg.Config[Constants.Performance];
@@ -71,10 +71,10 @@ namespace Taskmaster.UI.Config
 			}
 			else
 			{
-				WMIPolling = processmanager.WMIPolling;
-				WMIPollDelay = processmanager.WMIPollDelay;
-				if (processmanager.ScanFrequency.HasValue)
-					ScanFrequency = Convert.ToInt32(processmanager.ScanFrequency.Value.TotalSeconds);
+				WMIPolling = modules.processmanager.WMIPolling;
+				WMIPollDelay = modules.processmanager.WMIPollDelay;
+				if (modules.processmanager.ScanFrequency.HasValue)
+					ScanFrequency = Convert.ToInt32(modules.processmanager.ScanFrequency.Value.TotalSeconds);
 				else
 					scan = false;
 			}
@@ -231,7 +231,7 @@ namespace Taskmaster.UI.Config
 			};
 
 			powbehaviour.Enabled = powmon.Checked;
-			switch (powermanager?.LaunchBehaviour ?? Power.PowerBehaviour.RuleBased)
+			switch (modules.powermanager?.LaunchBehaviour ?? Power.PowerBehaviour.RuleBased)
 			{
 				case Power.PowerBehaviour.Auto:
 					powbehaviour.SelectedIndex = 0;
@@ -428,11 +428,11 @@ namespace Taskmaster.UI.Config
 			Close();
 		}
 
-		public static void Reveal(bool centerOnScreen = false)
+		public static void Reveal(ModuleManager modules, bool centerOnScreen = false)
 		{
 			try
 			{
-				using var comps = new Config.ComponentConfigurationWindow(initial: false, center: centerOnScreen);
+				using var comps = new Config.ComponentConfigurationWindow(modules, initial: false, center: centerOnScreen);
 				comps.ShowDialog();
 				if (comps.DialogOK)
 				{

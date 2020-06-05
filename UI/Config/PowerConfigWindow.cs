@@ -59,12 +59,12 @@ namespace Taskmaster.UI.Config
 
 		readonly ToolTip tooltip;
 
-		public PowerConfigWindow(Power.Manager powerManager, bool center = false)
+		public PowerConfigWindow(ModuleManager modules, bool center = false)
 			: base(centerOnScreen: center)
 		{
 			SuspendLayout();
 
-			manager = powerManager;
+			manager = modules.powermanager;
 
 			Text = "Power Configuration";
 
@@ -224,7 +224,7 @@ namespace Taskmaster.UI.Config
 			layout.Controls.Add(new EmptySpace());
 
 			layout.Controls.Add(new Extensions.Label() { Text = "Sample frequency (sec)" });
-			layout.Controls.Add(new Extensions.Label() { Text = $"{Application.cpumonitor.SampleInterval.TotalSeconds:N1}" });
+			layout.Controls.Add(new Extensions.Label() { Text = $"{modules.cpumonitor.SampleInterval.TotalSeconds:N1}" });
 
 			layout.Controls.Add(new Extensions.Label() { Text = "Default mode" });
 			layout.Controls.Add(defaultmode);
@@ -512,11 +512,11 @@ namespace Taskmaster.UI.Config
 			loQueue.Value = Convert.ToDecimal(AutoAdjust.Queue.Low).Constrain(0, 100);
 		}
 
-		public static void Reveal(Power.Manager powerManager, bool centerOnScreen = false)
+		public static void Reveal(ModuleManager modules, bool centerOnScreen = false)
 		{
 			try
 			{
-				using var pcw = new PowerConfigWindow(powerManager, centerOnScreen);
+				using var pcw = new PowerConfigWindow(modules, centerOnScreen);
 				/* var res = */ pcw.ShowDialog();
 				if (pcw.DialogOK)
 				{

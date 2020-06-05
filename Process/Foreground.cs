@@ -49,10 +49,13 @@ namespace Taskmaster.Process
 	{
 		public event EventHandler<WindowChangedArgs>? ActiveChanged;
 
+		ModuleManager modules;
+
 		/// <summary>Manager for foreground/active process specific events.</summary>
 		/// <exception cref="InitFailure">Event hook creation failed.</exception>
-		public ForegroundManager()
+		public ForegroundManager(ModuleManager modules)
 		{
+			this.modules = modules;
 			ForegroundEventDelegate = new Taskmaster.NativeMethods.WinEventDelegate(WinEventProc);
 
 			// get current window, just in case it's something we're monitoring
@@ -323,13 +326,13 @@ namespace Taskmaster.Process
 						HangWarning = true;
 
 						// TODO: State how long to next actions.
-						trayaccess?.Tooltip(5000, name + " #" + lfgpid.ToString(), "Foreground HUNG!\nHung for " + hungTime.TotalSeconds.ToString("N1") + " seconds.", System.Windows.Forms.ToolTipIcon.Warning);
+						modules.trayaccess?.Tooltip(5000, name + " #" + lfgpid.ToString(), "Foreground HUNG!\nHung for " + hungTime.TotalSeconds.ToString("N1") + " seconds.", System.Windows.Forms.ToolTipIcon.Warning);
 
 						return;
 					}
 					else if (HangTick >= 10)
 					{
-						trayaccess.Tooltip(2000, name + " #" + lfgpid.ToString(), "Foreground not responding\nHung for " + hungTime.TotalSeconds.ToString("N1") + " seconds.", System.Windows.Forms.ToolTipIcon.Warning);
+						modules.trayaccess.Tooltip(2000, name + " #" + lfgpid.ToString(), "Foreground not responding\nHung for " + hungTime.TotalSeconds.ToString("N1") + " seconds.", System.Windows.Forms.ToolTipIcon.Warning);
 					}
 
 					sbs.Append(" hung!").Append(" – ");

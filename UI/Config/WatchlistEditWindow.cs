@@ -47,9 +47,13 @@ namespace Taskmaster.UI.Config
 		readonly ToolTip tooltip;
 		readonly Extensions.TableLayoutPanel layout;
 
+		readonly ModuleManager modules;
+
 		// Editingg
-		public WatchlistEditWindow(Process.Controller? prc = null)
+		public WatchlistEditWindow(ModuleManager modules, Process.Controller? prc = null)
 		{
+			this.modules = modules;
+
 			SuspendLayout();
 
 			DialogResult = DialogResult.Abort;
@@ -122,7 +126,7 @@ namespace Taskmaster.UI.Config
 			};
 			findexecbutton.Click += (_, _ea) =>
 			{
-				using var exselectdialog = new ProcessSelectDialog();
+				using var exselectdialog = new ProcessSelectDialog(modules.processmanager);
 				try
 				{
 					if (exselectdialog.ShowDialog(this) == DialogResult.OK)
@@ -655,7 +659,7 @@ namespace Taskmaster.UI.Config
 			declareParent = new CheckBox() { Checked = Controller.DeclareParent };
 			layout.Controls.Add(new Extensions.Label() { Text = "Log parent" });
 			layout.Controls.Add(declareParent);
-			if (processmanager.EnableParentFinding)
+			if (modules.processmanager.EnableParentFinding)
 				layout.Controls.Add(new EmptySpace());
 			else
 				layout.Controls.Add(new Extensions.Label() { Text = "Disabled" });
@@ -730,7 +734,7 @@ namespace Taskmaster.UI.Config
 
 			string newfriendlyname = friendlyName.Text.Trim();
 
-			if (processmanager.GetControllerByName(newfriendlyname, out var dprc) && dprc != Controller)
+			if (modules.processmanager.GetControllerByName(newfriendlyname, out var dprc) && dprc != Controller)
 			{
 				MessageBox.ShowModal("Configuration error", "Friendly Name conflict.", MessageBox.Buttons.OK, parent: this);
 				return;
@@ -1019,22 +1023,22 @@ namespace Taskmaster.UI.Config
 				.AppendLine(fnlen ? "OK" : "Fail");
 
 			var samesection = Controller.FriendlyName.Equals(friendlyName.Text);
-			if (!samesection && processmanager.GetControllerByName(friendlyName.Text, out _)) sbs.Append("Friendly name conflict!");
+			if (!samesection && modules.processmanager.GetControllerByName(friendlyName.Text, out _)) sbs.Append("Friendly name conflict!");
 
 			if (execName.Text.Length > 0)
 			{
 				sbs.Append(HumanReadable.System.Process.Executable).Append(": ").Append(exnam ? "OK" : "Fail").Append(" – Found: ").Append(exfound).AppendLine();
 				string lowname = System.IO.Path.GetFileNameWithoutExtension(execName.Text);
-				if (processmanager.ProtectedProcessName(lowname))
+				if (modules.processmanager.ProtectedProcessName(lowname))
 					sbs.AppendLine("Defined executable is in core protected executables list. Adjustment may be denied.");
 
-				if (processmanager.IgnoreProcessName(lowname))
+				if (modules.processmanager.IgnoreProcessName(lowname))
 					sbs.AppendLine("Defined executable is in core ignore list. All changes denied.");
 			}
 			if (pathName.Text.Length > 0)
 			{
 				sbs.Append("Path: ").Append(path ? "OK" : "Fail").Append(" - Found: ").AppendLine(pfound);
-				if (processmanager.IgnoreSystem32Path && pathName.Text.StartsWith(Environment.GetFolderPath(Environment.SpecialFolder.System), StringComparison.InvariantCultureIgnoreCase))
+				if (modules.processmanager.IgnoreSystem32Path && pathName.Text.StartsWith(Environment.GetFolderPath(Environment.SpecialFolder.System), StringComparison.InvariantCultureIgnoreCase))
 					sbs.AppendLine("Path points to System32 even though core config denies it.");
 			}
 

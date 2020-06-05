@@ -43,8 +43,12 @@ namespace Taskmaster.UI
 
 		List<ProcessEx> InfoList = new List<ProcessEx>();
 
-		public ProcessSelectDialog(string message = "", string title = "")
+		readonly Process.Manager processmanager;
+
+		public ProcessSelectDialog(Process.Manager processmanager, string message = "", string title = "")
 		{
+			this.processmanager = processmanager;
+
 			SuspendLayout();
 
 			WindowState = FormWindowState.Normal;

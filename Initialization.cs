@@ -193,7 +193,7 @@ namespace Taskmaster
 
 			//PreallocLastLog();
 
-			InitialConfiguration();
+			InitialConfiguration(modules);
 
 			LoadCoreConfig(out var transientsettings);
 
@@ -219,14 +219,14 @@ namespace Taskmaster
 			return singleton;
 		}
 
-		static void InitialConfiguration()
+		static void InitialConfiguration(ModuleManager modules)
 		{
 			// INITIAL CONFIGURATIONN
 			using var tcfg = Config.Load(CoreConfigFilename);
 			var sec = tcfg.Config.Get(Constants.Core)?.Get(Constants.Version)?.String ?? null;
 			if (sec?.Equals(ConfigVersion, StringComparison.InvariantCulture) ?? false) return;
 
-			using var initialconfig = new UI.Config.ComponentConfigurationWindow(initial:true);
+			using var initialconfig = new UI.Config.ComponentConfigurationWindow(modules, initial:true);
 			initialconfig.ShowDialog();
 			if (!initialconfig.DialogOK)
 				throw new InitFailure("Component configuration cancelled", voluntary:true);
@@ -566,11 +566,11 @@ namespace Taskmaster
 			// Parallel loading, cuts down startup time some. C# ensures parallelism is not enforced.
 			// This is really bad if something fails
 
-			static T Initialize<T>() where T : IComponent, new()
+			static T Initialize<T>(Func<T> action) where T : IComponent, new()
 			{
 				try
 				{
-					var t = new T();
+					var t = action();
 					RegisterForExit(t);
 					return t;
 				}
@@ -589,49 +589,49 @@ namespace Taskmaster
 
 			Task
 				tPowMan = (PowerManagerEnabled ? Task.Run(() => {
-						modules.powermanager = Initialize<Power.Manager>();
 						modules.powermanager.OnDisposed += (_, _ea) => modules.powermanager = null;
+						modules.powermanager = Initialize(() => new Power.Manager());
 						LoadEvent?.Invoke(null, new LoadEventArgs("Power manager processed.", LoadEventType.SubLoaded));
 					}) : Task.CompletedTask),
 				tCpuMon = (PowerManagerEnabled ? Task.Run(() => {
-						modules.cpumonitor = Initialize<Hardware.CPUMonitor>();
 						modules.cpumonitor.OnDisposed += (_, _ea) => modules.cpumonitor = null;
+						modules.cpumonitor = Initialize(() => new Hardware.CPUMonitor());
 						LoadEvent?.Invoke(null, new LoadEventArgs("CPU monitor processed.", LoadEventType.SubLoaded));
 					}, cts.Token) : Task.CompletedTask),
 				tProcMon = (ProcessMonitorEnabled ? Task.Run(() => {
-						modules.processmanager = Initialize<Process.Manager>();
 						modules.processmanager.OnDisposed += (_, _ea) => modules.processmanager = null;
+						modules.processmanager = Initialize(() => new Process.Manager());
 						LoadEvent?.Invoke(null, new LoadEventArgs("Process manager processed.", LoadEventType.SubLoaded));
 					}, cts.Token) : Task.CompletedTask),
 				tFgMon = (ActiveAppMonitorEnabled ? Task.Run(() => {
-						modules.activeappmonitor = Initialize<Process.ForegroundManager>();
 						modules.activeappmonitor.OnDisposed += (_, _ea) => modules.activeappmonitor = null;
+						modules.activeappmonitor = Initialize(() => new Process.ForegroundManager(modules));
 						LoadEvent?.Invoke(null, new LoadEventArgs("Foreground manager processed.", LoadEventType.SubLoaded));
 					}, cts.Token) : Task.CompletedTask),
 				tNetMon = (NetworkMonitorEnabled ? Task.Run(() => {
-						modules.netmonitor = Initialize<Network.Manager>();
 						modules.netmonitor.OnDisposed += (_, _ea) => modules.netmonitor = null;
+						modules.netmonitor = Initialize(() => new Network.Manager());
 						LoadEvent?.Invoke(null, new LoadEventArgs("Network monitor processed.", LoadEventType.SubLoaded));
 					}, cts.Token) : Task.CompletedTask),
 				tStorMon = (StorageMonitorEnabled ? Task.Run(() => {
-						modules.storagemanager = Initialize<StorageManager>();
 						modules.storagemanager.OnDisposed += (_, _ea) => modules.storagemanager = null;
+						modules.storagemanager = Initialize(() => new StorageManager());
 						LoadEvent?.Invoke(null, new LoadEventArgs("Storage monitor processed.", LoadEventType.SubLoaded));
 					}, cts.Token) : Task.CompletedTask),
 				tHpMon = (HealthMonitorEnabled ? Task.Run(() => {
-						modules.healthmonitor = Initialize<HealthMonitor>();
 						modules.healthmonitor.OnDisposed += (_, _ea) => modules.healthmonitor = null;
+						modules.healthmonitor = Initialize(() => new HealthMonitor(modules));
 						LoadEvent?.Invoke(null, new LoadEventArgs("Health monitor processed.", LoadEventType.SubLoaded));
 					}, cts.Token) : Task.CompletedTask),
 				tHwMon = (HardwareMonitorEnabled ? Task.Run(() => {
-						modules.hardware = Initialize<Hardware.Monitor>();
 						modules.hardware.OnDisposed += (_, _ea) => modules.hardware = null;
+						modules.hardware = Initialize(() => new Hardware.Monitor());
 						LoadEvent?.Invoke(null, new LoadEventArgs("Hardware monitor processed.", LoadEventType.SubLoaded));
 					}, cts.Token) : Task.CompletedTask),
 				//AlMan = (AlertManagerEnabled ? Task.Run(() => LogInit(() => alerts = new AlertManager()), cts.Token) : Task.CompletedTask)
 				//	.ContinueWith(_ => LoadEvent?.Invoke(null, new LoadEventArgs("Alert manager processed.", LoadEventType.SubLoaded)), TaskContinuationOptions.OnlyOnRanToCompletion),
 				tSelfMaint = (Task.Run(() => {
-						modules.selfmaintenance = Initialize<SelfMaintenance>();
+						modules.selfmaintenance = Initialize(() => new SelfMaintenance());
 						modules.selfmaintenance.OnDisposed += (_, ea) => modules.selfmaintenance = null;
 						LoadEvent?.Invoke(null, new LoadEventArgs("Self-maintenance manager processed.", LoadEventType.SubLoaded));
 					}, cts.Token));
@@ -649,7 +649,7 @@ namespace Taskmaster
 
 			// WinForms makes the following components not load nicely if not done here (main thread).
 			//hiddenwindow.BeginInvoke(new Action(() => { trayaccess = new UI.TrayAccess(); })); // is there a point to this?
-			modules.trayaccess = new UI.TrayAccess
+			modules.trayaccess = new UI.TrayAccess(modules)
 			{
 				TrayMenuShown = visible => OptimizeResponsiviness(visible)
 			};

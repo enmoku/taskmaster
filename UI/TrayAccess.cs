@@ -62,9 +62,13 @@ namespace Taskmaster.UI
 
 		readonly ToolStripMenuItem power_auto, power_highperf, power_balanced, power_saving, power_manual;
 
+		ModuleManager modules;
+
 		// TODO: Remove phantom icons from previous crashed instances?
-		public TrayAccess()
+		public TrayAccess(ModuleManager modules)
 		{
+			this.modules = modules;
+
 			#region Build UI
 			var IconCache = System.Drawing.Icon.ExtractAssociatedIcon(System.Reflection.Assembly.GetExecutingAssembly().Location);
 
@@ -83,8 +87,8 @@ namespace Taskmaster.UI
 
 			_ = ms.Handle;
 
-			var menu_windowopen = new ToolStripMenuItem("Open main window", null, (_, _ea) => BuildMainWindow(reveal: true, top: true));
-			var menu_volumeopen = new ToolStripMenuItem("Open volume meter", null, (_, _ea) => BuildVolumeMeter())
+			var menu_windowopen = new ToolStripMenuItem("Open main window", null, (_, _2) => BuildMainWindow(globalmodules, reveal: true, top: true));
+			var menu_volumeopen = new ToolStripMenuItem("Open volume meter", null, (_, _2) => BuildVolumeMeter(globalmodules))
 			{
 				Enabled = AudioManagerEnabled,
 			};
@@ -98,11 +102,11 @@ namespace Taskmaster.UI
 
 			Log.Information("<Core> Run-at-start scheduler: " + (runatstartsch ? "Found" : "Missing"));
 
-			var powercfg = new ToolStripMenuItem(HumanReadable.Hardware.Power.Section, null, (_, _ea) => Config.PowerConfigWindow.Reveal(powermanager, centerOnScreen: true));
+			var powercfg = new ToolStripMenuItem(HumanReadable.Hardware.Power.Section, null, (_, _2) => Config.PowerConfigWindow.Reveal(modules, centerOnScreen: true));
 			powercfg.Enabled = Application.PowerManagerEnabled;
 			menu_configuration.DropDownItems.Add(powercfg);
 			menu_configuration.DropDownItems.Add(new ToolStripMenuItem("Advanced", null, (_, _ea) => Config.AdvancedConfig.Reveal(centerOnScreen: true)));
-			menu_configuration.DropDownItems.Add(new ToolStripMenuItem("Components", null, (_, _ea) => Config.ComponentConfigurationWindow.Reveal(centerOnScreen: true))); // FIXME: MODAL
+			menu_configuration.DropDownItems.Add(new ToolStripMenuItem("Components", null, (_, _2) => Config.ComponentConfigurationWindow.Reveal(modules, centerOnScreen: true))); // FIXME: MODAL
 			menu_configuration.DropDownItems.Add(new ToolStripSeparator());
 			menu_configuration.DropDownItems.Add(new ToolStripMenuItem("Experiments", null, (_, _ea) => Config.ExperimentConfig.Reveal(centerOnScreen: true)));
 			menu_configuration.DropDownItems.Add(new ToolStripSeparator());
@@ -172,7 +176,7 @@ namespace Taskmaster.UI
 
 			if (Trace) Log.Verbose("<Tray> Initialized");
 
-			WndProcEventProxy = new TrayWndProcProxy();
+			WndProcEventProxy = new TrayWndProcProxy(modules);
 
 			DisposalChute.Push(this); // nothing else seems to work for removing the tray icon
 		}
@@ -229,7 +233,7 @@ namespace Taskmaster.UI
 			ea.Cancel = true;
 			// is this safe?
 			Log.Information("<OS> Session end signal received; Reason: " + ea.Reason.ToString());
-			ExitCleanup();
+			ExitCleanup(globalmodules);
 			UnifiedExit();
 			ea.Cancel = false;
 		}
@@ -366,7 +370,7 @@ namespace Taskmaster.UI
 			if (Trace) Log.Verbose("Tray Click");
 
 			if (e.Button == MouseButtons.Left)
-				BuildMainWindow(reveal: true, top: true);
+				BuildMainWindow(globalmodules, reveal: true, top: true);
 		}
 
 		MainWindow? mainwindow { get; set; } = null;
@@ -375,7 +379,7 @@ namespace Taskmaster.UI
 		{
 			if (e.Button == MouseButtons.Left)
 			{
-				BuildMainWindow(reveal: true, top: true);
+				BuildMainWindow(globalmodules, reveal: true, top: true);
 
 				try
 				{

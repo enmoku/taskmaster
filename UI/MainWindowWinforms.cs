@@ -578,7 +578,7 @@ namespace Taskmaster.UI
 
 			var menu_config_advanced = new ToolStripMenuItem("Advanced", null, (_, _2) => Config.AdvancedConfig.Reveal());
 
-			var menu_config_powermanagement = new ToolStripMenuItem("Power management", null, (_, _2) => Config.PowerConfigWindow.Reveal(powermanager))
+			var menu_config_powermanagement = new ToolStripMenuItem("Power management", null, (_, _2) => Config.PowerConfigWindow.Reveal(modules))
 			{
 				Enabled = PowerManagerEnabled
 			};
@@ -590,7 +590,7 @@ namespace Taskmaster.UI
 			var menu_config_log_power = new ToolStripMenuItem("Power mode changes", null, (_, _2) => { });
 			menu_config_log.DropDownItems.Add(menu_config_log_power);
 
-			var menu_config_components = new ToolStripMenuItem("Components", null, (_, _2) => Config.ComponentConfigurationWindow.Reveal()); // MODAL
+			var menu_config_components = new ToolStripMenuItem("Components", null, (_, _2) => Config.ComponentConfigurationWindow.Reveal(modules)); // MODAL
 			var menu_config_experiments = new ToolStripMenuItem("Experiments", null, (_, _2) => Config.ExperimentConfig.Reveal()); // MODAL
 
 			var menu_config_folder = new ToolStripMenuItem("Open in file manager", null, (_, _2) => System.Diagnostics.Process.Start(DataPath));
@@ -2394,7 +2394,7 @@ namespace Taskmaster.UI
 		{
 			if (modules.loaderdisplay is null)
 			{
-				modules.loaderdisplay = new UI.LoaderDisplay(modules.processmanager);
+				modules.loaderdisplay = new UI.LoaderDisplay(modules);
 				modules.loaderdisplay.OnDisposed += (_, _2) => modules.loaderdisplay = null;
 
 				modules.processmanager?.GenerateLoadTrackers();
@@ -3255,6 +3255,7 @@ namespace Taskmaster.UI
 			try
 			{
 				using var exsel = new ProcessSelectDialog(
+					modules.processmanager,
 					"WARNING: This Can be a Bad idea." +
 					"\nAll application memory is pushed to page file. This will temporarily increase available RAM," +
 					"\nbut increases NVM usage significantly until apps have paged back the memory they actively need." +
@@ -3488,7 +3489,7 @@ namespace Taskmaster.UI
 				{
 					processmanager.GetControllerByName(WatchlistRules.SelectedItems[0].SubItems[NameColumn].Text, out var prc);
 
-					using var editdialog = new Config.WatchlistEditWindow(prc); // 1 = executable
+					using var editdialog = new Config.WatchlistEditWindow(modules, prc); // 1 = executable
 					if (editdialog.ShowDialog() == DialogResult.OK)
 					{
 						UpdateWatchlistRule(prc);
@@ -3503,7 +3504,7 @@ namespace Taskmaster.UI
 		{
 			try
 			{
-				using var ew = new Config.WatchlistEditWindow();
+				using var ew = new Config.WatchlistEditWindow(modules);
 				var rv = ew.ShowDialog();
 				if (rv == DialogResult.OK)
 				{

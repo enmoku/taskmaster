@@ -38,7 +38,7 @@ namespace Taskmaster.UI.Config
 		readonly Extensions.TableLayoutPanel layout;
 		readonly ToolTip tooltip;
 
-		AdvancedConfig(bool center = false)
+		AdvancedConfig(ModuleManager modules, bool center = false)
 			: base(centerOnScreen: center)
 		{
 			SuspendLayout();
@@ -80,7 +80,7 @@ namespace Taskmaster.UI.Config
 			layout.Controls.Add(new EmptySpace());
 
 			var ignoreList = new Extensions.TextBox() { ReadOnly = true, Multiline = true, Dock = DockStyle.Top, Padding = LeftSubPadding, Anchor = AnchorStyles.Top | AnchorStyles.Left, ScrollBars = ScrollBars.Vertical, Height = Font.Height * 4 };
-			ignoreList.Text = string.Join(", ", processmanager.IgnoreList);
+			ignoreList.Text = string.Join(", ", modules.processmanager.IgnoreList);
 			tooltip.SetToolTip(ignoreList, "These process names are flat out ignored if encoutnered to protect the system.");
 			layout.Controls.Add(ignoreList);
 			layout.SetColumnSpan(ignoreList, 2);
@@ -91,7 +91,7 @@ namespace Taskmaster.UI.Config
 			layout.Controls.Add(new EmptySpace());
 
 			var protectList = new Extensions.TextBox() { ReadOnly = true, Multiline = true, Dock = DockStyle.Top, Padding = LeftSubPadding, Anchor = AnchorStyles.Top | AnchorStyles.Left, ScrollBars = ScrollBars.Vertical, Height = Font.Height * 4 };
-			protectList.Text = string.Join(", ", processmanager.ProtectList);
+			protectList.Text = string.Join(", ", modules.processmanager.ProtectList);
 			tooltip.SetToolTip(protectList, "These process names are denied full control over to protect the system.");
 			layout.Controls.Add(protectList);
 			layout.SetColumnSpan(protectList, 2);
@@ -112,10 +112,10 @@ namespace Taskmaster.UI.Config
 			tooltip.SetToolTip(UIUpdateFrequency, "How frequently main UI update happens\nLower values increase CPU usage while UI is visible.");
 
 			int uiupdatems;
-			if (mainwindow is null)
+			if (modules.mainwindow is null)
 				uiupdatems = corecfg.Config["User Interface"].Get(Constants.UpdateFrequency)?.Int.Constrain(100, 5000) ?? 2000;
 			else
-				uiupdatems = mainwindow?.UIUpdateFrequency ?? 2000;
+				uiupdatems = modules.mainwindow?.UIUpdateFrequency ?? 2000;
 			UIUpdateFrequency.Value = uiupdatems;
 
 			layout.Controls.Add(new Extensions.Label { Text = "Refresh frequency", Padding = LeftSubPadding });
@@ -142,7 +142,7 @@ namespace Taskmaster.UI.Config
 			tooltip.SetToolTip(fgHysterisis, "Delay for foreground swapping to take effect.\nLower values make swaps more responsive.\nHigher values make it react less to rapid app swapping.");
 
 			if (ActiveAppMonitorEnabled)
-				fgHysterisis.Value = Convert.ToDecimal(activeappmonitor.Hysterisis.TotalMilliseconds);
+				fgHysterisis.Value = Convert.ToDecimal(modules.activeappmonitor.Hysterisis.TotalMilliseconds);
 			else
 			{
 				using var cfg = Config.Load(CoreConfigFilename);
@@ -182,7 +182,7 @@ namespace Taskmaster.UI.Config
 			tooltip.SetToolTip(watchlistPowerdown, "Delay before rule-based power is returned to normal.\nMostly useful if you frequently close and launch apps with power mode set so there's no powerdown in-between.");
 
 			if (PowerManagerEnabled)
-				watchlistPowerdown.Value = Convert.ToDecimal(powermanager.PowerdownDelay.HasValue ? powermanager.PowerdownDelay.Value.TotalSeconds : 0);
+				watchlistPowerdown.Value = Convert.ToDecimal(modules.powermanager.PowerdownDelay.HasValue ? modules.powermanager.PowerdownDelay.Value.TotalSeconds : 0);
 
 			layout.Controls.Add(new Extensions.Label { Text = "Powerdown delay", Padding = LeftSubPadding });
 			layout.Controls.Add(watchlistPowerdown);
@@ -318,7 +318,7 @@ namespace Taskmaster.UI.Config
 			layout.Controls.Add(extrafeatures);
 			layout.SetColumnSpan(extrafeatures, 2);
 
-			var parentoption = new CheckBox() { Checked = processmanager.EnableParentFinding, };
+			var parentoption = new CheckBox() { Checked = modules.processmanager.EnableParentFinding, };
 
 			layout.Controls.Add(new Extensions.Label { Text = "Enable parent declaration", Padding = LeftSubPadding });
 			layout.Controls.Add(parentoption);
@@ -335,20 +335,20 @@ namespace Taskmaster.UI.Config
 				var uisec = cfg["User Interface"];
 				int uiupdatems = Convert.ToInt32(UIUpdateFrequency.Value).Constrain(100, 5000);
 				uisec["Update frequency"].Int = uiupdatems;
-				mainwindow?.SetUIUpdateFrequency(uiupdatems);
+				modules.mainwindow?.SetUIUpdateFrequency(uiupdatems);
 
 				var powsec = cfg[HumanReadable.Hardware.Power.Section];
 
 				if (watchlistPowerdown.Value > 0m)
 				{
 					int powdelay = Convert.ToInt32(watchlistPowerdown.Value);
-					powermanager?.SetPowerdownDelay(TimeSpan.FromSeconds(powdelay));
+					modules.powermanager?.SetPowerdownDelay(TimeSpan.FromSeconds(powdelay));
 					powsec["Watchlist powerdown delay"].Int = powdelay;
 				}
 				else
 				{
 					powsec.TryRemove("Watchlist powerdown delay");
-					powermanager?.SetPowerdownDelay(null);
+					modules.powermanager?.SetPowerdownDelay(null);
 				}
 
 				var perfsec = cfg["Performance"];
@@ -366,7 +366,7 @@ namespace Taskmaster.UI.Config
 
 				int fghys = Convert.ToInt32(fgHysterisis.Value);
 				perfsec["Foreground hysterisis"].Int = fghys;
-				activeappmonitor?.SetHysterisis(TimeSpan.FromMilliseconds(fghys));
+				modules.activeappmonitor?.SetHysterisis(TimeSpan.FromMilliseconds(fghys));
 
 				// Volume Meter
 				volsec["Topmost"].Bool = volmeter_topmost.Checked;
@@ -385,12 +385,12 @@ namespace Taskmaster.UI.Config
 
 				var volfreq_t = Convert.ToInt32(volmeter_frequency.Value);
 				volsec["Refresh"].Int = volfreq_t;
-				if (volumemeter != null)
+				if (modules.volumemeter != null)
 				{
-					volumemeter.Frequency = volfreq_t;
-					volumemeter.TopMost = volmeter_topmost.Checked;
-					volumemeter.VolumeOutputCap = voloutcap_t;
-					volumemeter.VolumeInputCap = volincap_t;
+					modules.volumemeter.Frequency = volfreq_t;
+					modules.volumemeter.TopMost = volmeter_topmost.Checked;
+					modules.volumemeter.VolumeOutputCap = voloutcap_t;
+					modules.volumemeter.VolumeInputCap = volincap_t;
 				}
 
 				volsec[Constants.ShowOnStart].Bool = volmeter_show.Checked;
@@ -398,7 +398,7 @@ namespace Taskmaster.UI.Config
 				// Extra features
 				var logsec = corecfg.Config[HumanReadable.Generic.Logging];
 				logsec["Enable parent finding"].Bool = parentoption.Checked;
-				processmanager.EnableParentFinding = parentoption.Checked;
+				modules.processmanager.EnableParentFinding = parentoption.Checked;
 
 				// Health Monitor
 				using var hmcfg = Application.Config.Load(HealthMonitor.HealthConfigFilename);
@@ -407,8 +407,8 @@ namespace Taskmaster.UI.Config
 				var freememsec = hmcfg.Config["Free Memory"];
 				freememsec["Threshold"].Int = Convert.ToInt32(memoryautopage.Value);
 
-				Application.healthmonitor?.SetCheckInterval(Convert.ToInt32(healthmonfrequency.Value));
-				Application.healthmonitor?.SetMemFreeThreshold(Convert.ToInt32(memoryautopage.Value));
+				modules.healthmonitor?.SetCheckInterval(Convert.ToInt32(healthmonfrequency.Value));
+				modules.healthmonitor?.SetMemFreeThreshold(Convert.ToInt32(memoryautopage.Value));
 
 				DialogResult = DialogResult.OK;
 				Close();
@@ -434,7 +434,7 @@ namespace Taskmaster.UI.Config
 				//await Task.Delay(0);
 				// this is really horrifying mess
 				//var power = Taskmaster.powermanager;
-				using var acw = new AdvancedConfig(centerOnScreen);
+				using var acw = new AdvancedConfig(globalmodules, centerOnScreen);
 				acw.ShowDialog();
 				if (!acw.DialogOK && Trace) Log.Verbose("<<UI>> Advanced config cancelled.");
 			}

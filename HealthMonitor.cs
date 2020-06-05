@@ -34,6 +34,7 @@ using Windows = MKAh.Wrapper.Windows;
 
 namespace Taskmaster
 {
+	using System.Net.Configuration;
 	using System.Text;
 	using static Application;
 
@@ -104,8 +105,12 @@ namespace Taskmaster
 			};
 		}
 
-		public HealthMonitor()
+		ModuleManager modules;
+
+		public HealthMonitor(ModuleManager modules)
 		{
+			this.modules = modules;
+
 			// TODO: Add different problems to monitor for
 
 			// --------------------------------------------------------------------------------------------------------
@@ -512,9 +517,9 @@ namespace Taskmaster
 							// The following should just call something in ProcessManager
 							int fgPid = -1;
 
-							if (Settings.MemIgnoreFocus && activeappmonitor != null && User.IdleTime().TotalMinutes <= 3d)
+							if (Settings.MemIgnoreFocus && modules.activeappmonitor != null && User.IdleTime().TotalMinutes <= 3d)
 							{
-								fgPid = activeappmonitor.ForegroundId;
+								fgPid = modules.activeappmonitor.ForegroundId;
 								Log.Verbose("<Auto-Doc> Protecting foreground app #" + fgPid.ToString());
 							}
 
@@ -527,7 +532,7 @@ namespace Taskmaster
 							{
 								sbs.Append(" Ignoring foreground process ");
 								Process.ProcessEx? info = null;
-								if (processmanager.GetCachedProcess(fgPid, out info) || Process.Utility.Construct(fgPid, out info))
+								if (modules.processmanager.GetCachedProcess(fgPid, out info) || Process.Utility.Construct(fgPid, out info))
 									sbs.Append(info);
 								else
 									sbs.Append('#').Append(fgPid).Append('.');
@@ -535,7 +540,7 @@ namespace Taskmaster
 
 							Log.Warning(sbs.ToString());
 
-							await (processmanager?.FreeMemoryAsync(ignorePid: fgPid) ?? Task.CompletedTask).ConfigureAwait(false);
+							await (modules.processmanager?.FreeMemoryAsync(ignorePid: fgPid) ?? Task.CompletedTask).ConfigureAwait(false);
 						}
 
 						if (Memory.Pressure > 1.05d) // 105%

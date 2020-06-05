@@ -36,6 +36,13 @@ namespace Taskmaster.UI
 
 	public class TrayWndProcProxy : Form
 	{
+		readonly ModuleManager modules;
+
+		public TrayWndProcProxy(ModuleManager modules)
+		{
+			this.modules = modules;
+		}
+
 		const int WM_QUERYENDSESSION = 0x0011;
 		const int WM_ENDSESSION = 0x0016;
 
@@ -93,7 +100,7 @@ namespace Taskmaster.UI
 		{
 			Log.Information("<Global> Hotkey detected; Freeing memory while ignoring foreground" +
 				(ignorePid > 4 ? $" #{ignorePid}" : string.Empty) + " if possible.");
-			await processmanager.FreeMemoryAsync(ignorePid).ConfigureAwait(false);
+			await globalmodules.processmanager.FreeMemoryAsync(ignorePid).ConfigureAwait(false);
 		}
 
 		protected override void WndProc(ref Message m)
@@ -116,7 +123,7 @@ namespace Taskmaster.UI
 						case 0:
 							if (Trace) Log.Verbose("<Global> Hotkey ctrl-alt-shift-m detected!!!");
 
-							int ignorepid = activeappmonitor?.ForegroundId ?? -1;
+							int ignorepid = modules.activeappmonitor?.ForegroundId ?? -1;
 							FreeMemory(ignorepid).ConfigureAwait(false);
 
 							m.Result = IntPtr.Zero;
@@ -124,7 +131,7 @@ namespace Taskmaster.UI
 						case 1:
 							if (Trace) Log.Verbose("<Global> Hotkey ctrl-alt-shift-r detected!!!");
 							Log.Information("<Global> Hotkey detected; Hastening next scan.");
-							processmanager?.HastenScan(TimeSpan.FromSeconds(5)).ConfigureAwait(false);
+							modules.processmanager?.HastenScan(TimeSpan.FromSeconds(5)).ConfigureAwait(false);
 							m.Result = IntPtr.Zero;
 							break;
 						default:

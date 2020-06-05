@@ -213,7 +213,7 @@ namespace Taskmaster.Audio
 					Added?.Invoke(this, new DeviceEventArgs(deviceId, adev.GUID, adev));
 				}
 			}
-			catch (COMException ex)
+			catch (System.Runtime.InteropServices.COMException ex)
 			{
 				Log.Error("<Audio> COM exception (0x" + ex.HResult.ToString("X") + ") handling new device: " + deviceId);
 				// This should probably just be ignored. It happens when a device doesn't have a name and those are probably always things that do nothing for us.
