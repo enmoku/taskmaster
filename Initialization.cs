@@ -864,10 +864,10 @@ namespace Taskmaster
 					using var proc = MKAh.Program.NativeImage.InstallOrUpdateCurrent();
 					proc?.WaitForExit(15_000);
 					if (proc?.ExitCode == 0)
-						Log.Warning("<NGen> Native Image re-generated; please restart.");
+						Log.Information("<NGen> Native Image re-generated, restart required to take effect.");
 				}
 				else
-					Log.Warning("<NGen> Native Image regeneration needed, unable to proceed without admin rights.");
+					Log.Warning("<NGen> Native Image out-of-date, regeneration requires admin rights.");
 			}
 		}
 
