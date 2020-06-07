@@ -664,6 +664,9 @@ namespace Taskmaster.UI
 
 			UpdateLogLevelSelection();
 
+			menu_debug_keepsettings = new ToolStripMenuItem("Save debug settings") { Checked = SaveDebugSettings, CheckOnClick = true };
+			menu_debug_keepsettings.Click += (_, _2) => SaveDebugSettings = menu_debug_keepsettings.Checked;
+
 			menu_debug_inaction = new ToolStripMenuItem("Show inaction") { Checked = ShowInaction, CheckOnClick = true };
 			menu_debug_inaction.Click += (_, _2) => ShowInaction = menu_debug_inaction.Checked;
 			menu_debug_agency = new ToolStripMenuItem("Show agency") { Checked = ShowAgency, CheckOnClick = true };
@@ -1291,6 +1294,44 @@ namespace Taskmaster.UI
 		{
 			try
 			{
+				if (SaveDebugSettings)
+				{
+					using var dbgcfg = Application.Config.Load(CoreConfigFilename);
+					var dbgsec = dbgcfg.Config[HumanReadable.Generic.Debug];
+					var logsec = dbgcfg.Config[HumanReadable.Generic.Logging];
+
+					if (ShowInaction) logsec["Show inaction"].Bool = true;
+					else logsec.TryRemove("Show inaction");
+					if (ShowAgency) logsec["Show agency"].Bool = true;
+					else logsec.TryRemove("Show agency");
+					if (Process.Manager.DebugProcesses) dbgsec["Procsses"].Bool = true;
+					else dbgsec.TryRemove("Processes");
+					if (Process.Manager.DebugAdjustDelay) dbgsec["Adjust delay"].Bool = true;
+					else dbgsec.TryRemove("Adjust delay");
+					if (DebugForeground) dbgsec[HumanReadable.System.Process.Foreground].Bool = true;
+					else dbgsec.TryRemove(HumanReadable.System.Process.Foreground);
+					if (DebugPower) dbgsec[HumanReadable.Hardware.Power.Section].Bool = true;
+					else dbgsec.TryRemove(HumanReadable.Hardware.Power.Section);
+					if (globalmodules.netmonitor?.DebugNet ?? false) dbgsec[Network.Constants.Network].Bool = true;
+					else dbgsec.TryRemove(Network.Constants.Network);
+					if (DebugSession) dbgsec[Constants.Session].Bool = true;
+					else dbgsec.TryRemove(Constants.Session);
+					if (DebugMonitor) dbgsec[HumanReadable.Hardware.Monitor.Section].Bool = true;
+					else dbgsec.TryRemove(HumanReadable.Hardware.Monitor.Section);
+					if (DebugAudio) dbgsec[HumanReadable.Hardware.Audio.Section].Bool = true;
+					else dbgsec.TryRemove(HumanReadable.Hardware.Audio.Section);
+					//if (DebugMemory) dbgsec[HumanReadable.Hardware.Memory].Bool = true;
+					//if (DebugCache) dbgsec[Constants.Cache].Bool = true;
+
+					int loglevel = loglevelswitch.MinimumLevel switch
+					{
+						Serilog.Events.LogEventLevel.Verbose => 2,
+						Serilog.Events.LogEventLevel.Debug => 1,
+						_ => 0,
+					};
+					logsec[Constants.Verbosity].Int = loglevel;
+				}
+
 				SaveUIState();
 
 				if (!Trace) return;
@@ -2121,7 +2162,8 @@ namespace Taskmaster.UI
 			menu_debug_loglevel_trace,
 #endif
 			menu_debug_loglevel_info,
-			menu_debug_loglevel_debug;
+			menu_debug_loglevel_debug,
+			menu_debug_keepsettings;
 
 		void EnsureVerbosityLevel()
 		{
@@ -2139,6 +2181,8 @@ namespace Taskmaster.UI
 			menu_debug_loglevel_debug.Checked = (level == Serilog.Events.LogEventLevel.Debug);
 #if DEBUG
 			menu_debug_loglevel_trace.Checked = (level == Serilog.Events.LogEventLevel.Verbose);
+#else
+			menu_debug_loglevel_trace.Checked = false;
 #endif
 		}
 

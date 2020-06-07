@@ -54,7 +54,7 @@ namespace Taskmaster
 		public static bool DebugMonitor { get; set; } = false;
 
 		public static bool DebugSession { get; set; } = false;
-		public static bool DebugResize { get; set; } = false;
+		public static bool SaveDebugSettings { get; set; } = false;
 
 		public static bool DebugMemory { get; set; } = false;
 
