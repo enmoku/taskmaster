@@ -819,6 +819,8 @@ namespace Taskmaster.UI
 			// TODO: This menu needs to be clearer
 			menu_debug.DropDownItems.Add(menu_debug_loglevel);
 			menu_debug.DropDownItems.Add(new ToolStripSeparator());
+			menu_debug.DropDownItems.Add(menu_debug_keepsettings);
+			menu_debug.DropDownItems.Add(new ToolStripSeparator());
 			menu_debug.DropDownItems.Add(menu_debug_inaction);
 			menu_debug.DropDownItems.Add(menu_debug_agency);
 			menu_debug.DropDownItems.Add(new ToolStripSeparator());
