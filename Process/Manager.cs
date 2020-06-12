@@ -337,6 +337,8 @@ namespace Taskmaster.Process
 
 		public int RunningCount => Running.Count;
 
+		public void CacheProcess(ProcessEx info) => AddRunning(info);
+
 		public bool GetCachedProcess(int pid, out ProcessEx? info)
 		{
 			if (Running.TryGetValue(pid, out info))

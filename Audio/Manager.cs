@@ -348,8 +348,11 @@ namespace Taskmaster.Audio
 
 				// TODO: Fetch cached copy from manager?
 				Process.ProcessEx? info;
-				if (processmanager.GetCachedProcess(pid, out info) || Process.Utility.Construct(pid, out info, getPath: true, name: name))
+				bool cached = false;
+				if (cached = processmanager.GetCachedProcess(pid, out info) || Process.Utility.Construct(pid, out info, getPath: true, name: name))
 				{
+					if (!cached) processmanager.CacheProcess(info); // just to be sure.
+
 					// TODO: check for staleness
 
 					//info.Path
@@ -360,6 +363,8 @@ namespace Taskmaster.Audio
 					var prc = info.Controller;
 					if (prc != null || processmanager.GetController(info, out prc))
 					{
+						if (!info.IsPathFormatted) info.Controller.FormatPathName(info);
+
 						bool volAdjusted = false;
 						float oldvolume = session.SimpleAudioVolume.Volume;
 						switch (prc.VolumeStrategy)

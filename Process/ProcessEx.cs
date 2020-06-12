@@ -196,7 +196,9 @@ namespace Taskmaster.Process
 		/// </summary>
 		public override string ToString() => Name + (Name.Length>0?" ":string.Empty) + "#" + Id.ToString();
 
-		public string ToFormattedString() => FormattedPath + (FormattedPath.Length > 0 ? " " : (Name + (Name.Length > 0 ? " " : string.Empty))) + "#" + Id.ToString();
+		public bool IsPathFormatted => FormattedPath.Length > 0;
+
+		public string ToFormattedString() => FormattedPath + (IsPathFormatted ? " " : (Name + (Name.Length > 0 ? " " : string.Empty))) + "#" + Id.ToString();
 
 		/// <summary>
 		/// Same as ToString() but prepends controller name.
