@@ -3,6 +3,10 @@ Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
 ## [0.14...]
+### 2020-06-12
+	Fixed: Volume adjustments now properly format path as per watchlist rules in all circumstances.
+### 2020-06-07
+	Added: Save debug settings option to the UI so it saves the current debug state.
 ### 2020-06-05
 	Changed: Several internal changes to IPC, modules, number formatting, and others. These should have no notable end-user impact.
 	Fixed: Window re-opening was broken by above change.
