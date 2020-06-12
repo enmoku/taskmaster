@@ -5,6 +5,7 @@ Comprehensive changes can be found in Git change history:
 ## [0.14...]
 ### 2020-06-12
 	Fixed: Volume adjustments now properly format path as per watchlist rules in all circumstances.
+	Fixed: Error when manual control is used in power manager.
 ### 2020-06-07
 	Added: Save debug settings option to the UI so it saves the current debug state.
 ### 2020-06-05

@@ -205,6 +205,13 @@ namespace Taskmaster.Power
 		readonly ConcurrentDictionary<int, Mode> ForceModeSourcesMap = new ConcurrentDictionary<int, Mode>();
 
 		Hardware.CPUMonitor? cpumonitor = null;
+		Process.Manager? processmanager = null;
+
+		public void Hook(Process.Manager processmanager)
+		{
+			this.processmanager = processmanager;
+			processmanager.OnDisposed += (_, _2) => this.processmanager = null;
+		}
 
 		public void Hook(Hardware.CPUMonitor monitor)
 		{
@@ -1231,7 +1238,7 @@ namespace Taskmaster.Power
 					}
 					break;
 				case PowerBehaviour.Manual:
-					processmanager.CancelPowerWait(); // need nicer way to do this
+					processmanager?.CancelPowerWait(); // need nicer way to do this
 					Release(null).ConfigureAwait(false);
 					break;
 			}

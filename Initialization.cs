@@ -712,6 +712,7 @@ namespace Taskmaster
 						{
 							modules.cpumonitor.Hook(modules.processmanager);
 							modules.powermanager?.Hook(modules.cpumonitor);
+							modules.powermanager?.Hook(modules.processmanager);
 						}
 
 						if (modules.powermanager != null)
