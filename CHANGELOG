@@ -5,6 +5,7 @@ Comprehensive changes can be found in Git change history:
 ## [0.14...]
 ### 2020-06-26
 	Fixed: Smart path didn't format non-filtered paths correctly due to peculiarity of System.IO.Path.Combine.
+	Fixed: DNS update failed if it was not previously reported.
 ### 2020-06-12
 	Fixed: Volume adjustments now properly format path as per watchlist rules in all circumstances.
 	Fixed: Error when manual control is used in power manager.

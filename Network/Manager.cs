@@ -324,9 +324,8 @@ namespace Taskmaster.Network
 				bool updateIPs = false, ip4Update = false, ip6Update = false;
 				if (!DynamicDNSForcedUpdate)
 				{
-					ip4Update = DNSOldIPv4 != IPAddress.None && curIPv4 != IPAddress.None && !DNSOldIPv4.Equals(curIPv4);
-					ip6Update = DNSOldIPv6 != IPAddress.IPv6None && curIPv6 != IPAddress.IPv6None && !DNSOldIPv6.Equals(curIPv6);
-
+					ip4Update = curIPv4 != IPAddress.None && !DNSOldIPv4.Equals(curIPv4);
+					ip6Update = curIPv6 != IPAddress.IPv6None && !DNSOldIPv6.Equals(curIPv6);
 
 					if (ip4Update || ip6Update)
 					{
