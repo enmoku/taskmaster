@@ -164,8 +164,15 @@ namespace Taskmaster
 			{
 				lock (window_creation_lock)
 				{
-					if (mainwindow != null) return;
+					if (mainwindow != null)
+					{
+						Logging.DebugMsg("<Main Window> Already exists.");
+						mainwindow.Reveal(activate: true);
+						return;
+					}
+
 					mainwindow = modules.mainwindow = mainwindow = new UI.MainWindow(modules);
+
 					//mainwindow = new UI.MainWindow();
 
 					mainwindow.FormClosed += (_, _2) => modules.mainwindow = null;
@@ -307,7 +314,8 @@ namespace Taskmaster
 
 		const string SingletonID = "088f7210-51b2-4e06-9bd4-93c27a973874.taskmaster"; // garbage
 
-		internal static LoggingLevelSwitch loglevelswitch = new LoggingLevelSwitch(LogEventLevel.Information),
+		internal static LoggingLevelSwitch
+			loglevelswitch = new LoggingLevelSwitch(LogEventLevel.Information),
 			uiloglevelswitch = new LoggingLevelSwitch(LogEventLevel.Information);
 
 		static internal event EventHandler<LoadEventArgs>? LoadEvent;
@@ -528,6 +536,8 @@ namespace Taskmaster
 					Close(globalmodules);
 				}
 				catch { }
+
+				Log.CloseAndFlush();
 			}
 		}
 

@@ -186,6 +186,7 @@ namespace Taskmaster.Network
 				var dbgsec = corecfg.Config[HumanReadable.Generic.Debug];
 				DebugNet = dbgsec.Get(Network.Constants.Network)?.Bool ?? false;
 				DebugDNS = dbgsec.Get(Network.Constants.DynDNS)?.Bool ?? false;
+				Logging.DebugMsg("<Net> Debug: " + DebugNet + ", DNS: " + DebugDNS);
 
 				if (Trace) Log.Debug("<Network> Traffic sample frequency: " + PacketStatTimerInterval.ToString(System.Globalization.CultureInfo.InvariantCulture) + "s");
 			}
@@ -290,8 +291,9 @@ namespace Taskmaster.Network
 			if (old4) sbs.Append(DNSOldIPv4.ToString());
 			if (old4 && old6) sbs.Append(" or ");
 			if (old6) sbs.Append('[').Append(DNSOldIPv6.ToString()).Append(']');
-			sbs.Append(" on ").Append(DynamicDNSLastUpdate.ToString("u", System.Globalization.CultureInfo.CurrentCulture))
-				.Append(" (").Append(DynamicDNSLastUpdate.To(DateTimeOffset.UtcNow)).Append(')');
+			if (old4 || old6) sbs.Append(' ');
+			sbs.Append("on ").Append(DynamicDNSLastUpdate.ToString("u", System.Globalization.CultureInfo.CurrentCulture))
+				.Append(" (").Append(DynamicDNSLastUpdate.To(DateTimeOffset.UtcNow)).Append(" ago)");
 			Log.Information(sbs.ToString());
 
 			DynDNSTimer.Change(TimerStartDelay, DynamicDNSFrequency);

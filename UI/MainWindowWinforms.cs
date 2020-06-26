@@ -58,7 +58,8 @@ namespace Taskmaster.UI
 		bool AutoOpenMenus { get; set; }
 
 		// UI elements for non-lambda/constructor access.
-		ToolStripMenuItem menu_view_loaders;
+		ToolStripMenuItem menu_view_loaders,
+			menu_debug_network;
 
 		ModuleManager modules;
 
@@ -765,7 +766,7 @@ namespace Taskmaster.UI
 				}
 			};
 
-			var menu_debug_network = new ToolStripMenuItem("Network")
+			menu_debug_network = new ToolStripMenuItem("Network")
 			{
 				Checked = netmonitor?.DebugNet ?? false,
 				CheckOnClick = true,
@@ -1325,13 +1326,14 @@ namespace Taskmaster.UI
 					//if (DebugMemory) dbgsec[HumanReadable.Hardware.Memory].Bool = true;
 					//if (DebugCache) dbgsec[Constants.Cache].Bool = true;
 
-					int loglevel = loglevelswitch.MinimumLevel switch
+					int loglevel = uiloglevelswitch.MinimumLevel switch
 					{
 						Serilog.Events.LogEventLevel.Verbose => 2,
 						Serilog.Events.LogEventLevel.Debug => 1,
 						_ => 0,
 					};
 					logsec[Constants.Verbosity].Int = loglevel;
+					Logging.DebugMsg("<Debug> Verbosity: " + loglevel);
 				}
 
 				SaveUIState();
@@ -3844,7 +3846,7 @@ namespace Taskmaster.UI
 			LastCauseTime = DateTimeOffset.UtcNow;
 		}
 
-		Hardware.Monitor hardwaremonitor = null;
+		Hardware.Monitor? hardwaremonitor = null;
 
 		public void Hook(Hardware.Monitor monitor)
 		{
@@ -4133,6 +4135,8 @@ namespace Taskmaster.UI
 
 			UItimer.Tick += UpdateNetwork;
 			GotFocus += UpdateNetwork;
+
+			menu_debug_network.Checked = manager.DebugNet;
 
 			UpdateNetwork(this, EventArgs.Empty);
 		}
