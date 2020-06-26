@@ -1156,15 +1156,14 @@ namespace Taskmaster.Process
 						// c:\programs\brand\app\app.exe as is
 						// c:\programs\brand\app\v2.5\x256\bin\app.exe -> c:\programs\brand\app\...\app.exe
 
+						sparts[0] += System.IO.Path.DirectorySeparatorChar; // Path.Combine doesn't handle drive letters in expected way
+
 						sparts.RemoveRange(4, sparts.Count - 5);
-						//sparts[0] += System.IO.Path.DirectorySeparatorChar;
-						//sparts.Insert(1, System.IO.Path.DirectorySeparatorChar.ToString()); // Path.Combine handles drive letter weird
 						sparts.Insert(sparts.Count - 1, HumanReadable.Generic.Ellipsis);
 					}
 
 					//Console.WriteLine("Parts: " + string.Join(" || ", sparts.ToArray()));
 
-					//sparts[0] = sparts[0] + "\\";
 					info.FormattedPath = System.IO.Path.Combine(sparts.ToArray());
 
 					return info.FormattedPath;
