@@ -384,8 +384,7 @@ namespace Taskmaster.Network
 						if (ip4Update) sbs.Append(DNSOldIPv4.ToString());
 						if (ip4Update && ip6Update) sbs.Append(" or ");
 						if (ip6Update) sbs.Append('[').Append(DNSOldIPv6.ToString()).Append(']');
-						sbs.Append(" on ").Append(DynamicDNSLastUpdate.ToString("u", System.Globalization.CultureInfo.CurrentCulture))
-							.Append(" (").Append(DynamicDNSLastUpdate.To(DateTimeOffset.UtcNow)).Append(')');
+						sbs.Append(" on ").Append(DynamicDNSLastUpdate.ToString("u", System.Globalization.CultureInfo.CurrentCulture));
 						Log.Information(sbs.ToString());
 					}
 					else if (DynDNSFailures++ > 3)
