@@ -326,8 +326,18 @@ namespace Taskmaster.Network
 				bool updateIPs = false, ip4Update = false, ip6Update = false;
 				if (!DynamicDNSForcedUpdate)
 				{
-					ip4Update = curIPv4 != IPAddress.None && !DNSOldIPv4.Equals(curIPv4);
-					ip6Update = curIPv6 != IPAddress.IPv6None && !DNSOldIPv6.Equals(curIPv6);
+					bool
+						HaveIP4 = curIPv4 != IPAddress.None,
+						HaveIP6 = curIPv6 != IPAddress.IPv6None;
+
+					if (!HaveIP4 && HaveIP6)
+					{
+						Log.Debug("<Net:DynDNS> No external IP address found. Forgoing update.");
+						return;
+					}
+
+					ip4Update = HaveIP4 && !DNSOldIPv4.Equals(curIPv4);
+					ip6Update = HaveIP6 && !DNSOldIPv6.Equals(curIPv6);
 
 					if (ip4Update || ip6Update)
 					{
@@ -341,14 +351,21 @@ namespace Taskmaster.Network
 						if (ip4Update) sbs.Append(curIPv4.ToString());
 						if (ip4Update && ip6Update) sbs.Append(" or ");
 						if (ip6Update) sbs.Append('[').Append(curIPv6.ToString()).Append(']');
-						sbs.Append(" on ").Append(DynamicDNSLastUpdate.ToString("u", System.Globalization.CultureInfo.CurrentCulture))
-							.Append(" (").Append(DynamicDNSLastUpdate.To(DateTimeOffset.UtcNow)).Append(')');
+						sbs.Append(" from last update on ").Append(DynamicDNSLastUpdate.ToString("u", System.Globalization.CultureInfo.CurrentCulture))
+							.Append(" (").Append(DynamicDNSLastUpdate.To(DateTimeOffset.UtcNow)).Append(" ago)");
 						Log.Debug(sbs.ToString());
 					}
 					else
 					{
-						if (DebugDNS) Log.Debug("<Net:DynDNS> IP has not changed, forgoing update.");
-						return;
+						if (DebugDNS)
+						{
+							var sbs = new StringBuilder(128);
+							sbs.Append("<Net:DynDNS> IP not changed, forgoing update; Currently: ");
+							if (HaveIP4) sbs.Append(curIPv4.ToString());
+							if (HaveIP4 && HaveIP6) sbs.Append(" and ");
+							if (HaveIP6) sbs.Append('[').Append(curIPv6.ToString()).Append(']');
+							Log.Debug(sbs.ToString());
+						}
 					}
 				}
 
