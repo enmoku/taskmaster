@@ -1159,12 +1159,6 @@ namespace Taskmaster.Process
 					var ruleAff = section.Get(HumanReadable.System.Process.Affinity);
 					var rulePow = section.Get(HumanReadable.Hardware.Power.Mode);
 
-					if (rulePrio is null && ruleAff is null && rulePow is null)
-					{
-						Log.Warning($"<Watchlist:{section.Line}> [{section.Name}] No priority, affinity, nor power plan.");
-						// This kind of rule is essentially more detailed ignore rule.
-					}
-
 					int prio = rulePrio?.Int ?? -1;
 					int aff = (ruleAff?.Int ?? -1);
 					var pmode_t = rulePow?.String;
@@ -1296,6 +1290,8 @@ namespace Taskmaster.Process
 
 							if (prc.Executables.Length > 0) hybrids++;
 						}
+
+						// TODO: Check if this rule has problems.
 					}
 					else
 						prc.Dispose();
