@@ -6,6 +6,7 @@ Comprehensive changes can be found in Git change history:
 ### 2020-06-29
 	Fixed: DynDNS debug output was confused.
 	Removed: Don't complain about watchlist rules with insufficient actions. This was done poorly.
+	Removed: Don't complain about bad devices by default. Requires audio debug now. Only number of bad devices are output normally.
 ### 2020-06-26
 	Fixed: Smart path didn't format non-filtered paths correctly due to peculiarity of System.IO.Path.Combine.
 	Fixed: DNS update failed if it was not previously reported.

@@ -24,10 +24,12 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+using NAudio.Utils;
 using Serilog;
 using System;
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.Globalization;
 
 namespace Taskmaster.Audio
 {
@@ -118,6 +120,10 @@ namespace Taskmaster.Audio
 			foreach (var dev in Enumerator.EnumerateAudioEndPoints(NAudio.CoreAudioApi.DataFlow.All, NAudio.CoreAudioApi.DeviceState.All))
 				DeviceAddedProxy(dev.ID);
 			Logging.DebugMsg("<Audio> Device enumeration complete.");
+
+			Logging.DebugMsg("<Audio> Ignored devices: " + IgnoredDevices.ToString(CultureInfo.InvariantCulture));
+			if (IgnoredDevices > 0) // don't be silent about problems even if they're ignored
+				Log.Warning("<Audio> Encountered " + IgnoredDevices.ToString(CultureInfo.InvariantCulture) + " problematic devices.");
 		}
 
 		void VolumeTimer_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
@@ -196,6 +202,8 @@ namespace Taskmaster.Audio
 			}
 		}
 
+		int IgnoredDevices = 0;
+
 		void DeviceAddedProxy(string deviceId)
 		{
 			if (disposed) return;
@@ -206,7 +214,7 @@ namespace Taskmaster.Audio
 				if (dev != null)
 				{
 					var adev = new Device(dev);
-					if (DebugAudio) Log.Debug("<Audio> Device added: " + (adev.Name ?? adev.GUID.ToString()));
+					if (DebugAudio) Log.Debug("<Audio> Device added: " + (adev.Name ?? "{" + adev.GUID.ToString() + "}"));
 
 					Devices.TryAdd(adev.GUID, adev);
 
@@ -215,12 +223,20 @@ namespace Taskmaster.Audio
 			}
 			catch (System.Runtime.InteropServices.COMException ex)
 			{
-				Log.Error("<Audio> COM exception (0x" + ex.HResult.ToString("X") + ") handling new device: " + deviceId);
-				// This should probably just be ignored. It happens when a device doesn't have a name and those are probably always things that do nothing for us.
+				IgnoredDevices++;
+
+				if (DebugAudio) // Ignore when not debugging. It's a bad device we'd not use anyway.
+				{
+					var error = ex.GetHResult().ToString("X", CultureInfo.InvariantCulture);
+					var guid = Utility.DeviceIdToGuid(deviceId).ToString();
+
+					Log.Error("<Audio> COM exception (0x" + error + ") handling new device: {" + guid + "}");
+					// This should probably just be ignored. It happens when a device doesn't have a name and those are probably always things that do nothing for us.
+				}
 			}
 			catch (Exception ex)
 			{
-				Log.Error("<Audio> Error handling new device: " + deviceId);
+				Log.Error("<Audio> Error handling new device: {" + Utility.DeviceIdToGuid(deviceId).ToString() + "} – " + ex.Message);
 				Logging.Stacktrace(ex);
 			}
 		}
