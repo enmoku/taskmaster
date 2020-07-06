@@ -67,46 +67,47 @@ namespace Taskmaster
 
 		internal async void Receive(IAsyncResult result)
 		{
-			if (pipe is null) return;
-
 			try
 			{
-				var lp = pipe;
-				//pipe = null;
-				lp.EndWaitForConnection(result);
-
-				Logging.DebugMsg("<IPC> Activity");
-
-				if (!result.IsCompleted) return;
-				if (!pipe.IsConnected) return;
-				if (!pipe.IsMessageComplete) return;
-
-				using var sr = new StreamReader(lp);
-				var line = await sr.ReadLineAsync().ConfigureAwait(true);
-				if (line.StartsWith(RestartMessage, StringComparison.InvariantCulture))
+				if (pipe.CanRead)
 				{
-					Log.Information("<IPC> Restart request received.");
-					UnifiedExit(restart: true);
-					return;
-				}
-				else if (line.StartsWith(TerminationMessage, StringComparison.InvariantCulture))
-				{
-					Log.Information("<IPC> Termination request received.");
-					UnifiedExit(restart: false);
-					return;
-				}
-				else if (line.StartsWith(RefreshMessage, StringComparison.InvariantCulture))
-				{
-					Log.Information("<IPC> Refresh.");
-					Refresh(globalmodules);
-					return;
-				}
-				else
-				{
-					Log.Error("<IPC> Unknown message: " + line);
-				}
+					var lp = pipe;
+					//pipe = null;
+					lp.EndWaitForConnection(result);
 
-				if (lp.CanRead) lp?.BeginWaitForConnection(Receive, null);
+					Logging.DebugMsg("<IPC> Activity");
+
+					if (!result.IsCompleted) return;
+					if (!pipe.IsConnected) return;
+					if (!pipe.IsMessageComplete) return;
+
+					using var sr = new StreamReader(lp);
+					var line = await sr.ReadLineAsync().ConfigureAwait(true);
+					if (line.StartsWith(RestartMessage, StringComparison.InvariantCulture))
+					{
+						Log.Information("<IPC> Restart request received.");
+						UnifiedExit(restart: true);
+						return;
+					}
+					else if (line.StartsWith(TerminationMessage, StringComparison.InvariantCulture))
+					{
+						Log.Information("<IPC> Termination request received.");
+						UnifiedExit(restart: false);
+						return;
+					}
+					else if (line.StartsWith(RefreshMessage, StringComparison.InvariantCulture))
+					{
+						Log.Information("<IPC> Refresh.");
+						Refresh(globalmodules);
+						return;
+					}
+					else
+					{
+						Log.Error("<IPC> Unknown message: " + line);
+					}
+
+					if (lp.CanRead) lp?.BeginWaitForConnection(Receive, null);
+				}
 			}
 			catch (ObjectDisposedException) { Statistics.DisposedAccesses++; }
 			catch (Exception ex)
@@ -208,7 +209,7 @@ namespace Taskmaster
 				}
 
 				try { pipe?.Dispose(); } catch { /* NOP */ }
-				pipe = null;
+				//pipe = null;
 
 				disposed = true;
 			}
