@@ -4,7 +4,7 @@
 // Author:
 //       M.A. (https://github.com/mkahvi)
 //
-// Copyright (c) 2018–2019 M.A.
+// Copyright (c) 2018–2020 M.A.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -107,6 +107,6 @@ namespace Taskmaster
 		}
 
 		public void OnVolumeChanged(float volume, bool isMuted)
-			=> Log.Debug($"<Audio> Volume: {volume:N2}, Muted: {(isMuted ? "True" : "False")}");
+			=> Log.Debug($"<Audio> Volume: {volume:0.#} %, Muted: {(isMuted ? "True" : "False")}");
 	}
 }

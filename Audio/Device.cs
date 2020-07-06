@@ -4,7 +4,7 @@
 // Author:
 //       M.A. (https://github.com/mkahvi)
 //
-// Copyright (c) 2017-2019 M.A.
+// Copyright (c) 2017-2020 M.A.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -25,15 +25,24 @@
 // THE SOFTWARE.
 
 using System;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Windows.Threading;
 
 namespace Taskmaster.Audio
 {
 	public class Device : IDisposable
 	{
+		readonly Dispatcher dispatcher = Dispatcher.CurrentDispatcher;
+
 		public Device(NAudio.CoreAudioApi.MMDevice device)
-			: this(Utility.DeviceIdToGuid(device.ID), device.FriendlyName, device.DataFlow, device.State, device)
+			: this(Utility.DeviceIdToGuid(device.ID), string.Empty, device.DataFlow, device.State, device)
 		{
-			// nop
+			try
+			{
+				Name = device.FriendlyName;
+			}
+			catch { /* NOP */ }
 		}
 
 		public Device(Guid guid, string name, NAudio.CoreAudioApi.DataFlow flow, NAudio.CoreAudioApi.DeviceState state, NAudio.CoreAudioApi.MMDevice device)
@@ -59,8 +68,13 @@ namespace Taskmaster.Audio
 
 		public override string ToString() => $"{Name ?? "n/a"} {{{GUID}}}";
 
+		/// <summary>
+		/// Prints either Name or GUID, not both.
+		/// </summary>
+		public string ToShortString() => !string.IsNullOrEmpty(Name) ? Name : $"{{{GUID}}}";
+
 		#region IDisposable Support
-		private bool disposed { get; set; } = false; // To detect redundant calls
+		private bool disposed = false; // To detect redundant calls
 
 		public event EventHandler? OnDisposed;
 
@@ -74,10 +88,21 @@ namespace Taskmaster.Audio
 			OnDisposed?.Invoke(this, EventArgs.Empty);
 			OnDisposed = null;
 
+			try
+			{
+				dispatcher.Invoke(() => { Logging.DebugMsg("MMDevice dispatching: " + ToShortString()); MMDevice.Dispose(); Logging.DebugMsg("MMDevice dispatched: " + ToShortString()); }, DispatcherPriority.Normal, CancellationToken.None);
+			}
+			catch (TaskCanceledException)
+			{
+				// NOP
+			}
+
+			/*
 			if (MKAh.Execution.IsMainThread)
 			{
 				MMDevice.Dispose();  // HACK: must happen in same thread as created
 			}
+			*/
 
 			//base.Dispose();
 		}

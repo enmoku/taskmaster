@@ -4,7 +4,7 @@
 // Author:
 //       M.A. (https://github.com/mkahvi)
 //
-// Copyright (c) 2019 M.A.
+// Copyright (c) 2019–2020 M.A.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -27,6 +27,7 @@
 using NAudio.CoreAudioApi;
 using Serilog;
 using System;
+using System.Globalization;
 
 namespace Taskmaster.Audio
 {
@@ -127,6 +128,8 @@ namespace Taskmaster.Audio
 			}
 		}
 
+		/// <param name="pwstrDeviceId">Device GUID, guaranteed to stay valid for this call (in C/C++ at least).</param>
+		/// <param name="key"></param>
 		public void OnPropertyValueChanged(string pwstrDeviceId, PropertyKey key)
 		{
 			try
@@ -137,7 +140,7 @@ namespace Taskmaster.Audio
 
 					var device = audiomanager.GetDevice(guid);
 
-					Log.Debug("<Audio> Device " + (device?.Name ?? guid.ToString()) + " property changed: " + key.formatId.ToString() + " [" + key.propertyId.ToString() + "]");
+					Log.Debug("<Audio> Device " + device.ToShortString() + " property changed: " + key.formatId.ToString() + " [" + key.propertyId.ToString(CultureInfo.InvariantCulture) + "]");
 				}
 
 				//PropertyChanged?.Invoke(this, null);

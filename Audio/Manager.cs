@@ -41,7 +41,7 @@ namespace Taskmaster.Audio
 	[Context(RequireMainThread = true)]
 	public class Manager : IComponent
 	{
-		readonly System.Threading.Thread Context;
+		readonly System.Windows.Threading.Dispatcher dispatcher;
 
 		public event EventHandler<DisposedEventArgs>? OnDisposed;
 
@@ -85,7 +85,8 @@ namespace Taskmaster.Audio
 		public Manager()
 		{
 			Debug.Assert(MKAh.Execution.IsMainThread, "Requires main thread");
-			Context = System.Threading.Thread.CurrentThread;
+
+			dispatcher = System.Windows.Threading.Dispatcher.CurrentDispatcher;
 
 			Enumerator = new NAudio.CoreAudioApi.MMDeviceEnumerator();
 
@@ -147,7 +148,7 @@ namespace Taskmaster.Audio
 
 				if (DebugAudio)
 				{
-					string name = Devices.TryGetValue(ea.GUID, out var device) ? device.Name : ea.GUID.ToString();
+					string name = Devices.TryGetValue(ea.GUID, out var device) ? device.ToShortString() : $"{{{ea.GUID}}}";
 
 					Log.Debug($"<Audio> Device {name} state changed to {state.ToString()}");
 				}
@@ -214,7 +215,7 @@ namespace Taskmaster.Audio
 				if (dev != null)
 				{
 					var adev = new Device(dev);
-					if (DebugAudio) Log.Debug("<Audio> Device added: " + (adev.Name ?? "{" + adev.GUID.ToString() + "}"));
+					if (Trace && DebugAudio) Log.Debug("<Audio> [" + adev.Flow.ToString() + "] Device added: " + adev.ToShortString());
 
 					Devices.TryAdd(adev.GUID, adev);
 
@@ -227,11 +228,9 @@ namespace Taskmaster.Audio
 
 				if (DebugAudio) // Ignore when not debugging. It's a bad device we'd not use anyway.
 				{
-					var error = ex.GetHResult().ToString("X", CultureInfo.InvariantCulture);
-					var guid = Utility.DeviceIdToGuid(deviceId).ToString();
-
-					Log.Error("<Audio> COM exception (0x" + error + ") handling new device: {" + guid + "}");
-					// This should probably just be ignored. It happens when a device doesn't have a name and those are probably always things that do nothing for us.
+					Log.Error($"<Audio> COM exception (0x{ex.GetHResult():X}) handling new device: {Utility.DeviceIdToGuid(deviceId)}");
+					// This should probably just be ignored.
+					// It happens when a device doesn't have a name and those are probably always things that do nothing for us.
 				}
 			}
 			catch (Exception ex)
@@ -252,7 +251,7 @@ namespace Taskmaster.Audio
 				if (DebugAudio)
 				{
 					var dev = GetDevice(guid);
-					Log.Debug("<Audio> Device removed: " + dev?.Name ?? deviceId);
+					Log.Debug("<Audio> Device removed: " + dev?.ToShortString() ?? $"{{{Utility.DeviceIdToGuid(deviceId)}}}");
 				}
 
 				if (MultimediaDevice != null && guid == MultimediaDevice.GUID)
@@ -323,9 +322,12 @@ namespace Taskmaster.Audio
 				Devices.TryGetValue(Utility.DeviceIdToGuid(mmdevinput.ID), out var inputdev);
 				RecordingDevice = inputdev;
 
-				Log.Information("<Audio> Default movie/music device: " + MultimediaDevice.Name);
-				Log.Information("<Audio> Default game/voip device: " + ConsoleDevice.Name);
-				Log.Information("<Audio> Default communications device: " + RecordingDevice.Name);
+				if (DebugAudio)
+				{
+					Log.Information("<Audio> Default movie/music device: " + MultimediaDevice.ToShortString());
+					Log.Information("<Audio> Default game/voip device: " + ConsoleDevice.ToShortString());
+					Log.Information("<Audio> Default communications device: " + RecordingDevice.ToShortString());
+				}
 			}
 			catch (OutOfMemoryException) { throw; }
 			catch (Exception ex)
@@ -353,8 +355,6 @@ namespace Taskmaster.Audio
 		void OnSessionCreated(object _, NAudio.CoreAudioApi.Interfaces.IAudioSessionControl ea)
 		{
 			if (disposed) return;
-
-			Debug.Assert(System.Threading.Thread.CurrentThread != Context, "Must be called in same thread.");
 
 			try
 			{
@@ -424,18 +424,18 @@ namespace Taskmaster.Audio
 
 						if (volAdjusted)
 						{
-							Log.Information($"{info.ToFullFormattedString()} Volume changed from {oldvolume * 100f:N1} % to {prc.Volume * 100f:N1} %");
+							Log.Information($"{info.ToFullFormattedString()} Volume changed from {oldvolume * 100f:0.#} % to {prc.Volume * 100f:0.#} %");
 						}
 						else
 						{
 							if (ShowInaction && DebugAudio)
-								Log.Debug($"{info.ToFullFormattedString()} Volume at {volume * 100f:N1} % – Already correct (Plan: {prc.VolumeStrategy.ToString()})");
+								Log.Debug($"{info.ToFullFormattedString()} Volume at {volume * 100f:0.#} % – Already correct (Plan: {prc.VolumeStrategy.ToString()})");
 						}
 					}
 					else
 					{
 						if (ShowInaction && DebugAudio)
-							Log.Debug($"{info.ToFullFormattedString()}; Volume at {(volume * 100f):N1} % – not watched: {info.Path}");
+							Log.Debug($"{info.ToFullFormattedString()}; Volume at {(volume * 100f):0.#} % – not watched: {info.Path}");
 					}
 				}
 				else

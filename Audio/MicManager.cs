@@ -4,7 +4,7 @@
 // Author:
 //       M.A. (https://github.com/mkahvi)
 //
-// Copyright (c) 2016-2019 M.A.
+// Copyright (c) 2016-2020 M.A.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -31,6 +31,7 @@ using Serilog;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.Linq;
 
 namespace Taskmaster.Audio
@@ -89,7 +90,7 @@ namespace Taskmaster.Audio
 			{
 				VolumeControl.Percent = _volume = value;
 
-				if (DebugMic) Log.Debug($"<Microphone> DEBUG Volume = {value:N1} % (actual: {VolumeControl.Percent:N1} %)");
+				if (DebugMic) Log.Debug($"<Microphone> DEBUG Volume = {value:0.#} % (actual: {VolumeControl.Percent:0.#} %)");
 			}
 		}
 
@@ -287,7 +288,7 @@ namespace Taskmaster.Audio
 				if (Control && !devcontrol) Control = false; // disable general control if device control is disabled
 
 				Target = devvol.Constrain(0.0d, 100.0d);
-				Log.Information($"<Microphone> Default device: {Device.Name} (volume: {Target:N1} %) – Control: {(Control ? HumanReadable.Generic.Enabled : HumanReadable.Generic.Disabled)}");
+				Log.Information($"<Microphone> Default device: {Device.ToShortString()} (volume: {Target:0.#} %) – Control: {(Control ? HumanReadable.Generic.Enabled : HumanReadable.Generic.Disabled)}");
 
 				if (Control) Volume = Target;
 			}
@@ -332,7 +333,7 @@ namespace Taskmaster.Audio
 
 						devices.Add(mdev);
 
-						if (Trace) Log.Verbose($"<Microphone> Device: {mdev.Name} [GUID: {mdev.GUID.ToString()}]");
+						if (Trace) Log.Verbose("<Microphone> Device: " + mdev.ToString());
 					}
 					catch (OutOfMemoryException) { throw; }
 					catch (Exception ex)
@@ -341,7 +342,7 @@ namespace Taskmaster.Audio
 					}
 				}
 
-				if (Trace) Log.Verbose("<Microphone> " + KnownDevices.Count.ToString() + " microphone(s)");
+				if (Trace) Log.Verbose("<Microphone> " + KnownDevices.Count.ToString(CultureInfo.InvariantCulture) + " microphone(s)");
 			}
 			catch (OutOfMemoryException) { throw; }
 			catch (Exception ex)
@@ -377,11 +378,11 @@ namespace Taskmaster.Audio
 			if (Math.Abs(newVol - Target) <= SmallVolumeHysterisis)
 			{
 				if (ShowInaction && DebugMic)
-					Log.Verbose($"<Microphone> Volume change too small ({Math.Abs(newVol - Target):N1} %) to act on.");
+					Log.Verbose($"<Microphone> Volume change too small ({Math.Abs(newVol - Target):0.#} %) to act on.");
 				return;
 			}
 
-			if (Trace) Log.Verbose($"<Microphone> Volume changed from {oldVol:N1} % to {newVol:N1} %");
+			if (Trace) Log.Verbose($"<Microphone> Volume changed from {oldVol:0.#} % to {newVol:0.#} %");
 
 			// This is a light HYSTERISIS limiter in case someone is sliding a volume bar around,
 			// we act on it only once every [AdjustDelay] ms.
@@ -391,7 +392,7 @@ namespace Taskmaster.Audio
 
 			if (Math.Abs(newVol - Target) >= VolumeHysterisis) // Volume != Target for double
 			{
-				if (Trace) Log.Verbose($"<Microphone> DEBUG: Volume changed = [{oldVol:N1} → {newVol:N1}], Off.Target: {Math.Abs(newVol - Target):N1}");
+				if (Trace) Log.Verbose($"<Microphone> Volume off target by {Math.Abs(newVol - Target):0.#} %");
 
 				if (Atomic.Lock(ref correcting_lock))
 				{
@@ -403,14 +404,14 @@ namespace Taskmaster.Audio
 						if (Control)
 						{
 							oldVol = VolumeControl.Percent;
-							Log.Information($"<Microphone> Correcting volume from {oldVol:N1} to {Target:N1}");
+							Log.Information($"<Microphone> Correcting volume from {oldVol:0.#} % to {Target:0.#} %");
 							Volume = Target;
 							Corrections++;
 							VolumeChanged?.Invoke(this, new VolumeChangedEventArgs { Old = oldVol, New = Target, Corrections = Corrections });
 						}
 						else
 						{
-							Log.Debug($"<Microphone> Volume not corrected from {oldVol:N1}");
+							Log.Debug($"<Microphone> Volume not corrected from {oldVol:0.#} %");
 						}
 					}
 					finally
