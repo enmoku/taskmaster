@@ -29,6 +29,7 @@ using Serilog;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.Linq;
 using System.Net;
 using System.Net.NetworkInformation;
@@ -630,23 +631,27 @@ namespace Taskmaster.Network
 				InvalidateInterfaceList(); // force refresh
 				var ifaces = InterfaceList;
 
+				if ((ifaces?.Count ?? 0) == 0) return; // no interfaces, just quit
+
 				if (!oldifaces.Count.Equals(ifaces.Count))
 				{
-					if (DebugNet) Log.Warning("<Network> Interface count mismatch (" + oldifaces.Count.ToString() + " vs " + ifaces.Count.ToString() + "), skipping analysis.");
+					if (DebugNet) Log.Warning("<Network> Interface count mismatch (" + oldifaces.Count.ToString(CultureInfo.InvariantCulture) + " instead of " + ifaces.Count.ToString(CultureInfo.InvariantCulture) + "), skipping analysis.");
 					return;
 				}
 
-				if ((ifaces?.Count ?? 0) == 0) return; // no interfaces, just quit
-
 				for (int index = 0; index < ifaces.Count; index++)
 				{
-					var ndev = ifaces[index];
+					Device
+						ndev = ifaces[index],
+						olddev = oldifaces[index];
+
 					var nname = ndev.Name;
-					var nout = ndev.Outgoing;
-					var nin = ndev.Incoming;
-					var olddev = oldifaces[index];
-					var oldout = olddev.Outgoing;
-					var oldin = olddev.Incoming;
+
+					TrafficData
+						nout = ndev.Outgoing,
+						nin = ndev.Incoming,
+						oldout = olddev.Outgoing,
+						oldin = olddev.Incoming;
 
 					long totalerrors = nout.Errors + nin.Errors,
 						totaldiscards = nout.Errors + nin.Errors,
@@ -693,7 +698,7 @@ namespace Taskmaster.Network
 						if (longProblem) sbs.Append('+').Append(errorsSinceLastReport).Append(" errors, ").Append(errorsInSample).Append(" in last sample");
 						else sbs.Append('+').Append(errorsInSample).Append(" errors in last sample");
 
-						if (!double.IsNaN(pmins)) sbs.Append("; ").AppendFormat("{0:N1}", pmins).Append(" minutes since last report");
+						if (!double.IsNaN(pmins)) sbs.Append("; ").AppendFormat("{0:0.#}", pmins).Append(" minutes since last report");
 						sbs.Append(')');
 
 						Log.Warning(sbs.ToString());
@@ -709,7 +714,7 @@ namespace Taskmaster.Network
 					{
 						if (period.TotalMinutes > 5 && errorsSinceLastReport > 0) // report anyway
 						{
-							Log.Warning($"<Network> {nname} had some traffic errors (+{errorsSinceLastReport}; period: {pmins:N1} minutes)");
+							Log.Warning($"<Network> {nname} had some traffic errors (+{errorsSinceLastReport}; period: {pmins:0.#} minutes)");
 							errorsSinceLastReport = 0;
 							lastErrorReport = now;
 
@@ -778,7 +783,7 @@ namespace Taskmaster.Network
 			}
 
 			sbs.Append(" since: ").Append(UptimeRecordStart.ToString("u"))
-			   .Append(" (").AppendFormat("{0:N2}", (DateTimeOffset.UtcNow - UptimeRecordStart).TotalHours).Append("h ago)")
+			   .Append(" (").AppendFormat("{0:0.##}", (DateTimeOffset.UtcNow - UptimeRecordStart).TotalHours).Append("h ago)")
 			   .Append('.');
 
 			Log.Information(sbs.ToString());

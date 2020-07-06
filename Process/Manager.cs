@@ -224,7 +224,7 @@ namespace Taskmaster.Process
 						heavyLoaders.Add(loader);
 
 						if (loader.LastHeavy && loader.Heavy > 5)
-							Logging.DebugMsg($"LOADER [{loader.Load:N1}]: {loader.Instance} [×{loader.InstanceCount}] - CPU: {loader.CPULoad.Average:N1}, RAM: {loader.RAMLoad.Current / MKAh.Units.Binary.Giga:N3} GiB, IO: {loader.IOLoad.Average:N1}/s");
+							Logging.DebugMsg($"LOADER [{loader.Load:0.#}]: {loader.Instance} [×{loader.InstanceCount}] - CPU: {loader.CPULoad.Average:0.#}, RAM: {loader.RAMLoad.Current / MKAh.Units.Binary.Giga:0.###} GiB, IO: {loader.IOLoad.Average:0.#}/s");
 					}
 					else
 						skipped++;
@@ -240,7 +240,7 @@ namespace Taskmaster.Process
 				}
 			}
 
-			Logging.DebugMsg($"HEAVYWEIGHT [{heaviest.Load:N1}]: {heaviest.Instance} [×{heaviest.InstanceCount}] - CPU: {heaviest.CPULoad.Average:N1}, RAM: {heaviest.RAMLoad.Current / MKAh.Units.Binary.Giga:N3} GiB, IO: {heaviest.IOLoad.Average:N1}/s");
+			Logging.DebugMsg($"HEAVYWEIGHT [{heaviest.Load:0.#}]: {heaviest.Instance} [×{heaviest.InstanceCount}] - CPU: {heaviest.CPULoad.Average:0.#}, RAM: {heaviest.RAMLoad.Current / MKAh.Units.Binary.Giga:0.###} GiB, IO: {heaviest.IOLoad.Average:0.#}/s");
 
 			/*
 			heavyLoaders.Sort(LoadInfoComparer);
@@ -1107,7 +1107,7 @@ namespace Taskmaster.Process
 			sbs.Append("; ");
 
 			if (IgnoreRecentlyModified.HasValue)
-				sbs.Append("Recently modified ignored for ").AppendFormat("{0:N1}", IgnoreRecentlyModified.Value.TotalMinutes).Append(" mins");
+				sbs.Append("Recently modified ignored for ").AppendFormat("{0:0.#}", IgnoreRecentlyModified.Value.TotalMinutes).Append(" mins");
 			else
 				sbs.Append("Recently modified not ignored");
 

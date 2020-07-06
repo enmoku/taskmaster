@@ -4,7 +4,7 @@
 // Author:
 //       M.A. (https://github.com/mkahvi)
 //
-// Copyright (c) 2018–2019 M.A.
+// Copyright (c) 2018–2020 M.A.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -224,7 +224,7 @@ namespace Taskmaster.UI.Config
 			layout.Controls.Add(new EmptySpace());
 
 			layout.Controls.Add(new Extensions.Label() { Text = "Sample frequency (sec)" });
-			layout.Controls.Add(new Extensions.Label() { Text = $"{modules.cpumonitor.SampleInterval.TotalSeconds:N1}" });
+			layout.Controls.Add(new Extensions.Label() { Text = $"{modules.cpumonitor.SampleInterval.TotalSeconds:0.#}" });
 
 			layout.Controls.Add(new Extensions.Label() { Text = "Default mode" });
 			layout.Controls.Add(defaultmode);

@@ -475,6 +475,6 @@ namespace Taskmaster.Process
 		public static void PathCacheStats()
 			=> Log.Debug("Path cache state: " + Statistics.PathCacheCurrent.ToString(CultureInfo.InvariantCulture) + " items (Hits: " + Statistics.PathCacheHits.ToString(CultureInfo.InvariantCulture) +
 				", Misses: " + Statistics.PathCacheMisses.ToString(CultureInfo.InvariantCulture) +
-				", Ratio: " + $"{(Statistics.PathCacheMisses > 0 ? (Statistics.PathCacheHits / Statistics.PathCacheMisses) : 1):N2})");
+				", Ratio: " + $"{(Statistics.PathCacheMisses > 0 ? (Statistics.PathCacheHits / Statistics.PathCacheMisses) : 1):0.##})");
 	}
 }

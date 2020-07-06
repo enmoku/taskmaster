@@ -4,7 +4,7 @@
 // Author:
 //       M.A. (https://github.com/mkahvi)
 //
-// Copyright (c) 2016-2019 M.A.
+// Copyright (c) 2016-2020 M.A.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -24,6 +24,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+using Microsoft.Win32;
 using MKAh;
 using MKAh.Synchronize;
 using Serilog;
@@ -169,6 +170,7 @@ namespace Taskmaster.UI
 			Tray.MouseClick += ShowWindow;
 
 			//Microsoft.Win32.SystemEvents.SessionEnding += SessionEndingEvent; // depends on messagepump
+			Microsoft.Win32.SystemEvents.SessionSwitch += SessionSwitchEvent;
 
 			ms.VisibleChanged += MenuVisibilityChangedEvent;
 
@@ -179,6 +181,12 @@ namespace Taskmaster.UI
 			WndProcEventProxy = new TrayWndProcProxy(modules);
 
 			DisposalChute.Push(this); // nothing else seems to work for removing the tray icon
+		}
+
+		private void SessionSwitchEvent(object sender, SessionSwitchEventArgs e)
+		{
+			if (e.Reason == SessionSwitchReason.SessionLogon)
+				RefreshVisibility();
 		}
 
 		internal void Close()
@@ -580,7 +588,7 @@ namespace Taskmaster.UI
 			try
 			{
 				int attempts = 0;
-				Log.Debug("<Tray> Not visible, fixing...");
+				if (!Tray.Visible) Log.Debug("<Tray> Not visible, fixing...");
 
 				do
 				{
@@ -735,8 +743,6 @@ namespace Taskmaster.UI
 			}
 		}
 
-		~TrayAccess() => Dispose(false);
-
 		// Vista or later required
 		[DllImport("user32.dll")]
 		internal extern static bool ShutdownBlockReasonCreate(IntPtr hWnd, [MarshalAs(UnmanagedType.LPWStr)] string pwszReason);
@@ -746,6 +752,8 @@ namespace Taskmaster.UI
 		internal extern static bool ShutdownBlockReasonDestroy(IntPtr hWnd);
 
 		#region IDisposable Support
+		~TrayAccess() => Dispose(false);
+
 		public bool IsDisposed { get; internal set; } = false;
 
 		protected virtual void Dispose(bool disposing)
@@ -753,7 +761,11 @@ namespace Taskmaster.UI
 			if (IsDisposed) return;
 			IsDisposed = true;
 
-			//Microsoft.Win32.SystemEvents.SessionEnding -= SessionEndingEvent; // leaks if not disposed
+			try
+			{
+				Microsoft.Win32.SystemEvents.SessionSwitch -= SessionSwitchEvent; // leaks if not done according to docs
+			}
+			catch { /* IGNORE */ }
 
 			if (disposing)
 			{

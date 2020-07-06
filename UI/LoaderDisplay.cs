@@ -4,7 +4,7 @@
 // Author:
 //       M.A. (https://github.com/mkahvi)
 //
-// Copyright (c) 2019 M.A.
+// Copyright (c) 2019–2020 M.A.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -331,7 +331,7 @@ namespace Taskmaster.UI
 					var loader = pair.Load;
 					var timeSinceLastUpdate = now.Since(loader.Last).TotalSeconds;
 
-					if (Trace) Logging.DebugMsg("LOADER UI: " + loader.Instance + " --- active last: " + $"{timeSinceLastUpdate:N1} seconds ago");
+					if (Trace) Logging.DebugMsg("LOADER UI: " + loader.Instance + " --- active last: " + $"{timeSinceLastUpdate:0.#} seconds ago");
 
 					if (timeSinceLastUpdate > 120d)
 					{
@@ -525,7 +525,7 @@ namespace Taskmaster.UI
 							load.InstanceCount.ToString(),
 							load.LastPid.ToString(),
 							load.Load.ToString("N1"),
-							$"{load.CPULoad.Average:N1} %",
+							$"{load.CPULoad.Average:0.#} %",
 							HumanInterface.ByteString(Convert.ToInt64(load.RAMLoad.Current * MKAh.Units.Binary.Giga), iec:true),
 							$"{load.IOLoad.Average:N0}/s",
 							"Active"
@@ -574,15 +574,15 @@ namespace Taskmaster.UI
 			var selfram = GC.GetTotalMemory(false);
 			selfLoad.RAMLoad.Update(selfram);
 
-			usedCpuCell.Text = $"{curCpu:N1} %";
-			freeCpuCell.Text = $"{idle:N1} %";
+			usedCpuCell.Text = $"{curCpu:0.#} %";
+			freeCpuCell.Text = $"{idle:0.#} %";
 
 			freeMemCell.Text = HumanInterface.ByteString(memfree, iec: true);
 			usedMemCell.Text = HumanInterface.ByteString(memused, iec: true);
 
 			//sysPrcCountCell.Text = "?";
 
-			selfLoadLI.SubItems[InstanceCpuColumn].Text = $"{selfcpu:N1} %";
+			selfLoadLI.SubItems[InstanceCpuColumn].Text = $"{selfcpu:0.#} %";
 			selfLoadLI.SubItems[InstanceMemColumn].Text = HumanInterface.ByteString(selfram, iec: true);
 
 			if (TrackUntracked)
@@ -615,7 +615,7 @@ namespace Taskmaster.UI
 			subItems[InstancePidColumn].Text = load.LastPid.ToString();
 			subItems[InstanceLoadColumn].Text = load.Load.ToString("N1");
 			subItems[InstanceCountColumn].Text = load.InstanceCount.ToString();
-			subItems[InstanceCpuColumn].Text = $"{load.CPULoad.Average:N1} %";
+			subItems[InstanceCpuColumn].Text = $"{load.CPULoad.Average:0.#} %";
 			subItems[InstanceMemColumn].Text = HumanInterface.ByteString(Convert.ToInt64(load.RAMLoad.Current), iec: true);
 			subItems[InstanceIOColumn].Text = $"{load.IOLoad.Average:N0}/s";
 

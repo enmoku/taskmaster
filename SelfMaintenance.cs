@@ -95,7 +95,7 @@ namespace Taskmaster
 
 				long newmem = GC.GetTotalMemory(true);
 
-				Log.Debug("<Self-Maintenance> Done, saved " + ((oldmem - newmem) / 1_000).ToString(CultureInfo.CurrentCulture) + " kB.");
+				Log.Debug("<Self-Maintenance> Done. Freed " + ((oldmem - newmem) / 1_000).ToString(CultureInfo.CurrentCulture) + " kB memory.");
 
 				if (Trace) Log.Verbose("Running periodic cleanup");
 

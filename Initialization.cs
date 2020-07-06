@@ -29,6 +29,7 @@ using Serilog;
 using Serilog.Events;
 using System;
 using System.Diagnostics;
+using System.Diagnostics.Eventing.Reader;
 using System.Globalization;
 using System.Linq;
 using System.Text;
@@ -505,10 +506,6 @@ namespace Taskmaster
 				Log.Warning("<Core> I/O priority was enabled. Requires Win7 which you don't appear to be running.");
 				IOPriorityEnabled = false;
 			}
-
-#if DEBUG
-			Trace = dbgsec.Get(Constants.Trace)?.Bool ?? false;
-#endif
 
 			using var uicfg = Config.Load(UIConfigFilename);
 			VisualStyling = uicfg.Config[Constants.Windows].GetOrSet("Styling", true).Bool;

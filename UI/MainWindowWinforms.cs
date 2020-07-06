@@ -1495,8 +1495,8 @@ namespace Taskmaster.UI
 				var li = new ListViewItem(new string[] {
 					device.Name,
 					device.GUID.ToString(),
-					$"{device.Volume * 100d:N1} %",
-					$"{device.Target:N1} %",
+					$"{device.Volume * 100d:0.#} %",
+					$"{device.Target:0.#} %",
 					(device.VolumeControl ? HumanReadable.Generic.Enabled : HumanReadable.Generic.Disabled),
 					device.State.ToString(),
 				});
@@ -2031,7 +2031,7 @@ namespace Taskmaster.UI
 		{
 			cacheObjects.Text = Statistics.PathCacheCurrent.ToString(CultureInfo.CurrentCulture);
 			double ratio = (Statistics.PathCacheMisses > 0 ? ((double)Statistics.PathCacheHits / (double)Statistics.PathCacheMisses) : 1d);
-			cacheRatio.Text = ratio <= 99.99f ? $"{ratio:N2}" : ">99.99"; // let's just not overflow the UI
+			cacheRatio.Text = ratio <= 99.99f ? $"{ratio:0.##}" : ">99.99"; // let's just not overflow the UI
 		}
 
 		// BackColor = System.Drawing.Color.LightGoldenrodYellow
@@ -2101,7 +2101,7 @@ namespace Taskmaster.UI
 
 			var delta = netmonitor.GetTraffic;
 			//float netTotal = delta.Input + delta.Output;
-			netTransmit.Text = $"{delta.Input / 1000:N1} kB In, {delta.Output / 1000:N1} kB Out [{delta.Packets:N0} packets; {delta.Queue:N0} queued]";
+			netTransmit.Text = $"{delta.Input / 1000:0.#} kB In, {delta.Output / 1000:0.#} kB Out [{delta.Packets:N0} packets; {delta.Queue:N0} queued]";
 		}
 
 		Extensions.ListViewEx NetworkDevices = null;
@@ -3052,10 +3052,10 @@ namespace Taskmaster.UI
 				float vramFree = vramTotal - vramUsed;
 
 				// gpuvram.Text = $"{vramFree:N2} of {vramTotal:N1} GiB free ({ea.Data.MemLoad:N1} % usage) [Controller: {ea.Data.MemCtrl:N1} %]";
-				gpuvram.Text = $"{vramFree:N2} GiB free ({sensors.MemLoad:N1} % usage) [Controller: {sensors.MemCtrl:N1} %]";
-				gpuload.Text = $"{sensors.Load:N1} %";
-				gpufan.Text = $"{sensors.FanLoad:N1} % [{sensors.FanSpeed} RPM]";
-				gputemp.Text = $"{sensors.Temperature:N1} C";
+				gpuvram.Text = $"{vramFree:0.##} GiB free ({sensors.MemLoad:0.#} % usage) [Controller: {sensors.MemCtrl:0.#} %]";
+				gpuload.Text = $"{sensors.Load:0.#} %";
+				gpufan.Text = $"{sensors.FanLoad:0.#} % [{sensors.FanSpeed} RPM]";
+				gputemp.Text = $"{sensors.Temperature:0.#} C";
 			}
 			catch (OutOfMemoryException) { throw; }
 			catch (Exception ex)
@@ -3389,7 +3389,7 @@ namespace Taskmaster.UI
 			double totalgb = (double)Memory.Total / 1_073_741_824d;
 			double usage = 1 - (freegb / totalgb);
 			//ramload.Text = $"{freegb:N2} of {totalgb:N1} GiB free ({usage * 100d:N1} % usage), {MemoryManager.Pressure * 100:N1} % pressure";
-			ramload.Text = $"{freegb:N2} GiB free ({usage * 100d:N1} % usage), {Memory.Pressure * 100:N1} % pressure";
+			ramload.Text = $"{freegb:0.##} GiB free ({usage * 100d:0.#} % usage), {Memory.Pressure * 100:0.#} % pressure";
 
 			// TODO: Print warning if MemoryManager.Pressure > 100%
 
@@ -3412,7 +3412,7 @@ namespace Taskmaster.UI
 
 			var load = ea.Load;
 
-			cpuload.Text = $"{load.Current:N1} %, Low: {load.Low:N1} %, Mean: {load.Mean:N1} %, High: {load.High:N1} %; Queue: {load.Queue:N0}";
+			cpuload.Text = $"{load.Current:0.#} %, Low: {load.Low:0.#} %, Mean: {load.Mean:0.#} %, High: {load.High:0.#} %; Queue: {load.Queue:N0}";
 			// 50 %, Low: 33.2 %, Mean: 52.1 %, High: 72.8 %, Queue: 1
 		}
 
@@ -3437,14 +3437,14 @@ namespace Taskmaster.UI
 				var load = ea.Load;
 
 				var li = new ListViewItem(new string[] {
-					$"{load.Current:N2} %",
-					$"{load.Mean:N2} %",
-					$"{load.High:N2} %",
-					$"{load.Low:N2} %",
+					$"{load.Current:0.##} %",
+					$"{load.Mean:0.##} %",
+					$"{load.High:0.##} %",
+					$"{load.Low:0.##} %",
 					ea.Reaction.ToString(),
 					Power.Utility.GetModeName(ea.Mode),
 					ea.Enacted.ToString(CultureInfo.InvariantCulture),
-					$"{ea.Pressure * 100f:N1} %"
+					$"{ea.Pressure * 100f:0.#} %"
 				})
 				{
 					UseItemStyleForSubItems = false
@@ -3659,7 +3659,7 @@ namespace Taskmaster.UI
 
 					if (prc.VolumeStrategy != Audio.VolumeStrategy.Ignore)
 					{
-						sbs.Append("Volume = ").AppendFormat(CultureInfo.InvariantCulture, "{0:N2}", prc.Volume).AppendLine();
+						sbs.Append("Volume = ").AppendFormat(CultureInfo.InvariantCulture, "{0:0.##}", prc.Volume).AppendLine();
 						sbs.Append("Volume strategy = ").Append((int)prc.VolumeStrategy).AppendLine();
 					}
 
@@ -3957,7 +3957,7 @@ namespace Taskmaster.UI
 		{
 			if (nvmtransfers >= float.Epsilon)
 			{
-				this.nvmtransferslabel.Text = $"{nvmtransfers:N1} {WarningLevelString((int)nvmtransfers, 200, 320, 480)}";
+				this.nvmtransferslabel.Text = $"{nvmtransfers:0.#} {WarningLevelString((int)nvmtransfers, 200, 320, 480)}";
 				this.nvmtransferslabel.ForeColor = System.Drawing.SystemColors.WindowText;
 				skipTransfers = 0;
 			}
@@ -3971,7 +3971,7 @@ namespace Taskmaster.UI
 
 			if (splitio >= float.Epsilon)
 			{
-				nvmsplitio.Text = $"{splitio:N1} {WarningLevelString((int)splitio, 20, 80, Math.Max(120, (int)(nvmtransfers * 0.5)))}";
+				nvmsplitio.Text = $"{splitio:0.#} {WarningLevelString((int)splitio, 20, 80, Math.Max(120, (int)(nvmtransfers * 0.5)))}";
 				nvmsplitio.ForeColor = System.Drawing.SystemColors.WindowText;
 				skipSplits = 0;
 			}
@@ -3986,7 +3986,7 @@ namespace Taskmaster.UI
 			if (nvmdelayt >= float.Epsilon)
 			{
 				float delay = nvmdelayt * 1000f;
-				nvmdelaylabel.Text = $"{delay:N1} ms {WarningLevelString((int)delay, 22, 52, 70)}";
+				nvmdelaylabel.Text = $"{delay:0.#} ms {WarningLevelString((int)delay, 22, 52, 70)}";
 				nvmdelaylabel.ForeColor = System.Drawing.SystemColors.WindowText;
 				skipDelays = 0;
 			}

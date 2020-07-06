@@ -4,7 +4,7 @@
 // Author:
 //       M.A. (https://github.com/mkahvi)
 //
-// Copyright (c) 2018–2019 M.A.
+// Copyright (c) 2018–2020 M.A.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -571,8 +571,8 @@ namespace Taskmaster
 						{
 							double actualgoal = ((Memory.Total * (pressure - 1d)) / 1_048_576);
 							double freegoal = actualgoal + Math.Max(512d, (Memory.Total * (0.02d / 1_048_576d))); // 512 MB or 2% extra to give space for disk cache
-							Logging.DebugMsg($"Pressure:    {pressure * 100:N1} %{Environment.NewLine}Actual goal: {actualgoal:N2}{Environment.NewLine}Stated goal: {freegoal:N2}");
-							Log.Warning($"<Memory> High pressure ({pressure * 100:N1} %), please close applications to improve performance (suggested minimum goal: {freegoal:N0} MiB).");
+							Logging.DebugMsg($"Pressure:    {pressure * 100:0.#} %{Environment.NewLine}Actual goal: {actualgoal:0.##}{Environment.NewLine}Stated goal: {freegoal:0.##}");
+							Log.Warning($"<Memory> High pressure ({pressure * 100:0.#} %), please close applications to improve performance (suggested minimum goal: {freegoal:N0} MiB).");
 							// TODO: Could list like ~5 apps that are using most memory here
 							WarnedAboutMemoryPressure = true;
 							LastPressureWarning = LastPressureEvent;
@@ -590,7 +590,7 @@ namespace Taskmaster
 
 							if (!PressureAlleviatedBlurp && pressure <= 0.95d)
 							{
-								Log.Information($"<Memory> Pressure alleviated (remaining: {pressure * 100:N1} %) – {HumanInterface.ByteString(memfreeb, iec: true)} free.");
+								Log.Information($"<Memory> Pressure alleviated (remaining: {pressure * 100:0.#} %) – {HumanInterface.ByteString(memfreeb, iec: true)} free.");
 								PressureAlleviatedBlurp = true;
 							}
 						}

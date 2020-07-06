@@ -4,7 +4,7 @@
 // Author:
 //       M.A. (https://github.com/mkahvi)
 //
-// Copyright (c) 2018–2019 M.A.
+// Copyright (c) 2018–2020 M.A.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -319,7 +319,7 @@ namespace Taskmaster.Hardware
 			if (disposed) return;
 
 			float? tmp = sensor.Value;
-			Log.Verbose(sensor.Name + " : " + sensor.SensorType.ToString() + " = " + (tmp.HasValue ? $"{tmp.Value:N2}" : HumanReadable.Generic.NotAvailable));
+			Log.Verbose(sensor.Name + " : " + sensor.SensorType.ToString() + " = " + (tmp.HasValue ? $"{tmp.Value:0.##}" : HumanReadable.Generic.NotAvailable));
 		}
 
 		#region IDisposable Support

@@ -4,7 +4,7 @@
 // Author:
 //       M.A. (https://github.com/mkahvi)
 //
-// Copyright (c) 2018–2019 M.A.
+// Copyright (c) 2018–2020 M.A.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -259,7 +259,7 @@ namespace Taskmaster.Power
 					//var idle = User.LastActiveTimespan(lastact);
 					//if (lastact == uint.MinValue) idle = TimeSpan.Zero; // HACK
 
-					Log.Debug($"<Monitor> Power state: {mode.ToString()} (last user activity {sidletime:N1} {timename} ago)");
+					Log.Debug($"<Monitor> Power state: {mode.ToString()} (last user activity {sidletime:0.#} {timename} ago)");
 				}
 
 				if (OldPowerState == CurrentMonitorState)
@@ -429,7 +429,7 @@ namespace Taskmaster.Power
 					if ((ShowSessionActions && SleepGivenUp <= 1) || DebugMonitor)
 					{
 						var timename = Time.TimescaleString(scale, !sidletime.RoughlyEqual(1d));
-						Log.Information($"<Session:Lock> User idle ({sidletime:N1} {timename}); Monitor power down, attempt {SleepTickCount}...");
+						Log.Information($"<Session:Lock> User idle ({sidletime:0.#} {timename}); Monitor power down, attempt {SleepTickCount}...");
 					}
 
 					SetMonitorMode(MonitorPowerMode.Off);
@@ -437,7 +437,7 @@ namespace Taskmaster.Power
 				else
 				{
 					if (ShowSessionActions || DebugMonitor)
-						Log.Information($"<Session:Lock> User active too recently ({idle.TotalSeconds:N1}s ago), delaying monitor power down...");
+						Log.Information($"<Session:Lock> User active too recently ({idle.TotalSeconds:0.#}s ago), delaying monitor power down...");
 
 					StartDisplayTimer(); // TODO: Make this happen sooner if user was not active recently
 				}
@@ -1058,7 +1058,7 @@ namespace Taskmaster.Power
 					var total = SessionLockCounter.Elapsed;
 					double percentage = off.TotalMinutes / total.TotalMinutes;
 
-					Log.Information("<Session:Unlock> Monitor off time: " + $"{off.TotalMinutes:N1} / {total.TotalMinutes:N1} minutes ({percentage * 100d:N1} %)");
+					Log.Information("<Session:Unlock> Monitor off time: " + $"{off.TotalMinutes:0.#} / {total.TotalMinutes:0.#} minutes ({percentage * 100d:0.#} %)");
 				}
 			}
 
@@ -1557,7 +1557,12 @@ namespace Taskmaster.Power
 
 			Behaviour = PowerBehaviour.Internal;
 
-			SystemEvents.SessionSwitch -= SessionLockEvent; // leaks if not disposed
+			try
+			{
+				SystemEvents.SessionSwitch -= SessionLockEvent; // leaks if not done according to docs
+				SystemEvents.SessionEnding -= SessionEndingEvent; // leaks if not done according to docs
+			}
+			catch { /* IGNORE */ }
 
 			if (disposing)
 			{
@@ -1591,8 +1596,6 @@ namespace Taskmaster.Power
 				OnDisposed?.Invoke(this, new DisposedEventArgs());
 				OnDisposed = null;
 			}
-
-			Microsoft.Win32.SystemEvents.SessionEnding -= SessionEndingEvent;
 		}
 
 		~Manager() => Dispose(false);

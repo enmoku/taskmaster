@@ -4,7 +4,7 @@
 // Author:
 //       M.A. (https://github.com/mkahvi)
 //
-// Copyright (c) 2018 M.A.
+// Copyright (c) 2018–2020 M.A.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -205,7 +205,7 @@ namespace Taskmaster
 				}
 
 				TempScan?.Invoke(ScanState.End, dst);
-				Log.Information($"Temp contents: {dst.Files} files, {dst.Dirs} dirs, {(dst.Size / 1_000_000f):N2} MBs");
+				Log.Information($"Temp contents: {dst.Files} files, {dst.Dirs} dirs, {(dst.Size / 1_000_000f):0.##} MBs");
 			}
 			finally
 			{

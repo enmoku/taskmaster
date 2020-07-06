@@ -4,7 +4,7 @@
 // Author:
 //       M.A. (https://github.com/mkahvi)
 //
-// Copyright (c) 2016-2019 M.A.
+// Copyright (c) 2016-2020 M.A.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -26,6 +26,7 @@
 
 using System;
 using System.Diagnostics;
+using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Text;
 
@@ -52,8 +53,10 @@ namespace Taskmaster
 		public static string PruneStacktrace(string trace) => trace.Replace(Properties.Resources.ProjectDirectory.Trim(), HumanReadable.Generic.Ellipsis + System.IO.Path.DirectorySeparatorChar);
 
 		[Conditional("DEBUG")]
-		public static void DebugMsg(string message)
-			=> System.Diagnostics.Debug.WriteLine("[" + DateTime.Now.ToString("HH:mm:ss.fff") + "] " + message);
+		public static void DebugMsg(string message) => System.Diagnostics.Debug.WriteLine("[" + DateTime.Now.ToString("HH:mm:ss.fff", CultureInfo.InvariantCulture) + "] " + message);
+
+		[Conditional("DEBUG")]
+		public static void DebugRawMsg(string message) => System.Diagnostics.Debug.WriteLine(message);
 
 		public static void Stacktrace(Exception ex, bool crashsafe = false, [CallerMemberName] string method = "", [CallerLineNumber] int lineNo = -1, [CallerFilePath] string file = "")
 		{

@@ -465,8 +465,8 @@ namespace Taskmaster
 
 		static void PrintStats()
 		{
-			Log.Information($"<Stat> WMI polling: {Statistics.WMIPollTime:N2}s [{Statistics.WMIPolling.ToString(CultureInfo.InvariantCulture)}]");
-			Log.Information($"<Stat> Self-maintenance: {Statistics.MaintenanceTime:N2}s [{Statistics.MaintenanceCount.ToString(CultureInfo.InvariantCulture)}]");
+			Log.Information($"<Stat> WMI polling: {Statistics.WMIPollTime:0.##}s [{Statistics.WMIPolling.ToString(CultureInfo.InvariantCulture)}]");
+			Log.Information($"<Stat> Self-maintenance: {Statistics.MaintenanceTime:0.##}s [{Statistics.MaintenanceCount.ToString(CultureInfo.InvariantCulture)}]");
 			Log.Information($"<Stat> Path cache: {Statistics.PathCacheHits.ToString(CultureInfo.InvariantCulture)} hits, {Statistics.PathCacheMisses.ToString(CultureInfo.InvariantCulture)} misses");
 			var sbs = new StringBuilder("<Stat> Path finding: ", 256)
 				.Append(Statistics.PathFindAttempts).Append(" total attempts; ")
