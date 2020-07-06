@@ -930,7 +930,7 @@ namespace Taskmaster.Network
 								Log.Warning("<Network> Internet check interrupted. Potential hardware/driver issues.");
 
 							if (dnsfail)
-								Log.Warning("<Network> DNS test failed, test host unreachable. Test host may be down.");
+								Log.Warning("<Network> DNS test failed, test host unreachable or not found.");
 
 							InternetChangeNotifyDone = dnsfail || interrupt;
 						}
@@ -944,10 +944,21 @@ namespace Taskmaster.Network
 				}
 			}
 
+			Logging.DebugMsg("<Network> Internet status - IPv4: " + IPv4Status.ToString() + "; IPv6: " + IPv6Status.ToString());
+
 			InternetStatusChange?.Invoke(this, new InternetStatus { Available = InternetAvailable, Start = LastUptimeStart, Uptime = Uptime, IPv4 = IPv4Status, IPv6 = IPv6Status });
+
+			if (!InternetAvailable && LastInetPopup.To(DateTimeOffset.UtcNow).TotalSeconds > 30)
+			{
+				var t = LastDowntimeStart.ToLocalTime().LocalDateTime;
+				Tray.Tooltip(8000, "Internet unavailable!\nSince: " + t.ToLongTimeString() + " " + t.ToLongDateString(), Name, System.Windows.Forms.ToolTipIcon.Warning);
+				LastInetPopup = DateTimeOffset.UtcNow;
+			}
 
 			return InternetAvailable;
 		}
+
+		DateTimeOffset LastInetPopup = DateTimeOffset.MinValue;
 
 		//readonly List<IPAddress> AddressList = new List<IPAddress>(2);
 		// List<NetworkInterface> PublicInterfaceList = new List<NetworkInterface>(2);
@@ -1022,11 +1033,11 @@ namespace Taskmaster.Network
 			}
 			else
 			{
-				if (AvailabilityChanged)
+				if (AvailabilityChanged && LastInetPopup.To(DateTimeOffset.UtcNow).TotalSeconds > 10)
 				{
 					//Log.Warning("<Network> Unstable connectivity detected.");
 
-					Tray.Tooltip(2000, "Unstable internet connection detected!", Name,
+					Tray.Tooltip(8000, "Unstable internet connection detected!", Name,
 						System.Windows.Forms.ToolTipIcon.Warning);
 				}
 			}
@@ -1157,7 +1168,7 @@ namespace Taskmaster.Network
 
 			Logging.DebugMsg("<Network> ReportNetAvailability - Network: " + NetworkAvailable + "; Internet: " + InternetAvailable);
 
-			if (!((LastReportedInetAvailable != InternetAvailable) || (LastReportedNetAvailable != NetworkAvailable)))
+			if (LastReportedInetAvailable == InternetAvailable && LastReportedNetAvailable == NetworkAvailable)
 				return; // bail out if nothing has changed since last report
 
 			LastReportedInetAvailable = InternetAvailable;

@@ -4196,8 +4196,6 @@ namespace Taskmaster.UI
 
 		public void InetStatusChangeEvent(object _, Network.InternetStatus ea)
 		{
-			Logging.DebugMsg("<Window/Net> Internet status - IPv4: " + ea.IPv4.ToString() + "; IPv6: " + ea.IPv6.ToString());
-
 			InetStatusLabel(ea.Available);
 		}
 
