@@ -241,12 +241,6 @@
     <Compile Include="UI\Extensions\NumericUpDownEx.cs">
       <SubType>Component</SubType>
     </Compile>
-    <Compile Include="UI\Config\FirstRunWizard.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="UI\Config\FirstRunWizard.Designer.cs">
-      <DependentUpon>FirstRunWizard.cs</DependentUpon>
-    </Compile>
     <Compile Include="UI\HiddenWindow.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -306,9 +300,6 @@
       <DesignTime>True</DesignTime>
     </Compile>
     <EmbeddedResource Include="Properties\Resources_stub.resx" />
-    <EmbeddedResource Include="UI\Config\FirstRunWizard.resx">
-      <DependentUpon>FirstRunWizard.cs</DependentUpon>
-    </EmbeddedResource>
     <None Include="..\.editorconfig">
       <Link>.editorconfig</Link>
     </None>
