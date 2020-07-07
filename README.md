@@ -2,28 +2,29 @@
 
 General background app to deal with Windows system maintenance and automatically mitigate certain annoyances. Primary use case is dealing with limitations of aging hardware by mitigating the effect of apps behaving poorly or acting like they're the only thing running on your computer.
 
+Changes made by this app are intended to have no permanent impact on the system (they should be reset at latest on reboot) in case they’re undesirable, making restoring previous operation trivial. Any changes that persist longer are viewed as outside the scope of this app and if such are introduced, it’ll be with separate tool.
+
 ## Purpose
 
 * Monitor application start-ups and apply changes to them as appropriate.
-Changes that can be applied currently are CPU affinity, CPU priority, power mode, and system mixer volume based on either executable name and/or path.
-* Automatic power management depending on system load.
+Changes that can be applied currently are CPU affinity (which cores are used by a process), CPU priority, power mode, and system mixer volume based on either executable name and/or path.
 * Microphone recording volume (not voice level) can also be monitored and reset.
-* Network monitoring is also possible, though it mostly provides current IPv4 and IPv6 addresses and attempts to detect when internet connectivity is disrupted, a thing that Windows (7) itself does very poor job of informing users of.
+* Network monitoring is also possible, though it mostly provides current IPv4 and IPv6 addresses and attempts to detect when internet connectivity is disrupted, a thing that Windows itself (7 and 10 at least) does very poor job of informing users of.
 * Ability to page applications and monitor temp folders is also included, but these features are infantile and thus mostly unusable.
 * Foreground app detection, to allow some watchlist rules to be applied only when an app is at foreground.
 Allowing apps that normally have higher priority to be pushed into the background when not needed.
-* Automatic power mode adjustment based on system load.
+* Automatic power mode adjustment based on system load or based on what apps are running.
 * Hung foreground app detection and mitigation (reduce process priority, minimize, and/or even kill) to allow user to regain control of their system.
 
 All features are optional, nothing is forced on the user, except the tray icon.
 
 ## Planned features
 
-* At run-time configuration.
+* At run-time configuration (constant work-in-progress to match new or changed features)
 * Game detection – unlikely to occur as I have found no clues how to accomplish this reliably.
 * Automatic load-balancing between cores.
 * Improve recognition of system state and when things like disk cleanup are advisable, actual cleanup will be delegated to calling `cleanmgr`.
-* Improved underlying code.
+* Improved underlying code (constant work-in-progress).
 * Move to better UI system such as WPF.
 
 ## Original purpose
