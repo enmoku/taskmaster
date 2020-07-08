@@ -424,7 +424,7 @@ namespace Taskmaster.Network
 
 		async Task<bool> DynamicDNSUpdate()
 		{
-			Log.Debug("<Net:DynDNS> Updating...");
+			Log.Information("<Net:DynDNS> Updating...");
 
 			try
 			{

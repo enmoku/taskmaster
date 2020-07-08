@@ -1295,6 +1295,9 @@ namespace Taskmaster.UI
 
 		void WindowClose(object _, FormClosingEventArgs ea)
 		{
+			Logging.DebugMsg("<Window> WindowClose(FormClosing): " + ea.CloseReason.ToString());
+			Logging.DebugMsg("<Window/SaveDebug> Enabled: " + SaveDebugSettings.ToString());
+
 			try
 			{
 				if (SaveDebugSettings)
@@ -1333,7 +1336,7 @@ namespace Taskmaster.UI
 						_ => 0,
 					};
 					logsec[Constants.Verbosity].Int = loglevel;
-					Logging.DebugMsg("<Debug> Verbosity: " + loglevel);
+					Logging.DebugMsg("<Window/SaveDebug> Set Verbosity: " + loglevel);
 				}
 
 				SaveUIState();
@@ -2063,6 +2066,8 @@ namespace Taskmaster.UI
 
 		void StopUIUpdates(object _, EventArgs _2)
 		{
+			Logging.DebugMsg("<Window> StopUIUpdates");
+
 			if (UItimer.Enabled) UItimer.Stop();
 		}
 

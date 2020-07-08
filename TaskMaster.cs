@@ -215,8 +215,6 @@ namespace Taskmaster
 						// .GotFocus and .LostFocus are apparently unreliable as per the API
 						mainwindow.Activated += (_, _2) => OptimizeResponsiviness(true);
 						mainwindow.Deactivate += (_, _2) => OptimizeResponsiviness(false);
-
-						mainwindow.FormClosing += (_, ea) => Logging.DebugMsg($"Main Window Closing: {ea.CloseReason.ToString()}");
 					}
 					catch (Exception ex)
 					{
@@ -421,7 +419,7 @@ namespace Taskmaster
 			}
 			catch (RunstateException ex)
 			{
-				Log.Debug("Exit trigger: " + ex.State.ToString());
+				if (Trace) Log.Debug("<Core> Exit trigger: " + ex.State.ToString());
 
 				switch (ex.State)
 				{

@@ -588,7 +588,7 @@ namespace Taskmaster.UI
 			try
 			{
 				int attempts = 0;
-				if (!Tray.Visible) Log.Debug("<Tray> Not visible, fixing...");
+				if (!Tray.Visible) Log.Verbose("<Tray> Not visible, fixing...");
 
 				do
 				{
@@ -674,7 +674,7 @@ namespace Taskmaster.UI
 
 					if (!warned)
 					{
-						Log.Debug("<Tray> Task Scheduler is taking long time to respond.");
+						Log.Warning("<Tray> Task Scheduler is taking long time to respond.");
 						warned = true;
 					}
 				}

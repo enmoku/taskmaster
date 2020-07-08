@@ -43,7 +43,7 @@ namespace Taskmaster
 			timer.Elapsed += MaintenanceTick;
 			TimerReset();
 
-			if (Trace) Log.Information("<Self-Maintenance> Initialized.");
+			if (Trace) Log.Verbose("<Self-Maintenance> Initialized.");
 		}
 
 		void TimerReset()
@@ -95,7 +95,7 @@ namespace Taskmaster
 
 				long newmem = GC.GetTotalMemory(true);
 
-				Log.Debug("<Self-Maintenance> Done. Freed " + ((oldmem - newmem) / 1_000).ToString(CultureInfo.CurrentCulture) + " kB memory.");
+				Log.Verbose("<Self-Maintenance> Done. Freed " + ((oldmem - newmem) / 1_000).ToString(CultureInfo.CurrentCulture) + " kB memory.");
 
 				if (Trace) Log.Verbose("Running periodic cleanup");
 

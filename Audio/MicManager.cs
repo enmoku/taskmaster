@@ -411,7 +411,7 @@ namespace Taskmaster.Audio
 						}
 						else
 						{
-							Log.Debug($"<Microphone> Volume not corrected from {oldVol:0.#} %");
+							if (DebugMic) Log.Debug($"<Microphone> Volume not corrected from {oldVol:0.#} %");
 						}
 					}
 					finally
