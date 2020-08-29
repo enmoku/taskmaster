@@ -4,7 +4,7 @@
 // Author:
 //       M.A. (https://github.com/mkahvi)
 //
-// Copyright (c) 2018–2019 M.A.
+// Copyright (c) 2018–2020 M.A.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -61,13 +61,13 @@ namespace Taskmaster.Power
 			if (disposed || !IsHandleCreated) return;
 
 			if (m.Msg == NativeMethods.WM_POWERBROADCAST
-				&& m.WParam.ToInt32() == NativeMethods.PBT_POWERSETTINGCHANGE)
+				&& m.WParam.ToInt64() == NativeMethods.PBT_POWERSETTINGCHANGE)
 			{
 				var ps = (NativeMethods.PowerBroadcastSetting)Marshal.PtrToStructure(m.LParam, typeof(NativeMethods.PowerBroadcastSetting));
 
 				if (ps.PowerSetting == NativeMethods.GUID_POWERSCHEME_PERSONALITY && ps.DataLength == Marshal.SizeOf(typeof(Guid)))
 				{
-					var pData = (IntPtr)(m.LParam.ToInt32() + Marshal.SizeOf(ps) - 4); // -4 is to align to the ps.Data
+					var pData = (IntPtr)(m.LParam.ToInt64() + Marshal.SizeOf(ps) - 4); // -8 is to align to the ps.Data
 					var newPersonality = (Guid)Marshal.PtrToStructure(pData, typeof(Guid));
 
 					PowerModeChanged?.Invoke(newPersonality);

@@ -192,7 +192,7 @@ namespace Taskmaster
 				// NOP
 			}
 
-			public override bool IsInvalid => handle.ToInt32() == -1;
+			public override bool IsInvalid => handle.ToInt64() == -1;
 
 			protected override bool ReleaseHandle() => CloseHandle(handle);
 		}

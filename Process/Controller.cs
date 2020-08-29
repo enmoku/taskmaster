@@ -843,7 +843,7 @@ namespace Taskmaster.Process
 
 			bool mAffinity = false, mPriority = false;
 			ProcessPriorityClass oldPriority = ProcessPriorityClass.RealTime;
-			int oldAffinity = -1;
+			long oldAffinity = -1;
 
 			try
 			{
@@ -854,7 +854,7 @@ namespace Taskmaster.Process
 					mPriority = true;
 				}
 
-				oldAffinity = info.Process.ProcessorAffinity.ToInt32();
+				oldAffinity = info.Process.ProcessorAffinity.ToInt64();
 				if (BackgroundAffinity >= 0)
 				{
 					if (oldAffinity != BackgroundAffinity)
@@ -863,7 +863,7 @@ namespace Taskmaster.Process
 						mAffinity = true;
 					}
 				}
-				else if (AffinityMask >= 0 && EstablishNewAffinity(oldAffinity, out int newAffinityMask)) // set foreground affinity otherwise
+				else if (AffinityMask >= 0 && EstablishNewAffinity(oldAffinity, out var newAffinityMask)) // set foreground affinity otherwise
 				{
 					info.Process.ProcessorAffinity = new IntPtr(BackgroundAffinity.Replace(0, Utility.FullCPUMask));
 					mAffinity = true;
@@ -920,7 +920,7 @@ namespace Taskmaster.Process
 
 			bool mAffinity = false, mPriority = false;
 			ProcessPriorityClass oldPriority;
-			int oldAffinity, newAffinity;
+			long oldAffinity, newAffinity;
 
 			IOPriority nIO = IOPriority.Ignore;
 
@@ -939,7 +939,7 @@ namespace Taskmaster.Process
 					mPriority = true;
 				}
 
-				oldAffinity = info.Process.ProcessorAffinity.ToInt32();
+				oldAffinity = info.Process.ProcessorAffinity.ToInt64();
 				if (AffinityMask >= 0 && EstablishNewAffinity(oldAffinity, out newAffinity))
 				{
 					info.Process.ProcessorAffinity = new IntPtr(newAffinity.Replace(0, Utility.FullCPUMask));
@@ -1251,7 +1251,7 @@ namespace Taskmaster.Process
 				ProcessPriorityClass? oldPriority = null;
 				IntPtr? oldAffinity = null;
 
-				int oldAffinityMask = 0;
+				long oldAffinityMask = 0;
 
 				await Task.Delay(refresh ? 5 : ModifyDelay).ConfigureAwait(false);
 
@@ -1270,7 +1270,7 @@ namespace Taskmaster.Process
 
 					oldAffinity = info.Process.ProcessorAffinity;
 					oldPriority = info.Process.PriorityClass;
-					oldAffinityMask = oldAffinity.Value.ToInt32().Replace(0, Utility.FullCPUMask);
+					oldAffinityMask = oldAffinity.Value.ToInt64().Replace(0, Utility.FullCPUMask);
 				}
 				catch (InvalidOperationException) // Already exited
 				{
@@ -1340,7 +1340,7 @@ namespace Taskmaster.Process
 							bool expected = true;
 							// Branch-hint: False
 							if ((Priority.HasValue && info.Process.PriorityClass != Priority.Value)
-								|| (lAffinityMask >= 0 && info.Process.ProcessorAffinity.ToInt32() != lAffinityMask))
+								|| (lAffinityMask >= 0 && info.Process.ProcessorAffinity.ToInt64() != lAffinityMask))
 							{
 								expected = false;
 								ormt.ExpectedState--;
@@ -1417,7 +1417,7 @@ namespace Taskmaster.Process
 
 				ProcessPriorityClass? newPriority = null;
 				IntPtr? newAffinity;
-				int newAffinityMask = -1;
+				long newAffinityMask = -1;
 
 				bool mAffinity = false, mPriority = false, mPower = false, modified = false, failSetAffinity = false, failSetPriority = false;
 
@@ -1695,15 +1695,15 @@ namespace Taskmaster.Process
 
 		const IOPriority DefaultForegroundIOPriority = IOPriority.Normal;
 
-		int SetIO(ProcessEx info, IOPriority overridePriority = IOPriority.Ignore)
+		long SetIO(ProcessEx info, IOPriority overridePriority = IOPriority.Ignore)
 		{
-			int target = overridePriority == IOPriority.Ignore ? (int)IOPriority : (int)overridePriority;
+			long target = overridePriority == IOPriority.Ignore ? (long)IOPriority : (long)overridePriority;
 
-			int nIO = -1;
+			long nIO = -1;
 
 			try
 			{
-				int original = Utility.SetIO(info.Process, target, out nIO);
+				long original = Utility.SetIO(info.Process, target, out nIO);
 
 				if (original < 0)
 				{
@@ -1744,7 +1744,7 @@ namespace Taskmaster.Process
 		/// Sets new affinity mask. Returns true if the new mask differs from old.
 		/// </summary>
 		// TODO: Apply affinity strategy
-		bool EstablishNewAffinity(int oldmask, out int newmask)
+		bool EstablishNewAffinity(long oldmask, out long newmask)
 			=> (newmask = Utility.ApplyAffinityStrategy(oldmask, AffinityMask, AffinityStrategy)) != oldmask;
 
 		GenericLock refresh_lock = new GenericLock();

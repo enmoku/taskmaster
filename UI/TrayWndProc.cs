@@ -113,7 +113,7 @@ namespace Taskmaster.UI
 					Keys key = (Keys)(((int)m.LParam >> 16) & 0xFFFF);
 					//NativeMethods.KeyModifier modifiers = (NativeMethods.KeyModifier)((int)m.LParam & 0xFFFF);
 					//int modifiers =(int)m.LParam & 0xFFFF;
-					int hotkeyId = m.WParam.ToInt32();
+					long hotkeyId = m.WParam.ToInt64();
 
 					//if (modifiers != hotkeymodifiers)
 					//Log.Debug($"<Global> Received unexpected modifier keys: {modifiers} instead of {hotkeymodifiers}");
@@ -152,7 +152,7 @@ namespace Taskmaster.UI
 				{
 					string detail = "Unknown";
 
-					int lparam = m.LParam.ToInt32();
+					long lparam = m.LParam.ToInt64();
 					if (MKAh.Logic.Bit.IsSet(lparam, ENDSESSION_LOGOFF))
 						detail = "User Logoff";
 					if (MKAh.Logic.Bit.IsSet(lparam, ENDSESSION_CLOSEAPP))
@@ -189,11 +189,11 @@ namespace Taskmaster.UI
 				}
 				else if (m.Msg == WM_ENDSESSION)
 				{
-					if (m.WParam.ToInt32() == 1L) // == true; session is actually ending
+					if (m.WParam.ToInt64() == 1L) // == true; session is actually ending
 					{
 						string detail = "Unknown";
 
-						int lparam = m.LParam.ToInt32();
+						var lparam = m.LParam.ToInt64();
 						if (MKAh.Logic.Bit.IsSet(lparam, ENDSESSION_LOGOFF))
 							detail = "User Logoff";
 						if (MKAh.Logic.Bit.IsSet(lparam, ENDSESSION_CLOSEAPP))

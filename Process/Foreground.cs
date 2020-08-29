@@ -370,7 +370,7 @@ namespace Taskmaster.Process
 							{
 								if (lfgpid != ForegroundId) return;
 
-								if (fgproc.ProcessorAffinity.ToInt32() != 1)
+								if (fgproc.ProcessorAffinity.ToInt64() != 1)
 								{
 									fgproc.ProcessorAffinity = new IntPtr(1); // TODO: set this to something else than the first core
 									if (acted) sbs.Append(", ");

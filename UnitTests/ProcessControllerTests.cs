@@ -55,7 +55,7 @@ namespace Processes
 		[TestCase(6, 0b100000, 0b111000, ExpectedResult = 1)]
 		[TestCase(8, 0b11000000, 0b11110000, ExpectedResult = 2)]
 		[TestCase(24, 0b111001110000000000000000, 0b000001010000000000000000, ExpectedResult = 2)]
-		public int AffinityStrategyLimitActual(int cores, int source, int target)
+		public long AffinityStrategyLimitActual(int cores, int source, int target)
 		{
 			//int cores = Taskmaster.Hardware.Utility.ProcessorCount;
 
@@ -67,7 +67,7 @@ namespace Processes
 			Console.WriteLine("Source: " + Convert.ToString(source, 2).PadLeft(cores, '0'));
 			Console.WriteLine("Target: " + Convert.ToString(target, 2).PadLeft(cores, '0'));
 
-			int product = Taskmaster.Process.Utility.ApplyAffinityStrategy(
+			long product = Taskmaster.Process.Utility.ApplyAffinityStrategy(
 				source, target, Taskmaster.Process.AffinityStrategy.Limit);
 
 			Console.WriteLine("Result: " + Convert.ToString(product, 2).PadLeft(cores, '0'));
@@ -82,13 +82,13 @@ namespace Processes
 		[TestCase(0b1101, 0b1100, 0b1100, ExpectedResult = 0b1100)] // unset; this can fail if the core freeing method is changed
 		[TestCase(0b1100, 0b0101, 0b0101, ExpectedResult = 0b0101)] // move 1
 		[TestCase(0b1110, 0b0001, 0b0001, ExpectedResult = 0b0001)] // move and reduce
-		public int AffinityLimit1(int source, int mask, int expected)
+		public long AffinityLimit1(int source, int mask, int expected)
 		{
 			Taskmaster.Process.Utility.Debug = true;
 
 			System.Diagnostics.Debug.Listeners.Add(new System.Diagnostics.ConsoleTraceListener());
 
-			int product = Taskmaster.Process.Utility.ApplyAffinityStrategy(source, mask, Taskmaster.Process.AffinityStrategy.Limit);
+			var product = Taskmaster.Process.Utility.ApplyAffinityStrategy(source, mask, Taskmaster.Process.AffinityStrategy.Limit);
 
 			Assert.AreEqual(expected, product,
 				"{0} does not match expected {1}",
@@ -102,13 +102,13 @@ namespace Processes
 		[TestCase(0b1101, 0b1001, ExpectedResult = 0b1001)]
 		[TestCase(0b1100, 0b0011, ExpectedResult = 0b0011)]
 		[TestCase(0b0110, 0b1001, ExpectedResult = 0b1001)]
-		public int AffinityForce1(int source, int mask)
+		public long AffinityForce1(int source, int mask)
 		{
 			Taskmaster.Process.Utility.Debug = true;
 
 			System.Diagnostics.Debug.Listeners.Add(new System.Diagnostics.ConsoleTraceListener());
 
-			int product = Taskmaster.Process.Utility.ApplyAffinityStrategy(source, mask, Taskmaster.Process.AffinityStrategy.Force);
+			var product = Taskmaster.Process.Utility.ApplyAffinityStrategy(source, mask, Taskmaster.Process.AffinityStrategy.Force);
 
 			Assert.AreEqual(mask, product);
 

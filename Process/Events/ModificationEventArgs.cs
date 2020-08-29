@@ -40,9 +40,9 @@ namespace Taskmaster.Process
 
 		public ProcessPriorityClass? PriorityOld { get; set; }
 
-		public int AffinityNew { get; set; } = -1;
+		public long AffinityNew { get; set; } = -1;
 
-		public int AffinityOld { get; set; } = -1;
+		public long AffinityOld { get; set; } = -1;
 
 		public bool AffinityFail { get; set; }
 

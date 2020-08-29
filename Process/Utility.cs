@@ -44,7 +44,7 @@ namespace Taskmaster.Process
 		/// <summary>
 		/// Returns bitmask as either "1100", "12", or "1100 [12]"
 		/// </summary>
-		public static string FormatBitMask(int mask, int length, BitmaskStyle style)
+		public static string FormatBitMask(long mask, int length, BitmaskStyle style)
 			=> style switch
 			{
 				BitmaskStyle.Bits => HumanInterface.BitMask(mask, length),
@@ -250,7 +250,7 @@ namespace Taskmaster.Process
 
 		internal static bool Debug;
 
-		public static int ApplyAffinityStrategy(int initialmask, int targetmask, AffinityStrategy strategy)
+		public static long ApplyAffinityStrategy(long initialmask, long targetmask, AffinityStrategy strategy)
 		{
 			StringBuilder sbs = null;
 
@@ -267,7 +267,7 @@ namespace Taskmaster.Process
 					.Append(", ").Append(strategy.ToString()).Append(')');
 			}
 
-			int result;
+			long result;
 
 			if (strategy == AffinityStrategy.Force)
 			{
@@ -281,9 +281,9 @@ namespace Taskmaster.Process
 					return targetmask; // quick exit
 				}
 
-				int initialCores = Bit.Count(initialmask);
-				int targetCores = Bit.Count(targetmask);
-				int excesscores = initialCores - targetCores;
+				long initialCores = Bit.Count(initialmask);
+				long targetCores = Bit.Count(targetmask);
+				long excesscores = initialCores - targetCores;
 				//int deficitcores = targetCores - initialCores;
 				//int availablecores = targetCores & ~initialmask;
 
@@ -295,15 +295,15 @@ namespace Taskmaster.Process
 
 				if (excesscores > 0)
 				{
-					result = Bit.Unfill(result, targetmask, excesscores);
+					result = Bit.Unfill(result, targetmask, (int)excesscores);
 					sbs?.Append("; excess: ").Append(excesscores.ToString(CultureInfo.InvariantCulture))
 						.Append(" pruned to: ").Append(HumanInterface.BitMask(result, cores))
 						.Append(" [").Append(result).Append(']');
 				}
 
 				bool correctlySlotted = Bit.And(result, targetmask) == result;
-				int incorrectMask = result & ~targetmask;
-				int incorrectCount = Bit.Count(incorrectMask);
+				long incorrectMask = result & ~targetmask;
+				long incorrectCount = Bit.Count(incorrectMask);
 
 				sbs?.Append("; misplaced: ").Append(!correctlySlotted);
 
@@ -357,10 +357,10 @@ namespace Taskmaster.Process
 		/// Throws: InvalidOperationException, ArgumentException
 		/// </summary>
 		/// <param name="target">0 = Background, 1 = Low, 2 = Normal, 3 = Elevated, 4 = High</param>
-		public static int SetIO(System.Diagnostics.Process process, int target, out int newIO, bool decrease = true)
+		public static long SetIO(System.Diagnostics.Process process, long target, out long newIO, bool decrease = true)
 		{
 			Taskmaster.NativeMethods.HANDLE handle = null;
-			int original = -1;
+			long original = -1;
 			System.Diagnostics.Debug.Assert(target >= 0 && target <= 2, "I/O target set to undefined value: " + target.ToString(CultureInfo.InvariantCulture));
 
 			target = target.Constrain(0, 2); // ensure no invalid data is used.

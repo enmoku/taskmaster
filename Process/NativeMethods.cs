@@ -54,7 +54,7 @@ namespace Taskmaster.Process
 			return null;
 		}
 
-		public static bool SetIOPriority(SafeHandle handle, int priority)
+		public static bool SetIOPriority(SafeHandle handle, long priority)
 		{
 			// the functionality changed with Windows 8 drastically and likely does something else
 			if (MKAh.Execution.IsWin7)
@@ -77,7 +77,7 @@ namespace Taskmaster.Process
 			return false;
 		}
 
-		public static int GetIOPriority(SafeHandle handle)
+		public static long GetIOPriority(SafeHandle handle)
 		{
 			// the functionality changed with Windows 8 drastically and likely does something else
 			if (MKAh.Execution.IsWin7)
@@ -89,10 +89,10 @@ namespace Taskmaster.Process
 					if (handle is null) return -1;
 					int rv = NtQueryInformationProcess(handle, PROCESS_INFORMATION_CLASS_WIN7.ProcessIoPriority, ref ioPrio, 4, ref resLen);
 
-					int error = Marshal.GetLastWin32Error();
+					long error = Marshal.GetLastWin32Error();
 					//Logging.DebugMsg($"QueryInformationProcess error code: {error} --- return value: {rv:X}");
 
-					return error == 0 ? ioPrio.ToInt32() : -1;
+					return error == 0 ? ioPrio.ToInt64() : -1;
 				}
 				catch (Exception ex)
 				{
