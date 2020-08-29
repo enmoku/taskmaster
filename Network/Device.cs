@@ -32,17 +32,28 @@ namespace Taskmaster.Network
 {
 	public class DeviceTraffic
 	{
-		public int Index { get; set; } = 0;
-		public TrafficData Delta { get; set; } = new TrafficData();
-		public TrafficData Total { get; set; } = new TrafficData();
+		public int Index;
+		public readonly TrafficData Delta;
+		public readonly TrafficData Total;
 
-		public DeviceTraffic() { }
+		public DeviceTraffic()
+		{
+			Delta = new TrafficData();
+			Total = new TrafficData();
+		}
 
 		public DeviceTraffic(DeviceTraffic old)
 		{
 			Index = old.Index;
 			Delta = new TrafficData(old.Delta);
 			Total = new TrafficData(old.Total);
+		}
+
+		public DeviceTraffic(int index, TrafficData delta, TrafficData total)
+		{
+			Index = index;
+			Delta = delta;
+			Total = total;
 		}
 	}
 

@@ -723,11 +723,11 @@ namespace Taskmaster.Network
 					}
 
 					var trfc = new DeviceTraffic
-					{
-						Index = index,
-						Delta = new TrafficData { Unicast = packets, Errors = errorsInSample, Discards = discards },
-						Total = new TrafficData { Unicast = totalunicast, Errors = totalerrors, Discards = totaldiscards, Bytes = nin.Bytes + nout.Bytes },
-					};
+					(
+						index,
+						new TrafficData { Unicast = packets, Errors = errorsInSample, Discards = discards },
+						new TrafficData { Unicast = totalunicast, Errors = totalerrors, Discards = totaldiscards, Bytes = nin.Bytes + nout.Bytes }
+					);
 
 					CurrentTraffic = trfc;
 
