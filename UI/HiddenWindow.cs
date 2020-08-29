@@ -71,7 +71,7 @@ namespace Taskmaster
 		{
 			Logging.DebugMsg("HiddenWindow finalizer");
 			System.GC.SuppressFinalize(this);
-			Dispose(true);
+			Dispose(false);
 		}
 	}
 }
