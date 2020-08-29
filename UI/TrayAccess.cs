@@ -712,8 +712,16 @@ namespace Taskmaster.UI
 					var procnew = System.Diagnostics.Process.Start(info);
 					bool created = procnew.WaitForExit(3000);
 
-					if (created && procnew.ExitCode == 0) Log.Information("<Tray> Scheduled task created.");
-					else Log.Error("<Tray> Scheduled task NOT created.");
+					if (created && procnew.ExitCode == 0)
+					{
+						Log.Information("<Tray> Scheduled task created.");
+						Log.Warning("<Tray> Scheduled task may auto-terminate after 3 days.");
+					}
+					else
+					{
+						Logging.DebugMsg(info.FileName + " " + argscreate);
+						Log.Error("<Tray> Scheduled task NOT created.");
+					}
 
 					if (!procnew.HasExited) procnew.Kill();
 					procnew?.Dispose();
