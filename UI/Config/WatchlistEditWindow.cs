@@ -391,7 +391,7 @@ namespace Taskmaster.UI.Config
 					}
 				};
 				corelist.Add(box);
-				corelayout.Controls.Add(new Extensions.Label { Text = (bit + 1).ToString() + ":" });
+				corelayout.Controls.Add(new Extensions.Label { Text = (bit + 1).ToString(CultureInfo.InvariantCulture) + ":" });
 				corelayout.Controls.Add(box);
 			}
 
@@ -1017,7 +1017,7 @@ namespace Taskmaster.UI.Config
 			var sbs = new System.Text.StringBuilder("Name: ", 256)
 				.AppendLine(fnlen ? "OK" : "Fail");
 
-			var samesection = Controller.FriendlyName.Equals(friendlyName.Text);
+			var samesection = Controller.FriendlyName.Equals(friendlyName.Text, StringComparison.InvariantCulture);
 			if (!samesection && modules.processmanager.GetControllerByName(friendlyName.Text, out _)) sbs.Append("Friendly name conflict!");
 
 			if (execName.Text.Length > 0)

@@ -120,7 +120,7 @@ namespace Taskmaster
 		public static void GetCache()
 		{
 			if (NativeMethods.GetSystemFileCacheSize(out uint minCache, out uint maxCache, out _))
-				Logging.DebugMsg("MEMORY CACHE - Min: " + minCache.ToString() + ", Max: " + maxCache.ToString());
+				Logging.DebugMsg("MEMORY CACHE - Min: " + minCache.ToString(CultureInfo.InvariantCulture) + ", Max: " + maxCache.ToString(CultureInfo.InvariantCulture));
 			else
 				Logging.DebugMsg("MEMORY CACHE - information unavailable");
 		}

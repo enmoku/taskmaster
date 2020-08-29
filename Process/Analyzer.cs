@@ -250,7 +250,7 @@ namespace Taskmaster.Process
 
 				// RECORD analysis
 
-				var file = $"{DateTime.Now.ToString("yyyyMMdd-HHmmss-fff")}-{info.Name}.analysis.yml";
+				var file = $"{DateTime.Now.ToString("yyyyMMdd-HHmmss-fff", CultureInfo.InvariantCulture)}-{info.Name}.analysis.yml";
 				var path = Path.Combine(DataPath, "Analysis");
 				var endpath = Path.Combine(path, file);
 				Directory.CreateDirectory(path);
@@ -265,11 +265,11 @@ namespace Taskmaster.Process
 					.Append(ymlIndent).Append("Company: ").AppendLine(version.CompanyName)
 					.Append(ymlIndent).Append("64-bit : ").AppendLine(x64 ? "Yes" : "No")
 					.Append(ymlIndent).Append("Path   : ").AppendLine(info.Path)
-					.Append(ymlIndent).Append("Threads: ").AppendLine(threadCount.ToString())
+					.Append(ymlIndent).Append("Threads: ").AppendLine(threadCount.ToString(CultureInfo.InvariantCulture))
 					.Append(ymlIndent).AppendLine("Memory : ")
-					.Append(ymlIndent).Append(ymlIndent).Append("Private : ").AppendLine(privMem.ToString())
-					.Append(ymlIndent).Append(ymlIndent).Append("Working : ").AppendLine(workingSet.ToString())
-					.Append(ymlIndent).Append(ymlIndent).Append("Virtual : ").AppendLine(virtualMem.ToString())
+					.Append(ymlIndent).Append(ymlIndent).Append("Private : ").AppendLine(privMem.ToString(CultureInfo.InvariantCulture))
+					.Append(ymlIndent).Append(ymlIndent).Append("Working : ").AppendLine(workingSet.ToString(CultureInfo.InvariantCulture))
+					.Append(ymlIndent).Append(ymlIndent).Append("Virtual : ").AppendLine(virtualMem.ToString(CultureInfo.InvariantCulture))
 					.Append(ymlIndent).AppendLine("Modules: ");
 
 				foreach (var mod in AllLinkedModules.Values)
@@ -359,7 +359,7 @@ namespace Taskmaster.Process
 						if (files.Length == 0) continue;
 
 						string listeds = section.Get("listed")?.String.ToLowerInvariant() ?? "no";
-						bool listed = yesvalues.Any((x) => x.Equals(listeds));
+						bool listed = yesvalues.Any((x) => x.Equals(listeds, StringComparison.InvariantCulture));
 						//string upgrade = section.TryGet("upgrade")?.Value ?? null;
 						//bool open = yesvalues.Contains(section.TryGet("open")?.Value.ToLowerInvariant() ?? "no");
 						//bool prop = yesvalues.Contains(section.TryGet("proprietary")?.Value.ToLowerInvariant() ?? "no");

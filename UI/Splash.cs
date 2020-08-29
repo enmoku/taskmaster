@@ -144,7 +144,7 @@ namespace Taskmaster.UI
 		{
 			if (!IsHandleCreated || IsDisposed) return;
 
-			Logging.DebugMsg("[" + Loaded.ToString() + "/" + MaxLoad.ToString() + "] " + ea.Message);
+			Logging.DebugMsg("[" + Loaded.ToString(CultureInfo.InvariantCulture) + "/" + MaxLoad.ToString(CultureInfo.InvariantCulture) + "] " + ea.Message);
 
 			if (ea.MaxSubProgress > 0) MaxSubLoad = ea.MaxSubProgress;
 

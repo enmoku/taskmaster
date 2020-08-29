@@ -308,7 +308,7 @@ namespace Taskmaster.Process
 				}
 				catch (ArgumentException)
 				{
-					Logging.DebugMsg("LoadInfo process ID not found: " + pid.ToString() + " for " + Instance);
+					Logging.DebugMsg("LoadInfo process ID not found: " + pid.ToString(CultureInfo.InvariantCulture) + " for " + Instance);
 				}
 				catch (InvalidOperationException)
 				{

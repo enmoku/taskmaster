@@ -409,7 +409,7 @@ namespace Taskmaster.Process
 				try
 				{
 					// 'TargetInstance.Handle','TargetInstance.Name','TargetInstance.ExecutablePath','TargetInstance.CommandLine'
-					var query = new EventQuery("SELECT TargetInstance,TIME_CREATED FROM __InstanceCreationEvent WITHIN " + WMIPollDelay.ToString() + " WHERE TargetInstance ISA 'Win32_Process'");
+					var query = new EventQuery("SELECT TargetInstance,TIME_CREATED FROM __InstanceCreationEvent WITHIN " + WMIPollDelay.ToString(CultureInfo.InvariantCulture) + " WHERE TargetInstance ISA 'Win32_Process'");
 
 					// Avast cybersecurity causes this to throw an exception
 					NewProcessWatcher = new ManagementEventWatcher(new ManagementScope(WMIEventNamespace), query);
@@ -705,7 +705,7 @@ namespace Taskmaster.Process
 				{
 					System.Threading.Interlocked.Add(ref Handling, -missed);
 
-					Log.Error("<Process> Missed " + missed.ToString() + " items while scanning.");
+					Log.Error("<Process> Missed " + missed.ToString(CultureInfo.InvariantCulture) + " items while scanning.");
 				}
 
 				ScanEnd?.Invoke(this, new ScanEndEventArgs() { Found = found, Ignored = ignored, Modified = modified });
@@ -1093,7 +1093,7 @@ namespace Taskmaster.Process
 			var sbs = new StringBuilder("<Process> Scan ", 128);
 
 			if (ScanFrequency.HasValue)
-				sbs.Append("frequency: ").AppendFormat("{0:N0}", ScanFrequency.Value.TotalSeconds).Append('s');
+				sbs.Append("frequency: ").AppendFormat(CultureInfo.InvariantCulture, "{0:N0}", ScanFrequency.Value.TotalSeconds).Append('s');
 			else
 				sbs.Append("disabled");
 
@@ -1107,7 +1107,7 @@ namespace Taskmaster.Process
 			sbs.Append("; ");
 
 			if (IgnoreRecentlyModified.HasValue)
-				sbs.Append("Recently modified ignored for ").AppendFormat("{0:0.#}", IgnoreRecentlyModified.Value.TotalMinutes).Append(" mins");
+				sbs.Append("Recently modified ignored for ").AppendFormat(CultureInfo.InvariantCulture, "{0:0.#}", IgnoreRecentlyModified.Value.TotalMinutes).Append(" mins");
 			else
 				sbs.Append("Recently modified not ignored");
 
@@ -1398,8 +1398,8 @@ namespace Taskmaster.Process
 
 				if (DebugAdjustDelay)
 				{
-					sbs.Append(" – ").AppendFormat("{0:N0}", ea.Info.Timer.ElapsedMilliseconds).Append(" ms");
-					if (ea.Info.WMIDelay.TotalMilliseconds > 0d) sbs.Append(" + ").AppendFormat(ea.Info.WMIDelay.TotalMilliseconds.ToString("N0")).Append(" ms watcher delay");
+					sbs.Append(" – ").AppendFormat(CultureInfo.InvariantCulture, "{0:N0}", ea.Info.Timer.ElapsedMilliseconds).Append(" ms");
+					if (ea.Info.WMIDelay.TotalMilliseconds > 0d) sbs.Append(" + ").Append(ea.Info.WMIDelay.TotalMilliseconds.ToString("N0", CultureInfo.InvariantCulture)).Append(" ms watcher delay");
 				}
 
 				if (EnableParentFinding && prc.DeclareParent)
@@ -1660,7 +1660,7 @@ namespace Taskmaster.Process
 				WaitForExitTriggered(clearList.Pop());
 
 			if (cancelled > 0)
-				Log.Information("Cancelled power mode wait on " + cancelled.ToString() + " process(es).");
+				Log.Information("Cancelled power mode wait on " + cancelled.ToString(CultureInfo.InvariantCulture) + " process(es).");
 		}
 
 		bool WaitForExit(ProcessEx info)
@@ -1717,7 +1717,7 @@ namespace Taskmaster.Process
 			System.Diagnostics.Process process = ev.Process;
 			try
 			{
-				if (DebugForeground) Log.Verbose("<Process> Foreground Received: #" + ev.Id.ToString());
+				if (DebugForeground) Log.Verbose("<Process> Foreground Received: #" + ev.Id.ToString(CultureInfo.InvariantCulture));
 
 				if (PreviousForegroundInfo != null)
 				{
@@ -2145,7 +2145,7 @@ namespace Taskmaster.Process
 
 							info.Process.Exited += (_, _2) =>
 							{
-								var str = info.ToFullFormattedString() + " Exited (run time: " + info.Start.To(DateTimeOffset.UtcNow).ToString("g") + ").";
+								var str = info.ToFullFormattedString() + " Exited (run time: " + info.Start.To(DateTimeOffset.UtcNow).ToString("g", CultureInfo.InvariantCulture) + ").";
 								if (prc.Warn)
 									Log.Warning(str);
 								else
@@ -2418,7 +2418,7 @@ namespace Taskmaster.Process
 						catch
 						{
 							// already exited?
-							if (DebugProcesses) Log.Error("<Process> Failed to retrieve name of process #" + pid.ToString() + "; Process likely already gone.");
+							if (DebugProcesses) Log.Error("<Process> Failed to retrieve name of process #" + pid.ToString(CultureInfo.InvariantCulture) + "; Process likely already gone.");
 							state = HandlingState.Invalid;
 							proc?.Dispose();
 							return;
@@ -2464,7 +2464,7 @@ namespace Taskmaster.Process
 			{
 				state = HandlingState.Exited;
 				if (info != null) info.State = state;
-				if (ShowInaction && DebugProcesses) Log.Verbose("Caught #" + pid.ToString() + " but it vanished.");
+				if (ShowInaction && DebugProcesses) Log.Verbose("Caught #" + pid.ToString(CultureInfo.InvariantCulture) + " but it vanished.");
 			}
 			catch (Exception ex)
 			{

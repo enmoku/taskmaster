@@ -32,6 +32,7 @@ using Serilog;
 using System;
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.Globalization;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
@@ -76,7 +77,7 @@ namespace Taskmaster.Power
 					moderesettime = TimeSpan.FromMinutes(SessionStartHighMode) - sinceBoot;
 					if (moderesettime.TotalSeconds > 5d)
 					{
-						Log.Information("<Power> High performance session start mode until " + (DateTime.Now + moderesettime).ToString("g"));
+						Log.Information("<Power> High performance session start mode until " + (DateTime.Now + moderesettime).ToString("g", CultureInfo.InvariantCulture));
 
 						var oldPowerMode = CurrentMode;
 
@@ -87,7 +88,7 @@ namespace Taskmaster.Power
 					else
 					{
 						if (DebugPower)
-							Log.Debug("<Power> High performance session start too short (would end at: " + (DateTime.Now + moderesettime).ToString("g") + ")");
+							Log.Debug("<Power> High performance session start too short (would end at: " + (DateTime.Now + moderesettime).ToString("g", CultureInfo.InvariantCulture) + ")");
 					}
 				}
 				else
@@ -119,9 +120,9 @@ namespace Taskmaster.Power
 				var sinceBoot = TimeSpan.FromMilliseconds(System.Environment.TickCount);
 				double sinceBootMins = sinceBoot.TotalMinutes;
 				if (sinceBootMins - 1d <= SessionStartHighMode)
-					Log.Debug("<Power> Ending session start high performance mode (start " + sinceBootMins.ToString("N1") + " mins ago)");
+					Log.Debug("<Power> Ending session start high performance mode (start " + sinceBootMins.ToString("N1", CultureInfo.InvariantCulture) + " mins ago)");
 				else
-					Log.Debug("<Power> Session start too old (" + sinceBootMins.ToString("N1") + " mins), resuming normal power.");
+					Log.Debug("<Power> Session start too old (" + sinceBootMins.ToString("N1", CultureInfo.InvariantCulture) + " mins), resuming normal power.");
 			}
 
 			Behaviour = LaunchBehaviour;
@@ -1276,15 +1277,15 @@ namespace Taskmaster.Power
 					}
 					else if (ForceModeSourcesMap.TryRemove(sourcePid, out _))
 					{
-						if (DebugPower && Trace) Log.Debug("<Power> Force mode source freed, " + ForceModeSourcesMap.Count.ToString() + " remain.");
+						if (DebugPower && Trace) Log.Debug("<Power> Force mode source freed, " + ForceModeSourcesMap.Count.ToString(CultureInfo.InvariantCulture) + " remain.");
 					}
 					else if (ForceModeSourcesMap.Count > 0)
 					{
-						if (DebugPower && Trace) Log.Debug("<Power> Force mode release for unincluded ID, " + ForceModeSourcesMap.Count.ToString() + " remain.");
+						if (DebugPower && Trace) Log.Debug("<Power> Force mode release for unincluded ID, " + ForceModeSourcesMap.Count.ToString(CultureInfo.InvariantCulture) + " remain.");
 					}
 					else
 					{
-						if (DebugPower) Log.Debug("<Power> Restore mode called for object [" + sourcePid.ToString() + "] that has no forcing registered. Or waitlist was expunged.");
+						if (DebugPower) Log.Debug("<Power> Restore mode called for object [" + sourcePid.ToString(CultureInfo.InvariantCulture) + "] that has no forcing registered. Or waitlist was expunged.");
 					}
 
 					Forced = ForceModeSourcesMap?.Count > 0;
@@ -1300,7 +1301,7 @@ namespace Taskmaster.Power
 					if (info != null)
 						info.PowerWait = false;
 
-					if (Trace && DebugPower) Log.Debug($"<Power> Released {(sourcePid == -1 ? "All" : sourcePid.ToString())}");
+					if (Trace && DebugPower) Log.Debug($"<Power> Released {(sourcePid == -1 ? "All" : sourcePid.ToString(CultureInfo.InvariantCulture))}");
 				}
 				catch (Exception ex)
 				{
@@ -1328,7 +1329,7 @@ namespace Taskmaster.Power
 			else
 			{
 				if (DebugPower)
-					Log.Debug("<Power> Forced mode still requested by " + lockCount.ToString() + " sources: " + string.Join(", ", ForceModeSourcesMap.Keys.ToArray()));
+					Log.Debug("<Power> Forced mode still requested by " + lockCount.ToString(CultureInfo.InvariantCulture) + " sources: " + string.Join(", ", ForceModeSourcesMap.Keys.ToArray()));
 			}
 		}
 
@@ -1460,7 +1461,7 @@ namespace Taskmaster.Power
 					return false;
 				}
 
-				if (DebugPower) Log.Debug("<Power> Lock #" + sourcePid.ToString());
+				if (DebugPower) Log.Debug("<Power> Lock #" + sourcePid.ToString(CultureInfo.InvariantCulture));
 
 				Forced = true;
 
@@ -1587,7 +1588,7 @@ namespace Taskmaster.Power
 
 				Restore(new Cause(OriginType.Internal, "Power Manager shutdown"));
 
-				Log.Information("<Power> Auto-adjusted " + AutoAdjustCounter.ToString() + " time(s).");
+				Log.Information("<Power> Auto-adjusted " + AutoAdjustCounter.ToString(CultureInfo.InvariantCulture) + " time(s).");
 
 				SaveConfig();
 

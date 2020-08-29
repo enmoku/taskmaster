@@ -490,9 +490,13 @@ namespace Taskmaster.Network
 			{
 				if (device.Name.Equals(devicename, StringComparison.InvariantCulture))
 				{
-					return devicename + " – " + device.IPv4Address.ToString() + " [" + IPv6Address.ToString() + "]" +
-						" – " + (device.Incoming.Bytes / 1_000_000).ToString() + " MB in, " + (device.Outgoing.Bytes / 1_000_000).ToString() + " MB out, " +
-						(device.Outgoing.Errors + device.Incoming.Errors).ToString() + " errors";
+					var sbs = new StringBuilder(256);
+					sbs.Append(devicename).Append(" - ").Append(device.IPv4Address).Append(" [").Append(device.IPv6Address).Append(']')
+						.Append(" - ").Append(device.Incoming.Bytes / 1_000_000).Append(" MB in, ")
+						.AppendFormat(CultureInfo.InvariantCulture, "{0:G1}",  device.Outgoing.Bytes / 1_000_000).Append(" MB out, ")
+						.AppendFormat(CultureInfo.InvariantCulture, "{0:G1}", device.Outgoing.Errors + device.Incoming.Errors).Append(" errors");
+
+					return sbs.ToString();
 				}
 			}
 
@@ -698,7 +702,7 @@ namespace Taskmaster.Network
 						if (longProblem) sbs.Append('+').Append(errorsSinceLastReport).Append(" errors, ").Append(errorsInSample).Append(" in last sample");
 						else sbs.Append('+').Append(errorsInSample).Append(" errors in last sample");
 
-						if (!double.IsNaN(pmins)) sbs.Append("; ").AppendFormat("{0:0.#}", pmins).Append(" minutes since last report");
+						if (!double.IsNaN(pmins)) sbs.Append("; ").AppendFormat(CultureInfo.InvariantCulture, "{0:0.#}", pmins).Append(" minutes since last report");
 						sbs.Append(')');
 
 						Log.Warning(sbs.ToString());
@@ -779,11 +783,13 @@ namespace Taskmaster.Network
 			{
 				var currentUptime = DateTimeOffset.UtcNow.Since(LastUptimeStart).TotalMinutes;
 
-				sbs.Append(" (").AppendFormat(((UptimeSamples.Get(-2) + UptimeSamples.Get(-1) + currentUptime) / 3f).ToString("N1")).Append(" minutes for last 3 samples");
+				sbs.Append(" (")
+					.AppendFormat(CultureInfo.InvariantCulture, "{0:N1}", (UptimeSamples.Get(-2) + UptimeSamples.Get(-1) + currentUptime) / 3f)
+					.Append(" minutes for last 3 samples");
 			}
 
 			sbs.Append(" since: ").Append(UptimeRecordStart.ToString("u"))
-			   .Append(" (").AppendFormat("{0:0.##}", (DateTimeOffset.UtcNow - UptimeRecordStart).TotalHours).Append("h ago)")
+			   .Append(" (").AppendFormat(CultureInfo.InvariantCulture, "{0:0.##}", (DateTimeOffset.UtcNow - UptimeRecordStart).TotalHours).Append("h ago)")
 			   .Append('.');
 
 			Log.Information(sbs.ToString());

@@ -82,7 +82,7 @@ namespace Taskmaster
 				result = Comparer.Compare(lixp, liyp);
 			}
 			else if (Number)
-				result = Comparer.Compare(Convert.ToInt64(lix.SubItems[Column].Text), Convert.ToInt64(liy.SubItems[Column].Text));
+				result = Comparer.Compare(Convert.ToInt64(lix.SubItems[Column].Text, CultureInfo.InvariantCulture), Convert.ToInt64(liy.SubItems[Column].Text, CultureInfo.InvariantCulture));
 			else
 				result = Comparer.Compare(lix.SubItems[Column].Text, liy.SubItems[Column].Text);
 

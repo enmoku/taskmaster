@@ -224,7 +224,7 @@ namespace Taskmaster.Process
 					i++;
 					if (pe32.th32ProcessID == upid)
 					{
-						if (Trace) Logging.DebugMsg("<Process:Parent> Found after " + i.ToString() + " iterations");
+						if (Trace) Logging.DebugMsg("<Process:Parent> Found after " + i.ToString(CultureInfo.InvariantCulture) + " iterations");
 						return Convert.ToInt32(pe32.th32ParentProcessID);
 					}
 				}

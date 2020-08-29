@@ -129,7 +129,7 @@ namespace Taskmaster.UI.Config
 			{
 				try
 				{
-					if (ea.Link.LinkData is string link && link.StartsWith("http"))
+					if (ea.Link.LinkData is string link && link.StartsWith("http", StringComparison.InvariantCultureIgnoreCase))
 						System.Diagnostics.Process.Start(link)?.Dispose();
 				}
 				catch (Exception ex) when (ex is OutOfMemoryException)

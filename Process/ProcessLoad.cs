@@ -108,7 +108,7 @@ namespace Taskmaster.Process
 			}
 			catch (NullReferenceException)
 			{
-				Logging.DebugMsg("ProcessEx null counter: " + Instance + " #" + Id.ToString());
+				Logging.DebugMsg("ProcessEx null counter: " + Instance + " #" + Id.ToString(CultureInfo.InvariantCulture));
 				/* don't really care, probably weird timing with disposal */
 			}
 

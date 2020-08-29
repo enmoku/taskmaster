@@ -53,7 +53,7 @@ namespace Taskmaster.Configuration
 		{
 			System.Diagnostics.Debug.Assert(Config != null);
 
-			Logging.DebugMsg("ConfigFile.Save(" + Filename + ") - Forced: " + force + ", Changes: " + Config.Changes.ToString());
+			Logging.DebugMsg("ConfigFile.Save(" + Filename + ") - Forced: " + force + ", Changes: " + Config.Changes.ToString(CultureInfo.InvariantCulture));
 
 			if (force || Config.Changes > 0)
 			{

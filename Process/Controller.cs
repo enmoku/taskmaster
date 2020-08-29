@@ -800,7 +800,7 @@ namespace Taskmaster.Process
 			else if (legacy.TryBool != LegacyWorkaround)
 				legacy.Bool = LegacyWorkaround;
 
-			Logging.DebugMsg(cfg.Filename + " has gained " + cfg.Config.Changes.ToString() + " total changes.");
+			Logging.DebugMsg(cfg.Filename + " has gained " + cfg.Config.Changes.ToString(CultureInfo.InvariantCulture) + " total changes.");
 
 			// pass to config manager
 			NeedsSaving = false;
@@ -1240,7 +1240,7 @@ namespace Taskmaster.Process
 				if (Foreground != ForegroundMode.Ignore && info.InBackground)
 				{
 					if (Trace && DebugForeground && ShowInaction)
-						Log.Debug("<Foreground> " + FormatPathName(info) + " #" + info.Id.ToString() + " in background, ignoring.");
+						Log.Debug("<Foreground> " + FormatPathName(info) + " #" + info.Id.ToString(CultureInfo.InvariantCulture) + " in background, ignoring.");
 					info.State = HandlingState.Paused;
 					return; // don't touch paused item
 				}
@@ -1358,7 +1358,7 @@ namespace Taskmaster.Process
 							if (ormt.LastIgnored.To(now) < Manager.IgnoreRecentlyModified
 								|| ormt.LastModified.To(now) < Manager.IgnoreRecentlyModified)
 							{
-								if (Debug && ShowInaction) Log.Debug(info.ToFullFormattedString() + " Ignored due to recent modification. State " + (expected ? "un" : "") + "changed ×" + ormt.ExpectedState.ToString());
+								if (Debug && ShowInaction) Log.Debug(info.ToFullFormattedString() + " Ignored due to recent modification. State " + (expected ? "un" : "") + "changed ×" + ormt.ExpectedState.ToString(CultureInfo.InvariantCulture));
 
 								if (ormt.ExpectedState == -2) // 2-3 seems good number
 								{
@@ -1712,7 +1712,7 @@ namespace Taskmaster.Process
 				else if (original == target)
 				{
 					if (Trace && Debug && ShowInaction)
-						Log.Debug(info.ToFullFormattedString() + " I/O priority ALREADY set to " + original.ToString() + ", target: " + target.ToString());
+						Log.Debug(info.ToFullFormattedString() + " I/O priority ALREADY set to " + original.ToString(CultureInfo.InvariantCulture) + ", target: " + target.ToString(CultureInfo.InvariantCulture));
 					nIO = -1;
 				}
 				else
@@ -1854,7 +1854,7 @@ namespace Taskmaster.Process
 
 			sbs.AppendLine();
 			if (VolumeStrategy != Audio.VolumeStrategy.Ignore)
-				sbs.Append("Mixer volume: ").AppendFormat("{0:N0}", Volume * 100f).Append(" %")
+				sbs.Append("Mixer volume: ").AppendFormat(CultureInfo.InvariantCulture, "{0:N0}", Volume * 100f).Append(" %")
 					.Append(" – strategy: ").AppendLine(VolumeStrategy.ToString());
 
 			sbs.Append("Log adjusts: ").Append(LogAdjusts ? "Enabled" : "Disabled")

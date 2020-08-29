@@ -128,7 +128,7 @@ namespace Taskmaster.UI
 			selfLoadLI.BackColor = System.Drawing.SystemColors.Control;
 			if (TrackUntracked) untrackedLoadLI.BackColor = System.Drawing.SystemColors.Control;
 
-			selfLoadLI.SubItems[InstancePidColumn].Text = Self.Id.ToString();
+			selfLoadLI.SubItems[InstancePidColumn].Text = Self.Id.ToString(CultureInfo.InvariantCulture);
 			selfLoadLI.SubItems[InstanceCpuColumn].Text = "? %";
 			selfLoadLI.SubItems[InstanceMemColumn].Text = "0 MiB";
 
@@ -291,7 +291,7 @@ namespace Taskmaster.UI
 
 			BeginInvoke(new Action(() =>
 			{
-				sysPrcCountCell.Text = e.Found.ToString();
+				sysPrcCountCell.Text = e.Found.ToString(CultureInfo.InvariantCulture);
 			}));
 		}
 
@@ -522,9 +522,9 @@ namespace Taskmaster.UI
 
 						var li = pair.ListItem = new ListViewItem(new[] {
 							instance,
-							load.InstanceCount.ToString(),
-							load.LastPid.ToString(),
-							load.Load.ToString("N1"),
+							load.InstanceCount.ToString(CultureInfo.InvariantCulture),
+							load.LastPid.ToString(CultureInfo.InvariantCulture),
+							load.Load.ToString("N1", CultureInfo.InvariantCulture),
 							$"{load.CPULoad.Average:0.#} %",
 							HumanInterface.ByteString(Convert.ToInt64(load.RAMLoad.Current * MKAh.Units.Binary.Giga), iec:true),
 							$"{load.IOLoad.Average:N0}/s",
@@ -612,9 +612,9 @@ namespace Taskmaster.UI
 
 			//value.ListItem.SubItems[0] = key
 			var subItems = li.SubItems;
-			subItems[InstancePidColumn].Text = load.LastPid.ToString();
-			subItems[InstanceLoadColumn].Text = load.Load.ToString("N1");
-			subItems[InstanceCountColumn].Text = load.InstanceCount.ToString();
+			subItems[InstancePidColumn].Text = load.LastPid.ToString(CultureInfo.InvariantCulture);
+			subItems[InstanceLoadColumn].Text = load.Load.ToString("N1", CultureInfo.InvariantCulture);
+			subItems[InstanceCountColumn].Text = load.InstanceCount.ToString(CultureInfo.InvariantCulture);
 			subItems[InstanceCpuColumn].Text = $"{load.CPULoad.Average:0.#} %";
 			subItems[InstanceMemColumn].Text = HumanInterface.ByteString(Convert.ToInt64(load.RAMLoad.Current), iec: true);
 			subItems[InstanceIOColumn].Text = $"{load.IOLoad.Average:N0}/s";

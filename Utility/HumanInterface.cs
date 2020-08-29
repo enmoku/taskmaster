@@ -25,6 +25,7 @@
 // THE SOFTWARE.
 
 using System;
+using System.Globalization;
 using System.Text;
 
 namespace Taskmaster
@@ -61,7 +62,7 @@ namespace Taskmaster
 				sbs.Append(", ");
 
 			var min = time.Minutes + (time.Seconds / 60.0);
-			sbs.AppendFormat("{0:N1}", min).Append(" minute");
+			sbs.AppendFormat(CultureInfo.InvariantCulture, "{0:N1}", min).Append(" minute");
 			if (min > 1 || min < 1) sbs.Append('s');
 
 			return sbs.ToString();

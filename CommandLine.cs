@@ -56,7 +56,7 @@ namespace Taskmaster
 						break;
 					case RestartArg:
 						if (args.Length > i + 1 && !args[i + 1].StartsWith("--", StringComparison.Ordinal))
-							RestartCounter = Convert.ToInt32(args[++i]);
+							RestartCounter = Convert.ToInt32(args[++i], CultureInfo.InvariantCulture);
 						break;
 					case AdminArg:
 						// AdminCounter protects from restart loop from attempting to gain admin rights and constantly failing
@@ -64,7 +64,7 @@ namespace Taskmaster
 						{
 							try
 							{
-								AdminCounter = Convert.ToInt32(args[++i]);
+								AdminCounter = Convert.ToInt32(args[++i], CultureInfo.InvariantCulture);
 							}
 							catch (Exception ex) when (ex is NullReferenceException || ex is OutOfMemoryException) { throw; }
 							catch (Exception ex)
@@ -114,11 +114,11 @@ namespace Taskmaster
 			ti.WorkingDirectory = System.IO.Path.GetDirectoryName(cwd);
 			ti.FileName = System.IO.Path.GetFileName(cwd);
 
-			var nargs = new System.Collections.Generic.List<string>(5) { RestartArg, (++RestartCounter).ToString() };
+			var nargs = new System.Collections.Generic.List<string>(5) { RestartArg, (++RestartCounter).ToString(CultureInfo.InvariantCulture) };
 			if (admin)
 			{
 				nargs.Add(AdminArg);
-				nargs.Add((++AdminCounter).ToString());
+				nargs.Add((++AdminCounter).ToString(CultureInfo.InvariantCulture));
 				ti.Verb = "runas"; // elevate privileges
 			}
 

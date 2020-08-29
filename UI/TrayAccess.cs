@@ -592,7 +592,7 @@ namespace Taskmaster.UI
 
 				do
 				{
-					Logging.DebugMsg("++ Tray visibility fix attempt #" + attempts.ToString());
+					Logging.DebugMsg("++ Tray visibility fix attempt #" + attempts.ToString(CultureInfo.InvariantCulture));
 
 					RefreshVisibility();
 

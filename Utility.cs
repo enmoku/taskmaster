@@ -83,7 +83,7 @@ namespace Taskmaster
 
 				if (!System.IO.Directory.Exists(Application.LogPath)) System.IO.Directory.CreateDirectory(Application.LogPath);
 
-				string logfilename = Application.UniqueCrashLogs ? $"crash-{DateTime.Now.ToString("yyyyMMdd-HHmmss-fff")}.log" : "crash.log";
+				string logfilename = Application.UniqueCrashLogs ? $"crash-{DateTime.Now.ToString("yyyyMMdd-HHmmss-fff", CultureInfo.InvariantCulture)}.log" : "crash.log";
 				var logfile = System.IO.Path.Combine(Application.LogPath, logfilename);
 
 				var now = DateTime.Now;

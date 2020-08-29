@@ -62,12 +62,12 @@ namespace Taskmaster.Hardware
 			}
 			*/
 
-			Logging.DebugMsg("<Hardware> Processor count: " + ProcessorCount.ToString());
+			Logging.DebugMsg("<Hardware> Processor count: " + ProcessorCount.ToString(CultureInfo.InvariantCulture));
 
 			if (ecores != pcores)
-				Logging.DebugMsg(".NET and W32API disagree on number of cores: " + ecores.ToString() + " != " + pcores.ToString());
+				Logging.DebugMsg(".NET and W32API disagree on number of cores: " + ecores.ToString(CultureInfo.InvariantCulture) + " != " + pcores.ToString(CultureInfo.InvariantCulture));
 			if (ecores != ProcessorCount)
-				Logging.DebugMsg(".NET and WMI disagree on number of cores: " + ecores.ToString() + " != " + ProcessorCount.ToString());
+				Logging.DebugMsg(".NET and WMI disagree on number of cores: " + ecores.ToString(CultureInfo.InvariantCulture) + " != " + ProcessorCount.ToString(CultureInfo.InvariantCulture));
 		}
 	}
 }

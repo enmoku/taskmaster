@@ -194,11 +194,11 @@ namespace Taskmaster.Process
 		/// <summary>
 		/// Display: <code>Name #PID</code> or <code>#PID</code>
 		/// </summary>
-		public override string ToString() => Name + (Name.Length>0?" ":string.Empty) + "#" + Id.ToString();
+		public override string ToString() => Name + (Name.Length>0?" ":string.Empty) + "#" + Id.ToString(CultureInfo.InvariantCulture);
 
 		public bool IsPathFormatted => FormattedPath.Length > 0;
 
-		public string ToFormattedString() => FormattedPath + (IsPathFormatted ? " " : (Name + (Name.Length > 0 ? " " : string.Empty))) + "#" + Id.ToString();
+		public string ToFormattedString() => FormattedPath + (IsPathFormatted ? " " : (Name + (Name.Length > 0 ? " " : string.Empty))) + "#" + Id.ToString(CultureInfo.InvariantCulture);
 
 		/// <summary>
 		/// Same as ToString() but prepends controller name.

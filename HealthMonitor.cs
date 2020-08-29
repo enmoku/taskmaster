@@ -522,7 +522,7 @@ namespace Taskmaster
 							if (Settings.MemIgnoreFocus && modules.activeappmonitor != null && User.IdleTime().TotalMinutes <= 3d)
 							{
 								fgPid = modules.activeappmonitor.ForegroundId;
-								Log.Verbose("<Auto-Doc> Protecting foreground app #" + fgPid.ToString());
+								Log.Verbose("<Auto-Doc> Protecting foreground app #" + fgPid.ToString(CultureInfo.InvariantCulture));
 							}
 
 							var sbs = new StringBuilder(256)

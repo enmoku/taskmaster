@@ -103,15 +103,15 @@ namespace Taskmaster.Process
 
 				if (!HangMinimizeTime.IsZero())
 				{
-					sbs.Append("Minimize: ").Append(HangMinimizeTime.TotalSeconds.ToString("N0")).Append('s');
+					sbs.Append("Minimize: ").Append(HangMinimizeTime.TotalSeconds.ToString("N0", CultureInfo.InvariantCulture)).Append('s');
 					if (!HangReduceTime.IsZero() || !HangKillTime.IsZero()) sbs.Append(", ");
 				}
 				if (!HangReduceTime.IsZero())
 				{
-					sbs.Append("Reduce: ").Append(HangReduceTime.TotalSeconds.ToString("N0")).Append('s');
+					sbs.Append("Reduce: ").Append(HangReduceTime.TotalSeconds.ToString("N0", CultureInfo.InvariantCulture)).Append('s');
 					if (!HangKillTime.IsZero()) sbs.Append(", ");
 				}
-				if (!HangKillTime.IsZero()) sbs.Append("Kill: ").Append(HangKillTime.TotalSeconds.ToString("N0")).Append('s');
+				if (!HangKillTime.IsZero()) sbs.Append("Kill: ").Append(HangKillTime.TotalSeconds.ToString("N0", CultureInfo.InvariantCulture)).Append('s');
 
 				Log.Information(sbs.ToString());
 			}
@@ -182,7 +182,7 @@ namespace Taskmaster.Process
 			ReduceTried = Reduced = false;
 			MinimizeTried = Minimized = false;
 
-			if (HangWarning) Log.Debug("<Foreground> Hung application status reset (observed hang time: " + HangTime.To(DateTimeOffset.UtcNow).TotalSeconds.ToString("N1") + " seconds).");
+			if (HangWarning) Log.Debug("<Foreground> Hung application status reset (observed hang time: " + HangTime.To(DateTimeOffset.UtcNow).TotalSeconds.ToString("N1", CultureInfo.InvariantCulture) + " seconds).");
 
 			HangWarning = false;
 		}
@@ -248,7 +248,7 @@ namespace Taskmaster.Process
 				}
 
 				if (DebugForeground)
-					Logging.DebugMsg("<Foreground::DEBUG> Foreground: " + fgproc.ProcessName + " #" + lfgpid.ToString() + " --- responding: " + responding.ToString());
+					Logging.DebugMsg("<Foreground::DEBUG> Foreground: " + fgproc.ProcessName + " #" + lfgpid.ToString(CultureInfo.InvariantCulture) + " --- responding: " + responding.ToString());
 
 				DateTimeOffset now = DateTimeOffset.UtcNow;
 				var since = now.Since(LastSwap); // since app was last changed
@@ -269,7 +269,7 @@ namespace Taskmaster.Process
 					if (previoushang != lfgpid) // foreground changed since last test
 					{
 						if (DebugForeground && ShowInaction)
-							Log.Debug("<Foreground> Hung app #" + previoushang.ToString() + " swapped away but #" + lfgpid.ToString() + " is hanging too!");
+							Log.Debug("<Foreground> Hung app #" + previoushang.ToString(CultureInfo.InvariantCulture) + " swapped away but #" + lfgpid.ToString(CultureInfo.InvariantCulture) + " is hanging too!");
 
 						ResetHanging();
 					}
@@ -323,18 +323,18 @@ namespace Taskmaster.Process
 					else if (HangTick == 5)
 					{
 						sbs.Append(" is not responding!")
-							.Append(" (Hung for ").Append(hungTime.TotalSeconds.ToString("N1")).Append(" seconds).");
+							.Append(" (Hung for ").AppendFormat(CultureInfo.InvariantCulture, "{0:N1}", hungTime.TotalSeconds).Append(" seconds).");
 						Log.Warning(sbs.ToString());
 						HangWarning = true;
 
 						// TODO: State how long to next actions.
-						modules.trayaccess?.Tooltip(5000, name + " #" + lfgpid.ToString(), "Foreground HUNG!\nHung for " + hungTime.TotalSeconds.ToString("N1") + " seconds.", System.Windows.Forms.ToolTipIcon.Warning);
+						modules.trayaccess?.Tooltip(5000, name + " #" + lfgpid.ToString(CultureInfo.InvariantCulture), "Foreground HUNG!\nHung for " + hungTime.TotalSeconds.ToString("N1", CultureInfo.InvariantCulture) + " seconds.", System.Windows.Forms.ToolTipIcon.Warning);
 
 						return;
 					}
 					else if (HangTick >= 10)
 					{
-						modules.trayaccess.Tooltip(2000, name + " #" + lfgpid.ToString(), "Foreground not responding\nHung for " + hungTime.TotalSeconds.ToString("N1") + " seconds.", System.Windows.Forms.ToolTipIcon.Warning);
+						modules.trayaccess.Tooltip(2000, name + " #" + lfgpid.ToString(CultureInfo.InvariantCulture), "Foreground not responding\nHung for " + hungTime.TotalSeconds.ToString("N1", CultureInfo.InvariantCulture) + " seconds.", System.Windows.Forms.ToolTipIcon.Warning);
 					}
 
 					sbs.Append(" hung!").Append(" – ");
@@ -501,7 +501,7 @@ namespace Taskmaster.Process
 		{
 			if (eventType != NativeMethods.EVENT_SYSTEM_FOREGROUND) // does this ever trigger?
 			{
-				Logging.DebugMsg("<Foreground> Wrong event: " + eventType.ToString());
+				Logging.DebugMsg("<Foreground> Wrong event: " + eventType.ToString(CultureInfo.InvariantCulture));
 				return;
 			}
 
@@ -536,11 +536,11 @@ namespace Taskmaster.Process
 				};
 
 				if (DebugForeground && ShowInaction)
-					Log.Debug("<Foreground> Active #" + activewindowev.Id.ToString() + ": " + activewindowev.Title);
+					Log.Debug("<Foreground> Active #" + activewindowev.Id.ToString(CultureInfo.InvariantCulture) + ": " + activewindowev.Title);
 
 				if (Utility.SystemProcessId(pid))
 				{
-					if (DebugForeground) Log.Debug("<Foreground> System process in foreground: " + pid.ToString());
+					if (DebugForeground) Log.Debug("<Foreground> System process in foreground: " + pid.ToString(CultureInfo.InvariantCulture));
 
 					Reset();
 				}
