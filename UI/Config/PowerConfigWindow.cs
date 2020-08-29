@@ -509,7 +509,7 @@ namespace Taskmaster.UI.Config
 			try
 			{
 				using var pcw = new PowerConfigWindow(modules, centerOnScreen);
-				/* var res = */ pcw.ShowDialog();
+				pcw.ShowDialog();
 				if (pcw.DialogOK)
 				{
 					// NOP

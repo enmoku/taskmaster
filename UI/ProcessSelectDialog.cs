@@ -33,7 +33,6 @@ using Taskmaster.Process;
 
 namespace Taskmaster.UI
 {
-	using static Application;
 	public class ProcessSelectDialog : UI.UniForm
 	{
 		public ProcessEx? Info { get; private set; }

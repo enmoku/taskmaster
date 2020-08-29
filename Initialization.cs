@@ -29,7 +29,6 @@ using Serilog;
 using Serilog.Events;
 using System;
 using System.Diagnostics;
-using System.Diagnostics.Eventing.Reader;
 using System.Globalization;
 using System.Linq;
 using System.Text;

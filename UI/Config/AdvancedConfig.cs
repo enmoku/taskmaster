@@ -27,7 +27,6 @@
 using MKAh;
 using Serilog;
 using System;
-using System.Net.Configuration;
 using System.Windows.Forms;
 
 namespace Taskmaster.UI.Config

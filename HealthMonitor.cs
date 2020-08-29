@@ -35,7 +35,6 @@ using Windows = MKAh.Wrapper.Windows;
 namespace Taskmaster
 {
 	using System.Globalization;
-	using System.Net.Configuration;
 	using System.Text;
 	using static Application;
 
