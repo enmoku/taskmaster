@@ -301,7 +301,14 @@ namespace Taskmaster.Audio
 			}
 		}
 
-		List<Device> KnownDevices = new List<Device>();
+		public static void SaveDevice(Device device)
+		{
+			using var devcfg = Config.Load(DeviceFilename);
+			var devsec = devcfg.Config[device.GUID.ToString()];
+			devsec[Application.Constants.Name].String = device.MMDevice.DeviceFriendlyName;
+			devsec[Constants.Control].Bool = device.VolumeControl;
+			devsec[HumanReadable.Hardware.Audio.Volume].Float = device.Target;
+		}
 
 		void EnumerateDevices()
 		{
@@ -360,6 +367,8 @@ namespace Taskmaster.Audio
 		/// </summary>
 		/// <returns>Enumeration of audio input devices as GUID/FriendlyName string pair.</returns>
 		public List<Device> Devices => new List<Device>(KnownDevices);
+
+		List<Device> KnownDevices = new List<Device>();
 
 		// TODO: Add device enumeration
 		// TODO: Add device selection
