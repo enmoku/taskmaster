@@ -51,6 +51,8 @@ namespace Taskmaster.Audio
 
 		public bool Control { get; private set; }
 
+		public void SetControl(bool value) => Control = value;
+
 		double _target = 50d;
 
 		public double Target

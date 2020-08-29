@@ -942,6 +942,8 @@ namespace Taskmaster.UI
 					Enabled = false,
 				};
 
+				AudioInputEnable.SelectionChangeCommitted += MicManagerToggle;
+
 				miccntrl.Controls.AddRange(new Control[] {
 					new Extensions.Label { Text = HumanReadable.Hardware.Audio.Volume },
 					AudioInputVolume,
@@ -1462,6 +1464,11 @@ namespace Taskmaster.UI
 			BeginInvoke(new Action(SetDefaultCommDevice_Invoke));
 		}
 
+		void MicManagerToggle(object sender, EventArgs ev)
+		{
+			micmanager?.SetControl(!micmanager?.Control ?? false);
+		}
+
 		void SetDefaultCommDevice_Invoke()
 		{
 			if (!IsHandleCreated || isdisposed) return;
@@ -1596,6 +1603,8 @@ namespace Taskmaster.UI
 				// TODO: Hook all device changes
 				micmanager.VolumeChanged += VolumeChangeDetected;
 				micmanager.DefaultChanged += MicrophoneDefaultChanged;
+
+				AudioInputEnable.Enabled = true;
 
 				FormClosing += (_, _2) => micmanager.VolumeChanged -= VolumeChangeDetected;
 			}
