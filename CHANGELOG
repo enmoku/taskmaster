@@ -3,6 +3,9 @@ Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
 ## [0.14...]
+### 2020-08-29
+	Fixed: Win7 was reported as only supported platform in app.config when this had not been the case for a while (Win10 is now that).
+	Internal: Various adjustments that should not affect end-users.
 ### 2020-07-08
 	Changed: Reduce some debug output.
 ### 2020-07-07
