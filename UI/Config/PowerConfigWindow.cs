@@ -432,20 +432,12 @@ namespace Taskmaster.UI.Config
 		void FillAutoAdjust(AutoAdjustSettings AutoAdjust)
 		{
 			NewLaunchBehaviour = manager.LaunchBehaviour;
-			switch (manager.LaunchBehaviour)
+			behaviour.SelectedIndex = manager.LaunchBehaviour switch
 			{
-				case Power.PowerBehaviour.Auto:
-				default:
-					behaviour.SelectedIndex = 0;
-					break;
-				case Power.PowerBehaviour.RuleBased:
-					behaviour.SelectedIndex = 1;
-					break;
-				case Power.PowerBehaviour.Manual:
-					behaviour.SelectedIndex = 2;
-					break;
-			}
-
+				Power.PowerBehaviour.RuleBased => 1,
+				Power.PowerBehaviour.Manual => 2,
+				_ => 0,
+			};
 			NewRestoreMethod = manager.RestoreMethod;
 			NewRestoreMode = manager.RestoreMode;
 			switch (NewRestoreMethod)

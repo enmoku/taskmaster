@@ -30,19 +30,16 @@ namespace MKAh
 {
 	public static partial class Readable
 	{
-		public static string ProcessPriority(ProcessPriorityClass priority)
-		{
-			switch (priority)
+		public static string ProcessPriority(ProcessPriorityClass priority) =>
+			priority switch
 			{
-				case ProcessPriorityClass.RealTime: return "Real Time";
-				case ProcessPriorityClass.High: return "High";
-				case ProcessPriorityClass.AboveNormal: return "Above Normal";
-				default:
-				case ProcessPriorityClass.Normal: return "Normal";
-				case ProcessPriorityClass.BelowNormal: return "Below Normal";
-				case ProcessPriorityClass.Idle: return "Low"; // Idle is true only on pre-W2k
-			}
-		}
+				ProcessPriorityClass.RealTime => "Real Time",
+				ProcessPriorityClass.High => "High",
+				ProcessPriorityClass.AboveNormal => "Above Normal",
+				ProcessPriorityClass.BelowNormal => "Below Normal",
+				ProcessPriorityClass.Idle => "Low",// Idle is true only on pre-W2k
+				_ => "Normal",
+			};
 	}
 
 	public static partial class Utility

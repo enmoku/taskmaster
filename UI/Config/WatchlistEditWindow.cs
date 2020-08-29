@@ -205,15 +205,14 @@ namespace Taskmaster.UI.Config
 				@"Smart (...\brand\...\run.exe)"
 			});
 
-			switch (Controller.PathVisibility)
+			pathVisibility.SelectedIndex = Controller.PathVisibility switch
 			{
-				default:
-				case Process.PathVisibilityOptions.Invalid: pathVisibility.SelectedIndex = 0; break;
-				case Process.PathVisibilityOptions.Process: pathVisibility.SelectedIndex = 1; break;
-				case Process.PathVisibilityOptions.Partial: pathVisibility.SelectedIndex = 2; break;
-				case Process.PathVisibilityOptions.Full: pathVisibility.SelectedIndex = 3; break;
-				case Process.PathVisibilityOptions.Smart: pathVisibility.SelectedIndex = 4; break;
-			}
+				Process.PathVisibilityOptions.Process => 1,
+				Process.PathVisibilityOptions.Partial => 2,
+				Process.PathVisibilityOptions.Full => 3,
+				Process.PathVisibilityOptions.Smart => 4,
+				_ => 0,
+			};
 			layout.Controls.Add(new Extensions.Label { Text = "Path visibility" });
 			layout.Controls.Add(pathVisibility);
 			layout.Controls.Add(new EmptySpace());
@@ -615,16 +614,15 @@ namespace Taskmaster.UI.Config
 			}
 			else
 			{
-				switch (Controller.VolumeStrategy)
+				volumeMethod.SelectedIndex = Controller.VolumeStrategy switch
 				{
-					case Audio.VolumeStrategy.Increase: volumeMethod.SelectedIndex = 0; break;
-					case Audio.VolumeStrategy.Decrease: volumeMethod.SelectedIndex = 1; break;
-					case Audio.VolumeStrategy.IncreaseFromMute: volumeMethod.SelectedIndex = 2; break;
-					case Audio.VolumeStrategy.DecreaseFromFull: volumeMethod.SelectedIndex = 3; break;
-					case Audio.VolumeStrategy.Force: volumeMethod.SelectedIndex = 4; break;
-					default:
-					case Audio.VolumeStrategy.Ignore: volumeMethod.SelectedIndex = 5; break;
-				}
+					Audio.VolumeStrategy.Increase => 0,
+					Audio.VolumeStrategy.Decrease => 1,
+					Audio.VolumeStrategy.IncreaseFromMute => 2,
+					Audio.VolumeStrategy.DecreaseFromFull => 3,
+					Audio.VolumeStrategy.Force => 4,
+					_ => 5,
+				};
 
 				// disable volume control if method is to ignore it
 				volume.Enabled = volumeMethod.SelectedIndex != 5;
@@ -776,25 +774,22 @@ namespace Taskmaster.UI.Config
 			{
 				Controller.Priority = Process.Utility.IntToPriority(priorityClass.SelectedIndex); // is this right?
 				Controller.PriorityStrategy = Process.PriorityStrategy.Ignore;
-				switch (priorityClassMethod.SelectedIndex)
+				Controller.PriorityStrategy = priorityClassMethod.SelectedIndex switch
 				{
-					case 0: Controller.PriorityStrategy = Process.PriorityStrategy.Increase; break;
-					case 1: Controller.PriorityStrategy = Process.PriorityStrategy.Decrease; break;
-					default:
-					case 2: Controller.PriorityStrategy = Process.PriorityStrategy.Force; break;
-				}
+					0 => Process.PriorityStrategy.Increase,
+					1 => Process.PriorityStrategy.Decrease,
+					_ => Process.PriorityStrategy.Force,
+				};
 			}
 
-			switch (pathVisibility.SelectedIndex)
+			Controller.PathVisibility = pathVisibility.SelectedIndex switch
 			{
-				default:
-				case 0: Controller.PathVisibility = Process.PathVisibilityOptions.Invalid; break;
-				case 1: Controller.PathVisibility = Process.PathVisibilityOptions.Process; break;
-				case 2: Controller.PathVisibility = Process.PathVisibilityOptions.Partial; break;
-				case 3: Controller.PathVisibility = Process.PathVisibilityOptions.Full; break;
-				case 4: Controller.PathVisibility = Process.PathVisibilityOptions.Smart; break;
-			}
-
+				1 => Process.PathVisibilityOptions.Process,
+				2 => Process.PathVisibilityOptions.Partial,
+				3 => Process.PathVisibilityOptions.Full,
+				4 => Process.PathVisibilityOptions.Smart,
+				_ => Process.PathVisibilityOptions.Invalid,
+			};
 			if (affstrategy.SelectedIndex != 0)
 			{
 				if (cpumask == -1)

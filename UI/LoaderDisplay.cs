@@ -628,20 +628,12 @@ namespace Taskmaster.UI
 
 			if (oldInterest != load.InterestType) // update only if something has changed
 			{
-				string interestText;
-				switch (load.InterestType)
+				string interestText = load.InterestType switch
 				{
-					default:
-						//case Process.InstanceGroupLoad.InterestLevel.Active:
-						interestText = "Active";
-						break;
-					case Process.InstanceGroupLoad.InterestLevel.Partial:
-						interestText = "Partial";
-						break;
-					case Process.InstanceGroupLoad.InterestLevel.Ignoring:
-						interestText = "Ignoring";
-						break;
-				}
+					Process.InstanceGroupLoad.InterestLevel.Partial => "Partial",
+					Process.InstanceGroupLoad.InterestLevel.Ignoring => "Ignoring",
+					_ => "Active",//case Process.InstanceGroupLoad.InterestLevel.Active:
+				};
 				subItems[InstanceStateColumn].Text = interestText;
 				li.ForeColor = load.Interesting ? System.Drawing.SystemColors.ControlText : System.Drawing.SystemColors.GrayText;
 			}
@@ -762,30 +754,16 @@ namespace Taskmaster.UI
 				else if (xgroup is null) return -1;
 				else if (ygroup is null) return 1;
 
-				switch (Column)
+				result = Column switch
 				{
-					case LoaderDisplay.InstanceNameColumn:
-						result = xgroup.Instance.CompareTo(ygroup.Instance);
-						break;
-					case LoaderDisplay.InstanceCpuColumn: // CPU
-						result = xgroup.CPULoad.Average.CompareTo(ygroup.CPULoad.Average);
-						break;
-					case LoaderDisplay.InstanceMemColumn: // MEM
-						result = xgroup.RAMLoad.Current.CompareTo(ygroup.RAMLoad.Current);
-						break;
-					case LoaderDisplay.InstanceIOColumn: // IO
-						result = xgroup.IOLoad.Average.CompareTo(ygroup.IOLoad.Average);
-						break;
-					case LoaderDisplay.InstanceCountColumn: // Instance count
-						result = xgroup.InstanceCount.CompareTo(ygroup.InstanceCount);
-						break;
-					case LoaderDisplay.InstanceLoadColumn:
-						result = xgroup.Load.CompareTo(ygroup.Load);
-						break;
-					default:
-						result = 0;
-						break;
-				}
+					LoaderDisplay.InstanceNameColumn => string.Compare(xgroup.Instance, ygroup.Instance, true, CultureInfo.InvariantCulture),
+					LoaderDisplay.InstanceCpuColumn => xgroup.CPULoad.Average.CompareTo(ygroup.CPULoad.Average),
+					LoaderDisplay.InstanceMemColumn => xgroup.RAMLoad.Current.CompareTo(ygroup.RAMLoad.Current),
+					LoaderDisplay.InstanceIOColumn => xgroup.IOLoad.Average.CompareTo(ygroup.IOLoad.Average),
+					LoaderDisplay.InstanceCountColumn => xgroup.InstanceCount.CompareTo(ygroup.InstanceCount),
+					LoaderDisplay.InstanceLoadColumn => xgroup.Load.CompareTo(ygroup.Load),
+					_ => 0,
+				};
 
 				/*
 				string lixs = lix.SubItems[Column].Text;
@@ -860,30 +838,16 @@ namespace Taskmaster.UI
 						return -1; // x not ignored
 				}
 
-				switch (Column)
+				result = Column switch
 				{
-					case LoaderDisplay.InstanceNameColumn:
-						result = xload.Instance.CompareTo(yload.Instance);
-						break;
-					case LoaderDisplay.InstanceCpuColumn: // CPU
-						result = xload.CPULoad.Average.CompareTo(yload.CPULoad.Average);
-						break;
-					case LoaderDisplay.InstanceMemColumn: // MEM
-						result = xload.RAMLoad.Current.CompareTo(yload.RAMLoad.Current);
-						break;
-					case LoaderDisplay.InstanceIOColumn: // IO
-						result = xload.IOLoad.Average.CompareTo(yload.IOLoad.Average);
-						break;
-					case LoaderDisplay.InstanceCountColumn: // Instance count
-						result = xload.InstanceCount.CompareTo(yload.InstanceCount);
-						break;
-					case LoaderDisplay.InstanceLoadColumn:
-						result = xload.Load.CompareTo(yload.Load);
-						break;
-					default:
-						result = 0;
-						break;
-				}
+					LoaderDisplay.InstanceNameColumn => string.Compare(xload.Instance, yload.Instance, true, CultureInfo.InvariantCulture),
+					LoaderDisplay.InstanceCpuColumn => xload.CPULoad.Average.CompareTo(yload.CPULoad.Average),
+					LoaderDisplay.InstanceMemColumn => xload.RAMLoad.Current.CompareTo(yload.RAMLoad.Current),
+					LoaderDisplay.InstanceIOColumn => xload.IOLoad.Average.CompareTo(yload.IOLoad.Average),
+					LoaderDisplay.InstanceCountColumn => xload.InstanceCount.CompareTo(yload.InstanceCount),
+					LoaderDisplay.InstanceLoadColumn => xload.Load.CompareTo(yload.Load),
+					_ => 0,
+				};
 			}
 			else
 				result = Comparer.Compare(xload.Instance, yload.Instance);

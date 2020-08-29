@@ -231,20 +231,12 @@ namespace Taskmaster.UI.Config
 			};
 
 			powbehaviour.Enabled = powmon.Checked;
-			switch (modules.powermanager?.LaunchBehaviour ?? Power.PowerBehaviour.RuleBased)
+			powbehaviour.SelectedIndex = (modules.powermanager?.LaunchBehaviour ?? Power.PowerBehaviour.RuleBased) switch
 			{
-				case Power.PowerBehaviour.Auto:
-					powbehaviour.SelectedIndex = 0;
-					break;
-				default:
-				case Power.PowerBehaviour.RuleBased:
-					powbehaviour.SelectedIndex = 1;
-					break;
-				case Power.PowerBehaviour.Manual:
-					powbehaviour.SelectedIndex = 2;
-					break;
-			}
-
+				Power.PowerBehaviour.Auto => 0,
+				Power.PowerBehaviour.Manual => 2,
+				_ => 1,
+			};
 			tooltip.SetToolTip(powbehaviour,
 				"Auto-adjust = Automatically adjust power mode based on system load or by watchlist rules\n" +
 				"Rule-based = Watchlist rules can affect it\n" +
