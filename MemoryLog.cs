@@ -59,7 +59,7 @@ namespace Taskmaster
 		public static MemorySink? MemorySink;
 	}
 
-	class MemorySink : Serilog.Core.ILogEventSink
+	class MemorySink : Serilog.Core.ILogEventSink, IDisposable
 	{
 		public event EventHandler<LogEventArgs>? OnNewEvent;
 
@@ -157,14 +157,33 @@ namespace Taskmaster
 			lock (LogLock) return Logs.ToArray();
 		}
 
-		~MemorySink()
+		#region IDisposable
+		private bool isdisposed;
+
+		protected virtual void Dispose(bool disposing)
 		{
-			OnNewEvent = null;
+			if (!isdisposed)
+			{
+				if (disposing)
+				{
+					Output?.Dispose();
+				}
 
-			Output?.Dispose();
+				OnNewEvent = null;
+				MemoryLog.MemorySink = null;
 
-			MemoryLog.MemorySink = null;
+				isdisposed = true;
+			}
 		}
+
+		~MemorySink() => Dispose(disposing: false);
+
+		public void Dispose()
+		{
+			Dispose(disposing: true);
+			GC.SuppressFinalize(this);
+		}
+		#endregion
 	}
 
 	public static class MemorySinkExtensions
