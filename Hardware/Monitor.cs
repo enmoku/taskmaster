@@ -82,20 +82,20 @@ namespace Taskmaster.Hardware
 	[Context(RequireMainThread = false)]
 	public class Monitor : IComponent
 	{
-		OpenHardwareMonitor.Hardware.IHardware? gpu = null;
-		OpenHardwareMonitor.Hardware.ISensor? gpuFan = null; // Fan speed
-		OpenHardwareMonitor.Hardware.ISensor? gpuFanControl = null; // Fan speed controller. Value is % usage
-		OpenHardwareMonitor.Hardware.ISensor? gpuTmp = null; // Temperature
-		OpenHardwareMonitor.Hardware.ISensor? gpuMemLoad = null; // Free Memory
-		float gpuTotalMemory = 0f;
-		OpenHardwareMonitor.Hardware.ISensor? gpuClock = null; // Core clock speed
-		OpenHardwareMonitor.Hardware.ISensor? gpuLoad = null; // Core % load
-		OpenHardwareMonitor.Hardware.ISensor? gpuMemCtrl = null; // Memory Controller
+		OpenHardwareMonitor.Hardware.IHardware? gpu;
+		OpenHardwareMonitor.Hardware.ISensor? gpuFan, // Fan speed
+			gpuFanControl, // Fan speed controller. Value is % usage
+			gpuTmp, // Temperature
+			gpuMemLoad, // Free Memory
+			gpuClock, // Core clock speed
+			gpuLoad, // Core % load
+			gpuMemCtrl, // Memory Controller
+			//cpu,
+			cpuLoad;
+			//cpuFan,
+			//cpuTmp,
 
-		//OpenHardwareMonitor.Hardware.IHardware cpu = null;
-		OpenHardwareMonitor.Hardware.ISensor? cpuLoad = null;
-		//OpenHardwareMonitor.Hardware.ISensor cpuFan = null;
-		//OpenHardwareMonitor.Hardware.ISensor cpuTmp = null;
+		float gpuTotalMemory;
 
 		readonly OpenHardwareMonitor.Hardware.Computer computer;
 
@@ -123,7 +123,7 @@ namespace Taskmaster.Hardware
 			Log.Verbose("<Hardware> Component loaded.");
 		}
 
-		bool Initialized = false;
+		bool Initialized;
 
 		async void OnStart(object sender, EventArgs ea)
 		{
@@ -162,7 +162,7 @@ namespace Taskmaster.Hardware
 					 * GPU Memory : Load = 63.53
 					 */
 
-					Log.Verbose("Hardware: " + hw.Name + $" ({hw.HardwareType.ToString()})");
+					Log.Verbose("Hardware: " + hw.Name + $" ({hw.HardwareType})");
 
 					switch (hw.HardwareType)
 					{
@@ -281,7 +281,7 @@ namespace Taskmaster.Hardware
 		public event EventHandler<GPUSensorEventArgs>? GPUPolling;
 		public event EventHandler<CPUSensorEventArgs>? CPUPolling;
 
-		System.Timers.Timer? SensorPoller = null;
+		System.Timers.Timer? SensorPoller;
 
 		public void Start()
 		{
@@ -325,7 +325,7 @@ namespace Taskmaster.Hardware
 		#region IDisposable Support
 		public event EventHandler<DisposedEventArgs>? OnDisposed;
 
-		bool disposed = false; // To detect redundant calls
+		bool disposed; // To detect redundant calls
 
 		public void Dispose()
 		{

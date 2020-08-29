@@ -30,7 +30,8 @@ namespace Taskmaster.Power
 {
 	public class SessionLockEventArgs : EventArgs
 	{
-		public bool Locked = false;
+		public bool Locked;
+
 		public SessionLockEventArgs(bool locked = false) => Locked = locked;
 	}
 }

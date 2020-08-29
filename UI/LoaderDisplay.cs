@@ -29,6 +29,7 @@ using System;
 using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -234,7 +235,7 @@ namespace Taskmaster.UI
 			timer.Start();
 		}
 
-		int LoaderListFirst = 0;
+		int LoaderListFirst;
 
 		readonly List<LoadListPair> LoaderListData = new List<LoadListPair>(80);
 
@@ -259,6 +260,7 @@ namespace Taskmaster.UI
 			int newVisibleLength = e.EndIndex - e.StartIndex + 1; // inclusive range
 
 			//Fill the cache with the appropriate ListViewItems.
+			/*
 			for (int i = 0; i < newVisibleLength; i++)
 			{
 				var item = LoaderListData[i];
@@ -266,6 +268,7 @@ namespace Taskmaster.UI
 				//if (!LoaderListCache.Get(item.Load, out _))
 				//	LogListGenerateItem(item);
 			}
+			*/
 
 			//LogList.VirtualListSize = LogListData.Count;
 		}
@@ -414,7 +417,7 @@ namespace Taskmaster.UI
 			catch (Exception ex) { Logging.Stacktrace(ex); }
 		}
 
-		int ignoredInstances = 0, ignoredGroups = 0, activeInstances = 0, activeGroups = 0, totalInstances = 0, totalGroups = 0;
+		int ignoredInstances, ignoredGroups, activeInstances, activeGroups, totalInstances, totalGroups;
 
 		readonly System.Windows.Forms.Timer timer = new Timer();
 
@@ -661,7 +664,7 @@ namespace Taskmaster.UI
 		#region IDispose
 		public event EventHandler<DisposedEventArgs>? OnDisposed;
 
-		bool disposed = false;
+		bool disposed;
 
 		protected override void Dispose(bool disposing)
 		{
@@ -699,7 +702,7 @@ namespace Taskmaster.UI
 
 	public class LoadListPair
 	{
-		public bool Displayed { get; set; } = false;
+		public bool Displayed { get; set; }
 
 		public Process.InstanceGroupLoad Load { get; set; }
 
@@ -725,7 +728,7 @@ namespace Taskmaster.UI
 		/// <summary>
 		/// Always kept at top.
 		/// </summary>
-		public ListViewItem? TopItem { get; set; } = null;
+		public ListViewItem? TopItem { get; set; }
 
 		public SortOrder Order { get; set; } = SortOrder.Descending;
 
@@ -801,7 +804,7 @@ namespace Taskmaster.UI
 		/// <summary>
 		/// Always kept at top.
 		/// </summary>
-		public LoadListPair? TopItem { get; set; } = null;
+		public LoadListPair? TopItem { get; set; }
 
 		public SortOrder Order { get; set; } = SortOrder.Descending;
 

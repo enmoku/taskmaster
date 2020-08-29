@@ -34,6 +34,7 @@ using Windows = MKAh.Wrapper.Windows;
 
 namespace Taskmaster
 {
+	using System.Globalization;
 	using System.Net.Configuration;
 	using System.Text;
 	using static Application;
@@ -41,16 +42,16 @@ namespace Taskmaster
 	public class HealthReport
 	{
 		// Counters
-		public float PageFaults = 0f;
-		public float PageInputs = 0f;
-		public float SplitIO = 0f;
-		public float NVMTransfers = 0f;
-		public float NVMQueue = 0f;
-		public float NVMDelay = 0f;
-
-		// Memory
-		public float MemPressure = 0f;
-		public float MemUsage = 0f;
+		public float
+			PageFaults,
+			PageInputs,
+			SplitIO,
+			NVMTransfers,
+			NVMQueue,
+			NVMDelay,
+			// Memory
+			MemPressure,
+			MemUsage;
 	}
 
 	/// <summary>
@@ -59,7 +60,7 @@ namespace Taskmaster
 	[Context(RequireMainThread = false)]
 	public class HealthMonitor : IComponent // Auto-Doc
 	{
-		bool DebugHealth = false;
+		bool DebugHealth;
 
 		//Dictionary<int, Problem> activeProblems = new Dictionary<int, Problem>();
 		readonly Settings.HealthMonitor Settings = new Settings.HealthMonitor();
@@ -105,7 +106,7 @@ namespace Taskmaster
 			};
 		}
 
-		ModuleManager modules;
+		readonly ModuleManager modules;
 
 		public HealthMonitor() => throw new InvalidOperationException(); // needed by templates
 
@@ -183,10 +184,10 @@ namespace Taskmaster
 			*/
 
 			if (Settings.MemLevel > 0 && PagingEnabled)
-				Log.Information($"<Auto-Doc> Memory auto-paging level: {Settings.MemLevel.ToString()} MB");
+				Log.Information($"<Auto-Doc> Memory auto-paging level: {Settings.MemLevel} MB");
 
 			if (Settings.LowDriveSpaceThreshold > 0)
-				Log.Information($"<Auto-Doc> Disk space warning level: {Settings.LowDriveSpaceThreshold.ToString()} MB");
+				Log.Information($"<Auto-Doc> Disk space warning level: {Settings.LowDriveSpaceThreshold} MB");
 
 			HealthTimer = new System.Timers.Timer(Settings.Frequency.TotalMilliseconds);
 			HealthTimer.Elapsed += TimerCheck;
@@ -202,7 +203,7 @@ namespace Taskmaster
 
 		int EmergencyPressure = -1;
 
-		bool CriticalMemoryWarning = false;
+		bool CriticalMemoryWarning;
 		DateTimeOffset EmergencyOffset = DateTimeOffset.MinValue;
 
 		void EmergencyTick(object sender, System.Timers.ElapsedEventArgs e)
@@ -603,20 +604,20 @@ namespace Taskmaster
 			}
 		}
 
-		bool WarnedAboutMemoryPressure { get; set; } = false;
+		bool WarnedAboutMemoryPressure { get; set; }
 		bool PressureAlleviatedBlurp { get; set; } = true;
 		DateTimeOffset LastPressureWarning { get; set; } = DateTimeOffset.MinValue;
 		DateTimeOffset LastPressureEvent { get; set; } = DateTimeOffset.MinValue;
 
 		float MemoryWarningThreshold { get; set; } = 1.5f;
-		bool WarnedAboutLowMemory { get; set; } = false;
+		bool WarnedAboutLowMemory { get; set; }
 		DateTimeOffset LastMemoryWarning { get; set; } = DateTimeOffset.MinValue;
 		long MemoryWarningCooldown { get; set; } = 30;
 
 		#region IDisposable Support
 		public event EventHandler<DisposedEventArgs>? OnDisposed;
 
-		bool disposed = false;
+		bool disposed;
 
 		protected virtual void Dispose(bool disposing)
 		{

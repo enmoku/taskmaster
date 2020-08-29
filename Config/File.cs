@@ -26,6 +26,7 @@
 
 using System;
 using System.Diagnostics;
+using System.Globalization;
 using Ini = MKAh.Ini;
 
 namespace Taskmaster.Configuration
@@ -38,7 +39,7 @@ namespace Taskmaster.Configuration
 
 		//string Path { get; } = null;
 
-		public int Shared { get; internal set; } = 0;
+		public int Shared { get; internal set; }
 
 		public FileEventDelegate? OnUnload, OnSave;
 
@@ -63,7 +64,7 @@ namespace Taskmaster.Configuration
 			}
 		}
 
-		bool UnloadRequested { get; set; } = false;
+		bool UnloadRequested { get; set; }
 
 		public void Unload()
 		{
@@ -114,7 +115,7 @@ namespace Taskmaster.Configuration
 		}
 
 		#region IDisposable Support
-		bool disposed = false;
+		bool disposed;
 
 		protected virtual void Dispose(bool disposing)
 		{
@@ -151,7 +152,7 @@ namespace Taskmaster.Configuration
 		internal ScopedFile(File file) => File = file;
 
 		#region IDisposable Support
-		bool disposed = false;
+		bool disposed;
 
 		protected virtual void Dispose(bool disposing)
 		{

@@ -64,26 +64,24 @@ namespace Taskmaster.Network
 
 	public class TrafficData
 	{
-		/// <summary>
-		/// Unicast packets
-		/// </summary>
-		public long Unicast { get; set; } = 0;
+		public long
+			/// <summary>
+			/// Unicast packets
+			/// </summary>
+			Unicast,
 
-		/// <summary>
-		/// Broadcast and Multicast packets
-		/// </summary>
-		public long NonUnicast { get; set; } = 0;
-
-		public long Discards { get; set; } = 0;
-
-		public long Errors { get; set; } = 0;
-
-		public long Bytes { get; set; } = 0;
+			/// <summary>
+			/// Broadcast and Multicast packets
+			/// </summary>
+			NonUnicast,
+			Discards,
+			Errors,
+			Bytes,
 
 		/// <summary>
 		/// Unknown packets, only for incoming data.
 		/// </summary>
-		public long Unknown { get; set; } = 0;
+			Unknown;
 
 		public void From(IPInterfaceStatistics stats, bool incoming = true)
 		{
@@ -127,9 +125,9 @@ namespace Taskmaster.Network
 		public string Name { get; set; } = string.Empty;
 		public NetworkInterfaceType Type { get; set; } = NetworkInterfaceType.Unknown;
 		public OperationalStatus Status { get; set; } = OperationalStatus.NotPresent;
-		public long Speed { get; set; } = 0;
-		public IPAddress? IPv4Address { get; set; } = null;
-		public IPAddress? IPv6Address { get; set; } = null;
+		public long Speed { get; set; }
+		public IPAddress? IPv4Address { get; set; }
+		public IPAddress? IPv6Address { get; set; }
 
 		public OperationalStatus IPv4Status { get; set; } = OperationalStatus.Unknown;
 

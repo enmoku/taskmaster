@@ -31,13 +31,13 @@ namespace Taskmaster.Process
 {
 	public class LoadValue
 	{
-		public bool Heavy { get; set; } = false;
+		public bool Heavy { get; set; }
 
-		public uint HeavyCount { get; set; } = 0;
+		public uint HeavyCount { get; set; }
 
-		public bool Light { get; set; } = false;
+		public bool Light { get; set; }
 
-		public uint LightCount { get; set; } = 0;
+		public uint LightCount { get; set; }
 
 		public float Min => Samples.Min();
 

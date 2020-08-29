@@ -35,12 +35,12 @@ namespace Taskmaster.Process
 		/// <summary>
 		/// Adjustment to previous total.
 		/// </summary>
-		public int Delta { get; set; } = 0;
+		public int Delta { get; set; }
 
 		/// <summary>
 		/// Total items being processed.
 		/// </summary>
-		public int Total { get; set; } = 0;
+		public int Total { get; set; }
 
 		public ProcessingCountEventArgs(int delta, int total)
 		{

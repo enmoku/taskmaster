@@ -28,6 +28,7 @@ using MKAh;
 using System;
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.Globalization;
 using System.Linq;
 
 namespace Taskmaster.Process
@@ -95,27 +96,27 @@ namespace Taskmaster.Process
 
 		public LoadValue RAMLoad { get; } = new LoadValue(LoadType.RAM, 2048f, 512f, 256f);
 
-		public int Samples { get; private set; } = 0;
+		public int Samples { get; private set; }
 
-		public float Load { get; private set; } = 0;
+		public float Load { get; private set; }
 
 		//readonly ManagementObjectSearcher cpusearcher = new ManagementObjectSearcher("SELECT * from Win32_PerfFormattedData_PerfOS_Processor");
 
-		Stopwatch updateTimer = Stopwatch.StartNew();
+		readonly Stopwatch updateTimer = Stopwatch.StartNew();
 
-		public int UninterestingInstances { get; private set; } = 0;
+		public int UninterestingInstances { get; private set; }
 
 		public bool Interesting { get; private set; } = true;
 
-		public long Interest { get; set; } = 0;
+		public long Interest { get; set; }
 
-		public int Disinterest { get; set; } = 0;
+		public int Disinterest { get; set; }
 
 		public int MaxDisinterest { get; set; } = 3;
 
 		public void Update()
 		{
-			if (disposed || InstanceCount == 0) return;
+			if (isdisposed || InstanceCount == 0) return;
 
 			Samples++;
 
@@ -330,25 +331,25 @@ namespace Taskmaster.Process
 			return false;
 		}
 
-		public bool LastHeavy { get; set; } = false;
+		public bool LastHeavy { get; set; }
 
-		public bool LastLight { get; set; } = false;
+		public bool LastLight { get; set; }
 
-		public uint Heavy { get; private set; } = 0;
+		public uint Heavy { get; private set; }
 
-		public uint Light { get; private set; } = 0;
+		public uint Light { get; private set; }
 
 		public bool Mixed => Light > 2 && Heavy > 2;
 
 		#region IDisposable Support
-		bool disposed = false;
+		bool isdisposed;
 
 		~InstanceGroupLoad() => Dispose(false);
 
 		protected virtual void Dispose(bool disposing)
 		{
-			if (disposed) return;
-			disposed = true;
+			if (isdisposed) return;
+			isdisposed = true;
 
 			if (disposing)
 			{

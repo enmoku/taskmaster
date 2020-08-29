@@ -33,8 +33,6 @@ namespace Taskmaster.Audio
 {
 	public class Device : IDisposable
 	{
-		readonly Dispatcher dispatcher = Dispatcher.CurrentDispatcher;
-
 		public Device(NAudio.CoreAudioApi.MMDevice device)
 			: this(Utility.DeviceIdToGuid(device.ID), string.Empty, device.DataFlow, device.State, device)
 		{
@@ -57,7 +55,7 @@ namespace Taskmaster.Audio
 		public string Name { get; }
 		public Guid GUID { get; }
 
-		public bool VolumeControl { get; set; } = false;
+		public bool VolumeControl { get; set; }
 		public float Volume { get; set; } = float.NaN;
 		public float Target { get; set; } = float.NaN;
 
@@ -74,7 +72,9 @@ namespace Taskmaster.Audio
 		public string ToShortString() => !string.IsNullOrEmpty(Name) ? Name : $"{{{GUID}}}";
 
 		#region IDisposable Support
-		private bool disposed = false; // To detect redundant calls
+		private bool disposed; // To detect redundant calls
+
+		readonly Dispatcher dispatcher = Dispatcher.CurrentDispatcher;
 
 		public event EventHandler? OnDisposed;
 
@@ -90,7 +90,7 @@ namespace Taskmaster.Audio
 
 			try
 			{
-				dispatcher.Invoke(() => { Logging.DebugMsg("MMDevice dispatching: " + ToShortString()); MMDevice.Dispose(); Logging.DebugMsg("MMDevice dispatched: " + ToShortString()); }, DispatcherPriority.Normal, CancellationToken.None);
+				dispatcher.Invoke(() => MMDevice.Dispose(), DispatcherPriority.Normal, CancellationToken.None);
 			}
 			catch (TaskCanceledException)
 			{

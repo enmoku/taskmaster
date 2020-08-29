@@ -30,17 +30,17 @@ namespace Taskmaster.Power
 	{
 		public Mode Mode = Mode.Undefined;
 		public Reaction Reaction = Reaction.Average;
-		public bool Steady = false;
+		public bool Steady;
 
 		/// <summary>
 		/// Pressure to change, from 0.0f to 1.0f.
 		/// </summary>
-		public float Pressure = 0F;
+		public float Pressure;
 
 		/// <summary>
 		/// Has this power event been put to use or if this is speculative.
 		/// </summary>
-		public bool Enacted = false;
+		public bool Enacted;
 
 		public static AutoAdjustReactionEventArgs From(Hardware.ProcessorLoadEventArgs ea)
 		{

@@ -26,6 +26,7 @@
 
 using System;
 using System.Diagnostics;
+using System.Globalization;
 
 namespace Taskmaster.Process
 {
@@ -39,13 +40,13 @@ namespace Taskmaster.Process
 			Id = pid;
 		}
 
-		public bool Restricted { get; set; } = false;
+		public bool Restricted { get; set; }
 
 		/// <summary>
 		/// Process filename without extension
 		/// Cached from Process.ProcessFilename
 		/// </summary>
-		public string Name { get; set; } = string.Empty;
+		public string Name { get; set; }
 
 		/// <summary>
 		/// Cache for Hwnd.
@@ -74,11 +75,11 @@ namespace Taskmaster.Process
 
 		public LegacyLevel Legacy { get; set; } = LegacyLevel.Undefined;
 
-		public bool IsUniprocessorOnly { get; set; } = false;
+		public bool IsUniprocessorOnly { get; set; }
 
-		public bool IsLargeAddressAware { get; set; } = false;
+		public bool IsLargeAddressAware { get; set; }
 
-		public bool Is32BitExecutable { get; set; } = false;
+		public bool Is32BitExecutable { get; set; }
 
 		/// <summary>
 		/// Process Id.
@@ -88,54 +89,49 @@ namespace Taskmaster.Process
 		/// <summary>
 		/// Process reference.
 		/// </summary>
-		public System.Diagnostics.Process? Process { get; set; } = null;
+		public System.Diagnostics.Process? Process { get; set; }
 
 		/// <summary>
 		/// Controller associated with this process.
 		/// </summary>
-		public Process.Controller? Controller { get; set; } = null;
+		public Process.Controller? Controller { get; set; }
 
-		public bool FullyProtected { get; set; } = false;
-		public bool PriorityProtected { get; set; } = false;
-		public bool AffinityProtected { get; set; } = false;
+		public bool FullyProtected { get; set; }
+		public bool PriorityProtected { get; set; }
+		public bool AffinityProtected { get; set; }
 
-		public bool ExitWait { get; set; } = false;
+		public bool ExitWait { get; set; }
 
 		/// <summary>
 		/// Power plan forced, waiting for exit to restore it.
 		/// </summary>
-		public bool PowerWait { get; set; } = false;
+		public bool PowerWait { get; set; }
 
 		/// <summary>
 		/// This is triggered by foreground transitions.
 		/// </summary>
-		public bool ForegroundWait { get; set; } = false;
-
-		/// <summary>
-		/// Resized, monitoring for exit.
-		/// </summary>
-		public bool Resize { get; set; } = false;
+		public bool ForegroundWait { get; set; }
 
 		/// <summary>
 		/// Waiting for exit to reset color.
 		/// </summary>
-		public bool ColorReset { get; set; } = false;
+		public bool ColorReset { get; set; }
 
 		/// <summary>
 		/// Currently in background.
 		/// </summary>
-		public bool InBackground { get; set; } = false;
+		public bool InBackground { get; set; }
 
 		public DateTimeOffset Modified { get; set; } = DateTimeOffset.MinValue;
 
-		private HandlingState _state { get; set; } = HandlingState.Invalid;
+		private HandlingState i_state { get; set; } = HandlingState.Invalid;
 
 		public HandlingState State
 		{
-			get => _state;
+			get => i_state;
 			set
 			{
-				_state = value;
+				i_state = value;
 
 				switch (value)
 				{
@@ -162,9 +158,9 @@ namespace Taskmaster.Process
 			}
 		}
 
-		public bool Valid { get; set; } = false;
+		public bool Valid { get; set; }
 
-		public bool Handled { get; set; } = false;
+		public bool Handled { get; set; }
 
 		public void HookExit()
 		{
@@ -182,14 +178,14 @@ namespace Taskmaster.Process
 			State = HandlingState.Exited;
 		}
 
-		public bool Exited { get; set; } = false;
+		public bool Exited { get; set; }
 
-		public bool PathSearched { get; set; } = false;
+		public bool PathSearched { get; set; }
 
 		public DateTime Found { get; set; } = DateTime.UtcNow;
 
 		// internal loaders
-		public ProcessLoad? Load = null;
+		public ProcessLoad? Load;
 
 		/// <summary>
 		/// Display: <code>Name #PID</code> or <code>#PID</code>

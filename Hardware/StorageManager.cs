@@ -41,13 +41,13 @@ namespace Taskmaster
 	[Context(RequireMainThread = false)]
 	public class StorageManager : IComponent
 	{
-		bool Verbose = false;
+		bool Verbose;
 
 		static readonly string systemTemp = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "Temp");
 		static string UserTemp => Path.GetTempPath();
 
-		readonly FileSystemWatcher? UserWatcher = null;
-		readonly FileSystemWatcher? SysWatcher = null;
+		readonly FileSystemWatcher? UserWatcher;
+		readonly FileSystemWatcher? SysWatcher;
 
 		readonly System.Timers.Timer TempScanTimer;
 		TimeSpan TimerDue = TimeSpan.FromHours(24);
@@ -96,7 +96,7 @@ namespace Taskmaster
 
 		async Task ScanTempAsync() => await ScanTemp().ConfigureAwait(false);
 
-		static long ReScanBurden = 0;
+		static long ReScanBurden;
 
 		void ModifyTemp(object _, FileSystemEventArgs ev)
 		{
@@ -177,7 +177,7 @@ namespace Taskmaster
 			}
 		}
 
-		int scantemp_lock = 0;
+		int scantemp_lock = Atomic.Unlocked;
 
 		async void ScanTempRequest(object _, EventArgs _2) => await ScanTemp().ConfigureAwait(false);
 
@@ -227,7 +227,7 @@ namespace Taskmaster
 		#region IDisposable Support
 		public event EventHandler<DisposedEventArgs>? OnDisposed;
 
-		bool disposed = false;
+		bool disposed;
 
 		public void Dispose()
 		{

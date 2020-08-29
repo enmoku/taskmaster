@@ -25,6 +25,7 @@
 // THE SOFTWARE.
 
 using MKAh;
+using MKAh.Synchronize;
 using Serilog;
 using System;
 using System.Collections.Concurrent;
@@ -45,7 +46,7 @@ namespace Taskmaster.Process
 	[Context(RequireMainThread = false)]
 	public class Manager : IComponent
 	{
-		readonly Analyzer? analyzer = null;
+		readonly Analyzer? analyzer;
 
 		MKAh.Cache.SimpleCache<int, ProcessEx> LoaderCache = new MKAh.Cache.SimpleCache<int, ProcessEx>(limit: 260, retention: 80);
 
@@ -69,7 +70,7 @@ namespace Taskmaster.Process
 
 		void AddRunning(ProcessEx info)
 		{
-			if (disposed) return;
+			if (isdisposed) return;
 
 			if (Running.TryAdd(info.Id, info))
 			{
@@ -176,8 +177,7 @@ namespace Taskmaster.Process
 			LoaderActivity?.Invoke(this, new LoaderEvent(loadlist));
 		}
 
-		bool TrackEverything = false;
-		bool InstantLoaderSignaling = false;
+		bool TrackEverything, InstantLoaderSignaling;
 
 		void InspectLoaders(object _)
 		{
@@ -304,7 +304,7 @@ namespace Taskmaster.Process
 
 		void ProcessExit(object sender, EventArgs ea)
 		{
-			if (disposed) return;
+			if (isdisposed) return;
 
 			if (sender is System.Diagnostics.Process proc && RemoveRunning(proc.Id, out var info))
 			{
@@ -315,7 +315,7 @@ namespace Taskmaster.Process
 
 		bool RemoveRunning(int pid, out ProcessEx removed)
 		{
-			if (disposed)
+			if (isdisposed)
 			{
 				removed = null;
 				return false;
@@ -346,27 +346,27 @@ namespace Taskmaster.Process
 			return false;
 		}
 
-		public bool LoaderTracking { get; set; } = false;
+		public bool LoaderTracking { get; set; }
 
-		public static bool DebugLoaders { get; set; } = false;
+		public static bool DebugLoaders { get; set; }
 
-		public static bool DebugScan { get; set; } = false;
+		public static bool DebugScan { get; set; }
 
-		public static bool DebugPaths { get; set; } = false;
+		public static bool DebugPaths { get; set; }
 
-		public static bool DebugAdjustDelay { get; set; } = false;
+		public static bool DebugAdjustDelay { get; set; }
 
-		public static bool DebugPaging { get; set; } = false;
+		public static bool DebugPaging { get; set; }
 
-		public static bool DebugProcesses { get; private set; } = false;
+		public static bool DebugProcesses { get; private set; }
 
 		public static bool ShowUnmodifiedPortions { get; set; } = true;
 
-		public static bool ShowOnlyFinalState { get; set; } = false;
+		public static bool ShowOnlyFinalState { get; set; }
 
-		public static bool ShowForegroundTransitions { get; set; } = false;
+		public static bool ShowForegroundTransitions { get; set; }
 
-		bool ColorResetEnabled { get; set; } = false;
+		bool ColorResetEnabled { get; set; }
 
 		/// <summary>
 		/// Watch rules
@@ -473,9 +473,9 @@ namespace Taskmaster.Process
 		/// </summary>
 		readonly ConcurrentDictionary<string, Controller[]> ExeToController = new ConcurrentDictionary<string, Controller[]>();
 
-		public int DefaultBackgroundPriority = 1, DefaultBackgroundAffinity = 0;
+		public int DefaultBackgroundPriority = 1, DefaultBackgroundAffinity;
 
-		ForegroundManager? activeappmonitor = null;
+		ForegroundManager? activeappmonitor;
 
 		public void Hook(ForegroundManager manager)
 		{
@@ -484,7 +484,7 @@ namespace Taskmaster.Process
 			activeappmonitor.OnDisposed += (_, _2) => activeappmonitor = null;
 		}
 
-		Power.Manager? powermanager = null;
+		Power.Manager? powermanager;
 
 		public void Hook(Power.Manager manager)
 		{
@@ -520,7 +520,7 @@ namespace Taskmaster.Process
 
 		internal async Task FreeMemoryInternal(int ignorePid = -1)
 		{
-			if (disposed) throw new ObjectDisposedException(nameof(Manager), "FreeMemoryInterval called when ProcessManager was already disposed");
+			if (isdisposed) throw new ObjectDisposedException(nameof(Manager), "FreeMemoryInterval called when ProcessManager was already disposed");
 
 			if (!FreeMemLock.TryLock()) return;
 			using var fmlock = FreeMemLock.ScopedUnlock();
@@ -564,7 +564,7 @@ namespace Taskmaster.Process
 		/// </summary>
 		async void TimedScan(object _sender, System.Timers.ElapsedEventArgs _)
 		{
-			if (disposed) return; // HACK: dumb timers be dumb
+			if (isdisposed) return; // HACK: dumb timers be dumb
 
 			try
 			{
@@ -626,7 +626,7 @@ namespace Taskmaster.Process
 
 		void StartScanTimer()
 		{
-			if (disposed) throw new ObjectDisposedException(nameof(Manager), "StartScanTimer called when ProcessManager was already disposed");
+			if (isdisposed) throw new ObjectDisposedException(nameof(Manager), "StartScanTimer called when ProcessManager was already disposed");
 
 			if (!ScanFrequency.HasValue) return; // dumb hack
 
@@ -649,7 +649,7 @@ namespace Taskmaster.Process
 
 		void Scan(int ignorePid = -1, bool PageToDisk = false)
 		{
-			if (disposed) throw new ObjectDisposedException(nameof(Manager), "Scan called when ProcessManager was already disposed");
+			if (isdisposed) throw new ObjectDisposedException(nameof(Manager), "Scan called when ProcessManager was already disposed");
 			if (cts.IsCancellationRequested) return;
 
 			if (!ScanLock.TryLock()) return;
@@ -843,7 +843,7 @@ namespace Taskmaster.Process
 			catch { } // don't care
 		}
 
-		int SystemLoader_lock = 0;
+		int SystemLoader_lock = Atomic.Unlocked;
 		DateTimeOffset LastLoaderAnalysis = DateTimeOffset.MinValue;
 
 		async Task SystemLoaderAnalysis(List<ProcessEx> procs)
@@ -945,7 +945,7 @@ namespace Taskmaster.Process
 			}
 
 			// SANITY CHECKING
-			if (prc.ExecutableFriendlyName?.Length > 0)
+			if (prc.ExecutableFriendlyName.Length > 0)
 			{
 				// TODO: MULTIEXE
 
@@ -1508,7 +1508,7 @@ namespace Taskmaster.Process
 
 		public bool AddController(Controller prc)
 		{
-			if (disposed) throw new ObjectDisposedException(nameof(Manager), "AddController called when ProcessManager was already disposed");
+			if (isdisposed) throw new ObjectDisposedException(nameof(Manager), "AddController called when ProcessManager was already disposed");
 
 			if (ValidateController(prc))
 			{
@@ -1613,7 +1613,7 @@ namespace Taskmaster.Process
 
 		void PowerBehaviourEvent(object _, Power.PowerBehaviourEventArgs ea)
 		{
-			if (disposed) return;
+			if (isdisposed) return;
 
 			try
 			{
@@ -1632,7 +1632,7 @@ namespace Taskmaster.Process
 		{
 			var cancelled = 0;
 
-			if (WaitForExitList.Count == 0) return;
+			if (WaitForExitList.IsEmpty) return;
 
 			var clearList = new Stack<ProcessEx>();
 			foreach (var info in WaitForExitList.Values)
@@ -1669,7 +1669,7 @@ namespace Taskmaster.Process
 
 			bool exithooked = false;
 
-			if (disposed) throw new ObjectDisposedException(nameof(Manager), "WaitForExit called when ProcessManager was already disposed");
+			if (isdisposed) throw new ObjectDisposedException(nameof(Manager), "WaitForExit called when ProcessManager was already disposed");
 
 			if (WaitForExitList.TryAdd(info.Id, info))
 			{
@@ -1706,13 +1706,13 @@ namespace Taskmaster.Process
 			return exithooked;
 		}
 
-		Controller? PreviousForegroundController = null;
-		ProcessEx? PreviousForegroundInfo = null;
+		Controller? PreviousForegroundController;
+		ProcessEx? PreviousForegroundInfo;
 
 		// BUG: This is a mess.
 		void ForegroundAppChangedEvent(object _sender, WindowChangedArgs ev)
 		{
-			if (disposed) return;
+			if (isdisposed) return;
 
 			System.Diagnostics.Process process = ev.Process;
 			try
@@ -1798,7 +1798,7 @@ namespace Taskmaster.Process
 
 		public bool GetController(ProcessEx info, out Controller prc)
 		{
-			if (disposed) return (prc = null) != null; // silly shorthand
+			if (isdisposed) return (prc = null) != null; // silly shorthand
 
 			if (info.Controller != null)
 			{
@@ -1858,7 +1858,7 @@ namespace Taskmaster.Process
 			{
 				if (!lprc.Enabled) continue;
 
-				if (lprc.ExecutableFriendlyName?.Length > 0)
+				if (lprc.ExecutableFriendlyName.Length > 0)
 				{
 					string name = info.Name;
 					if (!lprc.ExecutableFriendlyName.Any((x) => x.Equals(name, StringComparison.InvariantCultureIgnoreCase)))
@@ -1879,7 +1879,7 @@ namespace Taskmaster.Process
 			return false;
 		}
 
-		public bool EnableParentFinding { get; set; } = false;
+		public bool EnableParentFinding { get; set; }
 
 		public string[] ProtectList { get; } = {
 			"conhost",
@@ -1931,7 +1931,7 @@ namespace Taskmaster.Process
 		/// </summary>
 		public int ProtectionLevel { get; private set; } = 2;
 
-		bool DebugWMI = false;
+		bool DebugWMI;
 
 		[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
 		public bool IgnoreProcessID(int pid) => Utility.SystemProcessId(pid) || IgnorePids.ContainsKey(pid);
@@ -2041,7 +2041,7 @@ namespace Taskmaster.Process
 		/// </summary>
 		async Task ForegroundWatch(ProcessEx info)
 		{
-			if (disposed) throw new ObjectDisposedException(nameof(Manager), "ForegroundWatch called when ProcessManager was already disposed");
+			if (isdisposed) throw new ObjectDisposedException(nameof(Manager), "ForegroundWatch called when ProcessManager was already disposed");
 
 			var prc = info.Controller;
 
@@ -2067,7 +2067,7 @@ namespace Taskmaster.Process
 		// TODO: This should probably be pushed into ProcessController somehow.
 		async Task ProcessTriage(ProcessEx info, bool old = false)
 		{
-			if (disposed) throw new ObjectDisposedException(nameof(Manager), "ProcessTriage called when ProcessManager was already disposed");
+			if (isdisposed) throw new ObjectDisposedException(nameof(Manager), "ProcessTriage called when ProcessManager was already disposed");
 
 			await Task.Delay(10, cts.Token).ConfigureAwait(false); // asyncify
 			if (cts.IsCancellationRequested)
@@ -2262,7 +2262,7 @@ namespace Taskmaster.Process
 
 		public int HandlingCount => Handling;
 
-		private int Handling = 0; // this isn't used for much...
+		private int Handling; // this isn't used for much...
 
 		/*
 		/// <summary>
@@ -2513,7 +2513,7 @@ namespace Taskmaster.Process
 
 		async void CleanupTick(object _sender, System.Timers.ElapsedEventArgs _2)
 		{
-			if (disposed) throw new ObjectDisposedException(nameof(Manager), "CleanupTick called when ProcessManager was already disposed");
+			if (isdisposed) throw new ObjectDisposedException(nameof(Manager), "CleanupTick called when ProcessManager was already disposed");
 
 			await Task.Delay(10).ConfigureAwait(false);
 
@@ -2528,7 +2528,7 @@ namespace Taskmaster.Process
 				ScanBlockList.TryRemove(item.Key, out _);
 		}
 
-		int cleanup_lock = 0;
+		int cleanup_lock = Atomic.Unlocked;
 
 		/// <summary>
 		/// Cleanup.
@@ -2538,7 +2538,7 @@ namespace Taskmaster.Process
 		/// </remarks>
 		public async Task Cleanup()
 		{
-			if (disposed) throw new ObjectDisposedException(nameof(Manager), "Cleanup called when ProcessManager was already disposed");
+			if (isdisposed) throw new ObjectDisposedException(nameof(Manager), "Cleanup called when ProcessManager was already disposed");
 
 			if (!MKAh.Synchronize.Atomic.Lock(ref cleanup_lock)) return; // already in progress
 
@@ -2626,7 +2626,7 @@ namespace Taskmaster.Process
 
 		readonly CancellationTokenSource cts = new CancellationTokenSource();
 
-		bool disposed = false;
+		bool isdisposed;
 
 		public void Dispose()
 		{
@@ -2636,8 +2636,8 @@ namespace Taskmaster.Process
 
 		protected virtual void Dispose(bool disposing)
 		{
-			if (disposed) return;
-			disposed = true;
+			if (isdisposed) return;
+			isdisposed = true;
 
 			if (disposing)
 			{
@@ -2652,7 +2652,7 @@ namespace Taskmaster.Process
 				ProcessStateChange = null;
 				HandlingStateChange = null;
 
-				if (powermanager?.IsDisposed == true)
+				if (powermanager != null)
 				{
 					powermanager.BehaviourChange -= PowerBehaviourEvent;
 					powermanager = null;

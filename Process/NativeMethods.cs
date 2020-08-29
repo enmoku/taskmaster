@@ -108,7 +108,7 @@ namespace Taskmaster.Process
 		[DllImport("ntdll.dll", SetLastError = true)]
 		internal static extern int NtQueryInformationProcess(SafeHandle hProcess, PROCESS_INFORMATION_CLASS_WIN7 ProcessInformationClass, ref IntPtr ProcessInformation, uint ProcessInformationSize, ref int ReturnSize);
 
-		const int SystemMemoryListInformation = 0x0050;
+		//const int SystemMemoryListInformation = 0x0050;
 
 		// It seems the contents of this enum were changed with Windows 8
 		public enum PROCESS_INFORMATION_CLASS_WIN7 // PROCESS_INFORMATION_CLASS, for Win7

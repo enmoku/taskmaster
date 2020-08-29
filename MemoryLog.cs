@@ -44,7 +44,7 @@ namespace Taskmaster
 		public readonly LogEvent Internal;
 		public readonly ulong ID = LastID++;
 
-		static ulong LastID = 0;
+		static ulong LastID;
 
 		public LogEventArgs(string message, LogEventLevel level, LogEvent ev)
 		{

@@ -36,6 +36,6 @@ namespace Taskmaster
 	[System.AttributeUsage(AttributeTargets.Class, AllowMultiple = false, Inherited = true)]
 	public sealed class ContextAttribute : Attribute
 	{
-		public bool RequireMainThread { get; set; } = false;
+		public bool RequireMainThread { get; set; }
 	}
 }

@@ -248,7 +248,7 @@ namespace Taskmaster.Process
 			return false;
 		}
 
-		internal static bool Debug = false;
+		internal static bool Debug;
 
 		public static int ApplyAffinityStrategy(int initialmask, int targetmask, AffinityStrategy strategy)
 		{

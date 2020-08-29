@@ -126,13 +126,12 @@ namespace Taskmaster.UI
 		}
 
 		#region IDisposable Support
-		private bool disposed = false;
+		bool isdisposed;
 
 		protected override void Dispose(bool disposing)
 		{
-			if (disposed) return;
-
-			disposed = true;
+			if (isdisposed) return;
+			isdisposed = true;
 
 			if (disposing)
 			{

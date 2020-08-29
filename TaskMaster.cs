@@ -76,7 +76,7 @@ namespace Taskmaster
 			UnifiedExit(restart, elevate: admin);
 		}
 
-		static bool CleanedUp = false;
+		static bool CleanedUp;
 
 		internal static void ExitCleanup(ModuleManager modules)
 		{
@@ -84,7 +84,7 @@ namespace Taskmaster
 
 			try
 			{
-				if (!(modules.mainwindow?._Disposed ?? true)) modules.mainwindow.Enabled = false;
+				if (!(modules.mainwindow?.IsDisposed ?? true)) modules.mainwindow.Enabled = false;
 				if (!(modules.trayaccess?.IsDisposed ?? true)) modules.trayaccess?.Close();
 
 				while (DisposalChute.Count > 0)
@@ -255,7 +255,7 @@ namespace Taskmaster
 
 		public static event EventHandler OnStart;
 
-		static DirectoryInfo? TempRunningDir = null;
+		static DirectoryInfo? TempRunningDir;
 
 		const string RunningTestFile = ".running-TM0";
 
@@ -288,7 +288,7 @@ namespace Taskmaster
 			}
 		}
 
-		public static bool Portable { get; internal set; } = false;
+		public static bool Portable { get; internal set; }
 
 		static void TryPortableMode()
 		{
@@ -463,16 +463,16 @@ namespace Taskmaster
 
 		static void PrintStats()
 		{
-			Log.Information($"<Stat> WMI polling: {Statistics.WMIPollTime:0.##}s [{Statistics.WMIPolling.ToString(CultureInfo.InvariantCulture)}]");
-			Log.Information($"<Stat> Self-maintenance: {Statistics.MaintenanceTime:0.##}s [{Statistics.MaintenanceCount.ToString(CultureInfo.InvariantCulture)}]");
-			Log.Information($"<Stat> Path cache: {Statistics.PathCacheHits.ToString(CultureInfo.InvariantCulture)} hits, {Statistics.PathCacheMisses.ToString(CultureInfo.InvariantCulture)} misses");
+			Log.Information($"<Stat> WMI polling: {Statistics.WMIPollTime:0.##}s [{Statistics.WMIPolling}]");
+			Log.Information($"<Stat> Self-maintenance: {Statistics.MaintenanceTime:0.##}s [{Statistics.MaintenanceCount}]");
+			Log.Information($"<Stat> Path cache: {Statistics.PathCacheHits} hits, {Statistics.PathCacheMisses} misses");
 			var sbs = new StringBuilder("<Stat> Path finding: ", 256)
 				.Append(Statistics.PathFindAttempts).Append(" total attempts; ")
 				.Append(Statistics.PathFindViaModule).Append(" via module info, ")
 				.Append(Statistics.PathFindViaC).Append(" via C call, ")
 				.Append(Statistics.PathNotFound).Append(" not found");
 			Log.Information(sbs.ToString());
-			Log.Information($"<Stat> Processes modified: {Statistics.TouchCount.ToString(CultureInfo.InvariantCulture)}; Ignored for remodification: {Statistics.TouchIgnore.ToString(CultureInfo.InvariantCulture)}");
+			Log.Information($"<Stat> Processes modified: {Statistics.TouchCount}; Ignored for remodification: {Statistics.TouchIgnore}");
 		}
 
 		public static void Refresh(ModuleManager modules)

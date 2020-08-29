@@ -29,6 +29,7 @@ using MKAh.Synchronize;
 using Serilog;
 using System;
 using System.Diagnostics;
+using System.Globalization;
 using System.Threading.Tasks;
 using Windows = MKAh.Wrapper.Windows;
 
@@ -40,7 +41,7 @@ namespace Taskmaster.Hardware
 	public class CPUMonitor : IComponent
 	{
 		// Experimental feature
-		public bool CPULoaderMonitoring { get; set; } = false;
+		public bool CPULoaderMonitoring { get; set; }
 
 		public event EventHandler<ProcessorLoadEventArgs> Sampling;
 
@@ -58,7 +59,7 @@ namespace Taskmaster.Hardware
 		readonly System.Timers.Timer CPUSampleTimer;
 
 		readonly float[] Samples;
-		int SampleLoop = 0;
+		int SampleLoop;
 		float Mean, Low, High;
 
 		/// <summary>
@@ -106,7 +107,7 @@ namespace Taskmaster.Hardware
 			var exsec = corecfg.Config[Constants.Experimental];
 			CPULoaderMonitoring = exsec.Get("CPU loaders")?.Bool ?? false;
 
-			Log.Information($"<CPU> Sampler: { SampleInterval.TotalSeconds:N0}s × {SampleCount.ToString()} = {SampleCount * SampleInterval.TotalSeconds:N0}s observation period");
+			Log.Information($"<CPU> Sampler: { SampleInterval.TotalSeconds:N0}s × {SampleCount} = {SampleCount * SampleInterval.TotalSeconds:N0}s observation period");
 		}
 
 		public void SaveConfig()
@@ -120,7 +121,7 @@ namespace Taskmaster.Hardware
 			hwsec[HumanReadable.Hardware.CPU.Settings.SampleCount].Int = SampleCount;
 		}
 
-		int sampler_lock = 0;
+		int sampler_lock = Atomic.Unlocked;
 
 		[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
 		void Calculate()
@@ -170,7 +171,7 @@ namespace Taskmaster.Hardware
 		/// <param name="idle"></param>
 		/// <returns></returns>
 		[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
-		float UsageFromIdle(float idle) => (1f - idle);
+		static float UsageFromIdle(float idle) => (1f - idle);
 
 		/// <summary>
 		/// Forces sampling.
@@ -330,7 +331,7 @@ namespace Taskmaster.Hardware
 		#region IDisposable Support
 		public event EventHandler<DisposedEventArgs>? OnDisposed;
 
-		bool disposed = false; // To detect redundant calls
+		bool disposed; // To detect redundant calls
 
 		public void Dispose()
 		{

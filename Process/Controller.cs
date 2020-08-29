@@ -33,6 +33,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Globalization;
 using System.Linq;
 using System.Reflection;
 using System.Text;
@@ -48,13 +49,13 @@ namespace Taskmaster.Process
 	/// </summary>
 	public class Controller : IDisposable
 	{
-		internal bool Debug { get; set; } = false;
+		internal bool Debug;
 
 		/// <summary>
 		/// <para>Don't allow user to tamper.</para>
 		/// <para>Mostly for inbuilt rules that protect the system from bad configuration.</para>
 		/// </summary>
-		public bool Protected { get; set; } = false;
+		public bool Protected { get; set; }
 
 		// EVENTS
 
@@ -78,12 +79,12 @@ namespace Taskmaster.Process
 		/// <summary>
 		/// Whether or not this rule is enabled.
 		/// </summary>
-		public bool Enabled { get; set; } = false;
+		public bool Enabled { get; set; }
 
 		/// <summary>
 		/// Human-readable friendly name for the process.
 		/// </summary>
-		public string FriendlyName { get; private set; } = null;
+		public string FriendlyName { get; private set; }
 
 		internal string[] pExecutables = Array.Empty<string>();
 
@@ -127,9 +128,9 @@ namespace Taskmaster.Process
 		/// Frienly executable name as required by various System.Process functions.
 		/// Same as <see cref="ProcessControl.Executable"/> but with the extension missing.
 		/// </summary>
-		public string[] ExecutableFriendlyName { get; internal set; } = null;
+		public string[] ExecutableFriendlyName { get; internal set; } = Array.Empty<string>();
 
-		public bool DeclareParent { get; set; } = false;
+		public bool DeclareParent { get; set; }
 
 		public string Path { get; set; } = string.Empty;
 
@@ -179,7 +180,7 @@ namespace Taskmaster.Process
 		}
 		*/
 
-		public int PathElements { get; private set; } = 0;
+		public int PathElements { get; private set; }
 
 		/// <summary>
 		/// User description for the rule.
@@ -216,7 +217,7 @@ namespace Taskmaster.Process
 		/// <summary>
 		/// Processes are viable for analysis.
 		/// </summary>
-		public bool Analyze { get; set; } = false;
+		public bool Analyze { get; set; }
 
 		/*
 		/// <summary>
@@ -253,9 +254,9 @@ namespace Taskmaster.Process
 		/// </summary>
 		public Power.Mode PowerPlan = Power.Mode.Undefined;
 
-		public int Recheck { get; set; } = 0;
+		public int Recheck { get; set; }
 
-		public bool AllowPaging { get; set; } = false;
+		public bool AllowPaging { get; set; }
 
 		public Process.PathVisibilityOptions PathVisibility { get; set; } = Process.PathVisibilityOptions.Process;
 
@@ -269,24 +270,24 @@ namespace Taskmaster.Process
 		/// <summary>
 		/// Log start and exit of the process.
 		/// </summary>
-		public bool LogStartAndExit { get; set; } = false;
+		public bool LogStartAndExit { get; set; }
 
 		/// <summary>
 		/// Warn about this rule matching.
 		/// </summary>
-		public bool Warn { get; set; } = false;
+		public bool Warn { get; set; }
 
 		/// <summary>
 		/// Log process description as seen on task manager description column.
 		/// </summary>
-		public bool LogDescription { get; set; } = false;
+		public bool LogDescription { get; set; }
 
 		/// <summary>
 		/// Delay in milliseconds before we attempt to alter the process.
 		/// For example, to allow a process to function at default settings for a while, or to work around undesirable settings
 		/// the process sets for itself.
 		/// </summary>
-		public int ModifyDelay { get; set; } = 0;
+		public int ModifyDelay { get; set; }
 
 		public Controller(string name, ProcessPriorityClass? priority = null, int affinity = -1)
 		{
@@ -454,7 +455,7 @@ namespace Taskmaster.Process
 				else PathVisibility = PathVisibilityOptions.Full;
 				FixedSomething = PathVisibilityFixed = true;
 
-				Log.Warning($"[{FriendlyName}] Path Visibility from Invalid to {PathVisibility.ToString()}");
+				Log.Warning($"[{FriendlyName}] Path Visibility from Invalid to {PathVisibility}");
 			}
 
 			if (FixedSomething)
@@ -817,9 +818,9 @@ namespace Taskmaster.Process
 		/// <summary>
 		/// Caching from Foreground
 		/// </summary>
-		bool BackgroundPowerdown { get; set; } = false;
+		bool BackgroundPowerdown { get; set; }
 
-		public ProcessPriorityClass? BackgroundPriority { get; set; } = null;
+		public ProcessPriorityClass? BackgroundPriority { get; set; }
 
 		public int BackgroundAffinity { get; set; } = -1;
 
@@ -1002,7 +1003,7 @@ namespace Taskmaster.Process
 		/// <summary>
 		/// How many times we've touched associated processes.
 		/// </summary>
-		public int Adjusts { get; set; } = 0;
+		public int Adjusts { get; set; }
 
 		/// <summary>
 		/// Last seen any associated process.
@@ -1048,7 +1049,7 @@ namespace Taskmaster.Process
 
 				WaitingExit?.Invoke(info);
 
-				if (DebugPower) Log.Debug($"[{FriendlyName}] {FormatPathName(info)} #{info.Id.ToString()} power exit wait set");
+				if (DebugPower) Log.Debug(info.ToFullFormattedString() + " power exit wait set");
 
 				return rv;
 			}
@@ -1323,7 +1324,7 @@ namespace Taskmaster.Process
 							if (ormt.FreeWill)
 							{
 								if (ShowInaction && Debug)
-									Log.Debug($"[{FriendlyName}] {FormatPathName(info)} #{info.Id.ToString()} has been granted agency, ignoring.");
+									Log.Debug($"[{FriendlyName}] {FormatPathName(info)} #{info.Id} has been granted agency, ignoring.");
 								info.State = HandlingState.Unmodified;
 								return true;
 							}
@@ -1332,7 +1333,7 @@ namespace Taskmaster.Process
 							if (ormt.Submitted && ormt.ExpectedState % 20 != 0)
 							{
 								ormt.ExpectedState++;
-								if (Debug) Logging.DebugMsg($"[{FriendlyName}] {FormatPathName(info)} #{info.Id.ToString()} Is behaving well ({ormt.ExpectedState.ToString()}), skipping a check.");
+								if (Debug) Logging.DebugMsg($"[{FriendlyName}] {FormatPathName(info)} #{info.Id} Is behaving well ({ormt.ExpectedState}), skipping a check.");
 								info.State = HandlingState.Unmodified;
 								return true;
 							}
@@ -1345,13 +1346,13 @@ namespace Taskmaster.Process
 								expected = false;
 								ormt.ExpectedState--;
 								ormt.Submitted = false;
-								if (Trace) Logging.DebugMsg($"[{FriendlyName}] {FormatPathName(info)} #{info.Id.ToString()} Recently Modified ({ormt.ExpectedState}); Unexpected state.");
+								if (Trace) Logging.DebugMsg($"[{FriendlyName}] {FormatPathName(info)} #{info.Id} Recently Modified ({ormt.ExpectedState}); Unexpected state.");
 							}
 							else
 							{
 								ormt.ExpectedState++;
 								// MAYBE: Allow modification in case this happens too much?
-								if (Trace) Logging.DebugMsg($"[{FriendlyName}] {FormatPathName(info)} #{info.Id.ToString()} Recently Modified ({ormt.ExpectedState}); Expected state.");
+								if (Trace) Logging.DebugMsg($"[{FriendlyName}] {FormatPathName(info)} #{info.Id} Recently Modified ({ormt.ExpectedState}); Expected state.");
 								if (ormt.ExpectedState > 20) ormt.Submitted = true;
 							}
 
@@ -1364,10 +1365,10 @@ namespace Taskmaster.Process
 								{
 									ormt.FreeWill = true;
 
-									Logging.DebugMsg($"[{FriendlyName}] {FormatPathName(info)} #{info.Id.ToString()} agency granted");
+									Logging.DebugMsg($"[{FriendlyName}] {FormatPathName(info)} #{info.Id} agency granted");
 
 									if (ShowAgency)
-										Log.Debug($"[{FriendlyName}] {FormatPathName(info)} #{info.Id.ToString()} is resisting being modified: Agency granted.");
+										Log.Debug($"[{FriendlyName}] {FormatPathName(info)} #{info.Id} is resisting being modified: Agency granted.");
 
 									ormt.Info.Process.Exited += ProcessExitEvent;
 
@@ -1390,11 +1391,11 @@ namespace Taskmaster.Process
 								return true;
 							}
 
-							Logging.DebugMsg($"[{FriendlyName}] {FormatPathName(info)} #{info.Id.ToString()} pass through");
+							Logging.DebugMsg($"[{FriendlyName}] {FormatPathName(info)} #{info.Id} pass through");
 						}
 						else
 						{
-							if (Debug) Log.Debug($"[{FriendlyName}] #{info.Id.ToString()} passed because it does not match old #{ormt.Info.Id}");
+							if (Debug) Log.Debug($"[{FriendlyName}] #{info.Id} passed because it does not match old #{ormt.Info.Id}");
 
 							RecentlyModified.TryRemove(info.Id, out _); // id does not match name
 						}
@@ -1495,7 +1496,7 @@ namespace Taskmaster.Process
 				}
 				else
 				{
-					if (Debug && Trace && ShowInaction) Logging.DebugMsg($"{FormatPathName(info)} #{info.Id.ToString()} --- affinity not touched");
+					if (Debug && Trace && ShowInaction) Logging.DebugMsg($"{FormatPathName(info)} #{info.Id} --- affinity not touched");
 				}
 
 				/*
@@ -1538,7 +1539,7 @@ namespace Taskmaster.Process
 						if (failSetPriority) sbs.Append(", ");
 						sbs.Append("affinity");
 					}
-					sbs.Append(".");
+					sbs.Append('.');
 					Log.Warning(sbs.ToString());
 				}
 
@@ -1720,9 +1721,9 @@ namespace Taskmaster.Process
 					if (Debug && Trace)
 					{
 						if (nIO >= 0 && nIO != original)
-							Log.Debug(info.ToFullFormattedString() + " I/O priority set from " + original.ToString() + " to " + nIO.ToString() + ", target: " + target.ToString());
+							Log.Debug($"{info.ToFullFormattedString()} I/O priority set from {original} to {nIO}, target: {target}");
 						else if (ShowInaction)
-							Log.Debug(info.ToFullFormattedString() + " I/O priority NOT set from " + original.ToString() + " to " + target.ToString());
+							Log.Debug($"{info.ToFullFormattedString()} I/O priority NOT set from {original} to {target}");
 					}
 				}
 			}
@@ -1765,11 +1766,11 @@ namespace Taskmaster.Process
 			}
 		}
 
-		public bool NeedsSaving { get; set; } = false;
+		public bool NeedsSaving { get; set; }
 
-		public bool ColorReset { get; set; } = false;
+		public bool ColorReset { get; set; }
 
-		public bool LegacyWorkaround { get; set; } = false;
+		public bool LegacyWorkaround { get; set; }
 
 		async Task TouchReapply(ProcessEx info)
 		{
@@ -1815,7 +1816,7 @@ namespace Taskmaster.Process
 			if (Description?.Length > 0)
 				sbs.Append("Description: ").AppendLine(Description).AppendLine();
 
-			sbs.Append("Order preference: ").Append(OrderPreference.ToString()).Append(" – actual: ").AppendLine(ActualOrder.ToString());
+			sbs.Append("Order preference: ").Append(OrderPreference).Append(" – actual: ").Append(ActualOrder).AppendLine();
 
 			if (Executables.Length > 0)
 				sbs.Append("Executable").Append(Executables.Length == 1 ? string.Empty : "s").Append(": ").AppendLine(string.Join(", ", Executables));
@@ -1917,15 +1918,16 @@ namespace Taskmaster.Process
 			LastModified = lastModified;
 		}
 
-		public ProcessEx Info { get; set; } = null;
+		public ProcessEx? Info { get; set; }
 
-		public bool FreeWill { get; set; } = false;
+		public bool FreeWill { get; set; }
 
-		public int ExpectedState { get; set; } = 0;
+		public int ExpectedState { get; set; }
 
-		public bool Submitted { get; set; } = false;
+		public bool Submitted { get; set; }
 
 		public DateTimeOffset LastModified { get; set; }
+
 		public DateTimeOffset LastIgnored { get; set; } = DateTimeOffset.MinValue;
 	}
 }

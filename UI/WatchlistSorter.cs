@@ -27,6 +27,7 @@
 using MKAh;
 using System;
 using System.Collections;
+using System.Globalization;
 using System.Linq;
 using System.Windows.Forms;
 
@@ -34,11 +35,11 @@ namespace Taskmaster
 {
 	public class WatchlistSorter : IComparer
 	{
-		public int Column { get; set; } = 0;
+		public int Column { get; set; }
 		public SortOrder Order { get; set; } = SortOrder.Ascending;
-		public bool Number { get; set; } = false;
-		public bool Priority { get; set; } = false;
-		public bool SortPower { get; set; } = false;
+		public bool Number { get; set; }
+		public bool Priority { get; set; }
+		public bool SortPower { get; set; }
 
 		readonly CaseInsensitiveComparer Comparer = new CaseInsensitiveComparer();
 

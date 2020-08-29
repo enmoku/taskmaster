@@ -26,6 +26,7 @@
 
 using MKAh;
 using System;
+using System.Globalization;
 
 namespace Taskmaster.Process
 {
@@ -69,7 +70,7 @@ namespace Taskmaster.Process
 
 		public bool Update(long elapsed = 0)
 		{
-			if (disposed) return false;
+			if (isdisposed) return false;
 
 			if (Disinterested && DisinterestCount++ < DisinterestMax)
 				return false;
@@ -115,11 +116,11 @@ namespace Taskmaster.Process
 			return false;
 		}
 
-		public bool Disinterested { get; set; } = false;
+		public bool Disinterested { get; set; }
 
 		public void Resume() => Disinterested = false;
 
-		int DisinterestCount { get; set; } = 0;
+		int DisinterestCount { get; set; }
 
 		public int DisinterestMax { get; set; } = 3;
 
@@ -129,19 +130,19 @@ namespace Taskmaster.Process
 
 		public void IncreaseInterest() => DisinterestMax = Convert.ToInt32((DisinterestMax / (Mid + High)).Min(3));
 
-		public long Low { get; private set; } = 0;
-		public long Mid { get; private set; } = 0;
-		public long High { get; private set; } = 0;
+		public long Low { get; private set; }
+		public long Mid { get; private set; }
+		public long High { get; private set; }
 
 		public MKAh.Container.CircularBuffer<float> LoadHistory { get; private set; } = new MKAh.Container.CircularBuffer<float>(10);
 
 		#region IDisposable Support
-		bool disposed = false;
+		bool isdisposed;
 
 		protected virtual void Dispose(bool disposing)
 		{
-			if (disposed) return;
-			disposed = true;
+			if (isdisposed) return;
+			isdisposed = true;
 
 			if (disposing)
 			{

@@ -30,6 +30,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -235,7 +236,7 @@ namespace Taskmaster.Process
 				var recommendations = new List<string>(8);
 
 				if (latestDXX > latestDX)
-					recommendations.Add($"force DX {(latestDX / 10).ToString()} rendering");
+					recommendations.Add($"force DX {(latestDX / 10)} rendering");
 
 				if (ImportantModules.ContainsKey("PhysX"))
 					recommendations.Add("disable PhysX");
@@ -408,7 +409,7 @@ namespace Taskmaster.Process
 					}
 				}
 
-				Log.Information($"<Analysis> Modules known: {KnownModules.Count.ToString()}");
+				Log.Information($"<Analysis> Modules known: {KnownModules.Count}");
 			}
 			catch (Exception ex)
 			{
@@ -423,7 +424,7 @@ namespace Taskmaster.Process
 		public List<string> Detected = new List<string>();
 		public ModuleType Type = ModuleType.Unknown;
 		public string Identity = string.Empty;
-		public long Value = 0;
+		public long Value;
 
 		public string Upgrade = string.Empty;
 
@@ -439,26 +440,26 @@ namespace Taskmaster.Process
 		/// <summary>
 		/// Primary component.
 		/// </summary>
-		public bool Listed = false;
+		public bool Listed;
 
 		/// <summary>
 		/// Extension to some other component, not too interesting on its own.
 		/// </summary>
-		public bool Extension = false;
+		public bool Extension;
 
 		/// <summary>
 		/// Relates to proprietary hardware or software that requires special access to use.
 		/// </summary>
-		public bool Proprietary = false;
+		public bool Proprietary;
 
 		/// <summary>
 		/// Open standard.
 		/// </summary>
-		public bool Open = false;
+		public bool Open;
 
 		public ModuleInfo Clone()
 		{
-			string[] farr = System.Array.Empty<string>();
+			var farr = System.Array.Empty<string>();
 			if (Files.Length > 0)
 			{
 				farr = new string[Files.Length];

@@ -67,11 +67,11 @@ namespace Taskmaster.Network
 	[Context(RequireMainThread = false)]
 	public class Manager : IComponent
 	{
-		public static bool ShowNetworkErrors { get; set; } = false;
+		public static bool ShowNetworkErrors { get; set; }
 
-		public bool DebugNet { get; set; } = false;
+		public bool DebugNet { get; set; }
 
-		bool DebugDNS { get; set; } = false;
+		bool DebugDNS { get; set; }
 
 		public event EventHandler<InternetStatus>? InternetStatusChange;
 		public event EventHandler? IPChanged;
@@ -97,10 +97,9 @@ namespace Taskmaster.Network
 
 		const string NetConfigFilename = "Net.ini";
 
-		bool DynamicDNS = false;
-		bool DynamicDNSForcedUpdate = false;
+		bool DynamicDNS, DynamicDNSForcedUpdate;
 
-		Uri? DynamicDNSHost = null; // BUG: Insecure. Contains secrets.
+		Uri? DynamicDNSHost; // BUG: Insecure. Contains secrets.
 		TimeSpan DynamicDNSFrequency = TimeSpan.FromMinutes(15d);
 		DateTimeOffset DynamicDNSLastUpdate = DateTimeOffset.MinValue;
 		IPAddress DNSOldIPv4 = IPAddress.None, DNSOldIPv6 = IPAddress.IPv6None;
@@ -307,7 +306,7 @@ namespace Taskmaster.Network
 			DynDNSTimer.Dispose();
 		}
 
-		int DynDNSFailures = 0;
+		int DynDNSFailures;
 
 		async void DynDNSTimer_Elapsed(object _)
 		{
@@ -456,7 +455,7 @@ namespace Taskmaster.Network
 			}
 			catch (WebException ex)
 			{
-				Log.Debug($"<Net:DynDNS> Response: {ex.Status.ToString()}");
+				Log.Debug($"<Net:DynDNS> Response: {ex.Status}");
 				switch (ex.Status)
 				{
 					case WebExceptionStatus.Success:
@@ -506,7 +505,7 @@ namespace Taskmaster.Network
 		readonly LinearMeter PacketWarning = new LinearMeter(15); // UNUSED
 		readonly LinearMeter ErrorReports = new LinearMeter(5, 4);
 
-		public List<Device> InterfaceList { get; private set; } = null;
+		public List<Device> InterfaceList { get; private set; } = new List<Device>();
 
 		/// <summary>
 		/// Resets <see cref="InterfaceList"/>.
@@ -617,7 +616,7 @@ namespace Taskmaster.Network
 
 		readonly MKAh.Synchronize.Atomic TrafficAnalysisLock = new MKAh.Synchronize.Atomic();
 
-		long errorsSinceLastReport = 0;
+		long errorsSinceLastReport;
 		DateTimeOffset lastErrorReport;
 
 		void AnalyzeTrafficBehaviour(object _, EventArgs _2)
@@ -746,11 +745,11 @@ namespace Taskmaster.Network
 
 		public DeviceTraffic CurrentTraffic { get; private set; } = new DeviceTraffic();
 
-		public UI.TrayAccess? Tray { get; set; } = null; // HACK: bad design
+		public UI.TrayAccess? Tray { get; set; } // HACK: bad design
 
-		public bool NetworkAvailable { get; private set; } = false;
+		public bool NetworkAvailable { get; private set; }
 
-		public bool InternetAvailable { get; private set; } = false;
+		public bool InternetAvailable { get; private set; }
 
 		readonly MKAh.Container.CircularBuffer<double> UptimeSamples = new MKAh.Container.CircularBuffer<double>(20);
 
@@ -795,8 +794,8 @@ namespace Taskmaster.Network
 			Log.Information(sbs.ToString());
 		}
 
-		bool lastOnlineState = false;
-		int DeviceStateRecordLimiter = 0;
+		bool lastOnlineState;
+		int DeviceStateRecordLimiter;
 
 		DateTimeOffset LastUptimeSample = DateTimeOffset.MinValue;
 
@@ -852,7 +851,7 @@ namespace Taskmaster.Network
 			}
 		}
 
-		bool InternetChangeNotifyDone = false;
+		bool InternetChangeNotifyDone;
 
 		int InetCheckLimiter; // = 0;
 
@@ -1069,10 +1068,7 @@ namespace Taskmaster.Network
 			CheckInet().ConfigureAwait(false); // initialize
 		}
 
-		bool LastReportedNetAvailable = false;
-		bool LastReportedInetAvailable = false;
-
-		DateTimeOffset LastNetReport = DateTimeOffset.MinValue;
+		bool LastReportedNetAvailable, LastReportedInetAvailable;
 
 		/*
 		/// <summary>
@@ -1087,7 +1083,7 @@ namespace Taskmaster.Network
 		TimeSpan NetworkReportDelay = TimeSpan.FromSeconds(2.2d);
 		DateTimeOffset LastNetworkReport = DateTimeOffset.MinValue;
 
-		bool ReportOngoing = false;
+		bool ReportOngoing;
 
 		void UpdateNetworkState(object _)
 		{
@@ -1218,7 +1214,7 @@ namespace Taskmaster.Network
 		#region IDisposable Support
 		public event EventHandler<DisposedEventArgs>? OnDisposed;
 
-		bool disposed = false;
+		bool disposed;
 
 		public void Dispose()
 		{

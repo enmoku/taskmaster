@@ -47,7 +47,7 @@ namespace Taskmaster
 
 		internal enum IPCAction { Restart, Terminate, Refresh }
 
-		System.IO.Pipes.NamedPipeServerStream? pipe = null;
+		System.IO.Pipes.NamedPipeServerStream? pipe;
 
 		internal void Send(IPCAction action)
 		{
@@ -148,7 +148,7 @@ namespace Taskmaster
 		/// </summary>
 		/// <exception cref="IOException">Communication timeout</exception>
 		/// <exception cref="UnauthorizedAccessException">Running process has elevated privileges compared to our own.</exception>
-		internal async Task Transmit(string message)
+		internal static async Task Transmit(string message)
 		{
 			Logging.DebugMsg("Attempting to communicate with running instance of TM.");
 

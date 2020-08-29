@@ -28,22 +28,22 @@ namespace Taskmaster
 {
 	public class ModuleManager
 	{
-		public Audio.MicManager? micmonitor = null;
-		public UI.MainWindow? mainwindow = null;
-		public UI.VolumeMeter? volumemeter = null;
-		public UI.LoaderDisplay? loaderdisplay = null;
-		public Process.Manager? processmanager = null;
+		public Audio.MicManager? micmonitor;
+		public UI.MainWindow? mainwindow;
+		public UI.VolumeMeter? volumemeter;
+		public UI.LoaderDisplay? loaderdisplay;
+		public Process.Manager? processmanager;
 		public UI.TrayAccess trayaccess;
-		public Network.Manager? netmonitor = null;
-		public StorageManager? storagemanager = null;
-		public Power.Manager? powermanager = null;
-		public Process.ForegroundManager? activeappmonitor = null;
-		public HealthMonitor? healthmonitor = null;
+		public Network.Manager? netmonitor;
+		public StorageManager? storagemanager;
+		public Power.Manager? powermanager;
+		public Process.ForegroundManager? activeappmonitor;
+		public HealthMonitor? healthmonitor;
 		public SelfMaintenance selfmaintenance;
-		public Audio.Manager? audiomanager = null;
-		public Hardware.CPUMonitor? cpumonitor = null;
-		public Hardware.Monitor? hardware = null;
-		//public AlertManager alerts = null;
+		public Audio.Manager? audiomanager;
+		public Hardware.CPUMonitor? cpumonitor;
+		public Hardware.Monitor? hardware;
+		//public AlertManager alerts;
 
 		// TODO: Disposal?
 	}

@@ -26,6 +26,7 @@
 
 using System;
 using System.Diagnostics;
+using System.Globalization;
 
 namespace Taskmaster
 {
@@ -33,7 +34,7 @@ namespace Taskmaster
 
 	public static partial class CommandLine
 	{
-		internal static int AdminCounter { get; set; } = 0;
+		internal static int AdminCounter { get; set; }
 
 		public const string AdminArg = "--admin";
 		public const string RestartArg = "--restart";
@@ -82,7 +83,7 @@ namespace Taskmaster
 								{
 									var info = System.Diagnostics.Process.GetCurrentProcess().StartInfo;
 									info.FileName = System.Diagnostics.Process.GetCurrentProcess().ProcessName;
-									info.Arguments = $"{AdminArg} {(++AdminCounter).ToString()}";
+									info.Arguments = $"{AdminArg} {(++AdminCounter)}";
 									info.Verb = "runas"; // elevate privileges
 									var proc = System.Diagnostics.Process.Start(info);
 								}

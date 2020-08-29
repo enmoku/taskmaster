@@ -45,12 +45,12 @@ namespace Taskmaster
 			}
 		}
 
-		public long Level = 0;
+		public long Level;
 
 		/// <summary>
 		/// Returns true if the meter has peaked but has not zeroed since.
 		/// </summary>
-		public bool Peaked { get; private set; } = false;
+		public bool Peaked { get; private set; }
 
 		public LinearMeter(long peak, long initial = 0)
 		{

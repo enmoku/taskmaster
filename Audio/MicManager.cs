@@ -45,11 +45,11 @@ namespace Taskmaster.Audio
 		public event EventHandler<DefaultDeviceEventArgs>? DefaultChanged;
 		public event EventHandler<DisposedEventArgs>? OnDisposed;
 
-		bool DebugMic { get; } = false;
+		bool DebugMic { get; }
 
 		const string DeviceFilename = "Microphone.Devices.ini";
 
-		public bool Control { get; private set; } = false;
+		public bool Control { get; private set; }
 
 		double _target = 50d;
 
@@ -66,7 +66,7 @@ namespace Taskmaster.Audio
 		public const double SmallVolumeHysterisis = VolumeHysterisis / 4d;
 		TimeSpan AdjustDelay { get; } = TimeSpan.FromSeconds(5);
 
-		NAudio.Mixer.UnsignedMixerControl? VolumeControl = null;
+		NAudio.Mixer.UnsignedMixerControl? VolumeControl;
 
 		double _volume;
 
@@ -94,7 +94,7 @@ namespace Taskmaster.Audio
 			}
 		}
 
-		public Device? Device { get; private set; } = null;
+		public Device? Device { get; private set; }
 
 		/// <summary>
 		/// Default device volume. From 0.0d to 100.0d
@@ -128,7 +128,7 @@ namespace Taskmaster.Audio
 			if (DebugMic) Log.Information("<Microphone> Component loaded.");
 		}
 
-		Manager? audiomanager = null;
+		Manager? audiomanager;
 
 		public void Hook(Manager manager)
 		{
@@ -363,7 +363,7 @@ namespace Taskmaster.Audio
 		// TODO: Add device selection
 		// TODO: Add per device behaviour
 
-		public int Corrections { get; private set; } = 0;
+		public int Corrections { get; private set; }
 
 		int correcting_lock = Atomic.Unlocked;
 
@@ -431,7 +431,7 @@ namespace Taskmaster.Audio
 		}
 
 		#region IDisposable Support
-		bool disposed = false;
+		bool disposed;
 
 		public void Dispose()
 		{

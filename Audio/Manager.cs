@@ -53,24 +53,24 @@ namespace Taskmaster.Audio
 
 		public NAudio.CoreAudioApi.MMDeviceEnumerator Enumerator { get; }
 
-		public float OutVolume { get; set; } = 0.0f;
+		public float OutVolume { get; set; }
 
-		public float InVolume { get; set; } = 0.0f;
+		public float InVolume { get; set; }
 
 		/// <summary>
 		/// Games, voice communication, etc.
 		/// </summary>
-		public Device? ConsoleDevice { get; private set; } = null;
+		public Device? ConsoleDevice { get; private set; }
 
 		/// <summary>
 		/// Multimedia, Movies, etc.
 		/// </summary>
-		public Device? MultimediaDevice { get; private set; } = null;
+		public Device? MultimediaDevice { get; private set; }
 
 		/// <summary>
 		/// Voice capture.
 		/// </summary>
-		public Device? RecordingDevice { get; private set; } = null;
+		public Device? RecordingDevice { get; private set; }
 
 		readonly DeviceNotificationClient notificationClient;
 
@@ -150,7 +150,7 @@ namespace Taskmaster.Audio
 				{
 					string name = Devices.TryGetValue(ea.GUID, out var device) ? device.ToShortString() : $"{{{ea.GUID}}}";
 
-					Log.Debug($"<Audio> Device {name} state changed to {state.ToString()}");
+					Log.Debug($"<Audio> Device {name} state changed to {state}");
 				}
 
 				StateChanged?.Invoke(this, ea);
@@ -203,7 +203,7 @@ namespace Taskmaster.Audio
 			}
 		}
 
-		int IgnoredDevices = 0;
+		int IgnoredDevices;
 
 		void DeviceAddedProxy(string deviceId)
 		{
@@ -344,7 +344,7 @@ namespace Taskmaster.Audio
 			ConsoleDevice.MMDevice.AudioSessionManager.OnSessionCreated += OnSessionCreated;
 		}
 
-		Process.Manager? processmanager = null;
+		Process.Manager? processmanager;
 
 		public void Hook(Process.Manager procman)
 		{
@@ -429,7 +429,7 @@ namespace Taskmaster.Audio
 						else
 						{
 							if (ShowInaction && DebugAudio)
-								Log.Debug($"{info.ToFullFormattedString()} Volume at {volume * 100f:0.#} % – Already correct (Plan: {prc.VolumeStrategy.ToString()})");
+								Log.Debug($"{info.ToFullFormattedString()} Volume at {volume * 100f:0.#} % – Already correct (Plan: {prc.VolumeStrategy})");
 						}
 					}
 					else
@@ -451,7 +451,7 @@ namespace Taskmaster.Audio
 		}
 
 		#region IDisposable Support
-		bool disposed = false;
+		bool disposed;
 
 		protected virtual void Dispose(bool disposing)
 		{

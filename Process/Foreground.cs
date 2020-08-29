@@ -32,6 +32,7 @@ using System.Diagnostics;
 
 namespace Taskmaster.Process
 {
+	using System.Globalization;
 	using System.Text;
 	using static Application;
 
@@ -121,7 +122,7 @@ namespace Taskmaster.Process
 			if (DebugForeground) Log.Information("<Foreground> Component loaded.");
 		}
 
-		Process.Manager? processmanager = null;
+		Process.Manager? processmanager;
 
 		public void Hook(Process.Manager procman)
 		{
@@ -166,7 +167,8 @@ namespace Taskmaster.Process
 
 		readonly object FGLock = new object();
 
-		int PreviousFG = 0;
+		int PreviousFG;
+
 		TimeSpan
 			HangMinimizeTime = TimeSpan.FromMinutes(3d),
 			HangReduceTime = TimeSpan.FromMinutes(4d),
@@ -174,7 +176,7 @@ namespace Taskmaster.Process
 
 		int HangTick = -1;
 
-		bool HangWarning = false;
+		bool HangWarning;
 
 		void ResetHanging()
 		{
@@ -187,9 +189,9 @@ namespace Taskmaster.Process
 			HangWarning = false;
 		}
 
-		System.Diagnostics.Process? Foreground = null;
+		System.Diagnostics.Process? Foreground;
 
-		bool Minimized = false, MinimizeTried = false, Reduced = false, ReduceTried = false;
+		bool Minimized, MinimizeTried, Reduced, ReduceTried;
 
 		/// <summary>
 		/// This is reported to process manager to be ignored for modifications.
@@ -208,7 +210,7 @@ namespace Taskmaster.Process
 		void HangDetector(object _sender, System.Timers.ElapsedEventArgs _)
 		{
 			if (!Atomic.Lock(ref hangdetector_lock)) return;
-			if (disposed) return; // kinda dumb, but apparently timer can fire off after being disposed...
+			if (isdisposed) return; // kinda dumb, but apparently timer can fire off after being disposed...
 
 			try
 			{
@@ -490,7 +492,7 @@ namespace Taskmaster.Process
 			return (global::Taskmaster.NativeMethods.GetWindowText(hwnd, buff, nChars) > 0) ? buff.ToString() : string.Empty;
 		}
 
-		int LastEvent = 0;
+		int LastEvent;
 
 		/// <summary>
 		/// SetWinEventHook sends messages to this. Don't call it on your own.
@@ -512,7 +514,7 @@ namespace Taskmaster.Process
 
 			NativeMethods.GetWindowThreadProcessId(hwnd, out int pid);
 
-			if (disposed || LastEvent != ev) return; // more events have arrived or disposed
+			if (isdisposed || LastEvent != ev) return; // more events have arrived or disposed
 
 			try
 			{
@@ -545,7 +547,7 @@ namespace Taskmaster.Process
 					Reset();
 				}
 
-				if (disposed || LastEvent != ev) return; // more events have arrived or disposed
+				if (isdisposed || LastEvent != ev) return; // more events have arrived or disposed
 
 				ActiveChanged?.Invoke(this, activewindowev);
 			}
@@ -595,12 +597,12 @@ namespace Taskmaster.Process
 			GC.SuppressFinalize(this);
 		}
 
-		bool disposed = false;
+		bool isdisposed;
 
 		protected virtual void Dispose(bool disposing)
 		{
-			if (disposed) return;
-			disposed = true;
+			if (isdisposed) return;
+			isdisposed = true;
 
 			global::Taskmaster.NativeMethods.UnhookWinEvent(windowseventhook); // Automatic
 

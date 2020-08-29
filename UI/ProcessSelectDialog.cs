@@ -36,7 +36,7 @@ namespace Taskmaster.UI
 	using static Application;
 	public class ProcessSelectDialog : UI.UniForm
 	{
-		public ProcessEx? Info { get; private set; } = null;
+		public ProcessEx? Info { get; private set; }
 
 		readonly ComboBox selection;
 		readonly Extensions.Button selectbutton, cancelbutton, refreshbutton;
@@ -253,7 +253,7 @@ namespace Taskmaster.UI
 		}
 
 		#region IDisposable
-		bool disposed = false;
+		bool disposed;
 
 		protected override void Dispose(bool disposing)
 		{

@@ -51,7 +51,7 @@ namespace Taskmaster.UI.Config
 
 		readonly NumericUpDown loQueue, hiQueue;
 
-		bool MonitorPowerOff = false;
+		bool MonitorPowerOff;
 		readonly ComboBox monitoroffmode;
 		readonly CheckBox monitorofftoggle;
 

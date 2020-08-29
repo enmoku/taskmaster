@@ -25,6 +25,7 @@
 // THE SOFTWARE.
 
 using System;
+using System.Globalization;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
@@ -42,7 +43,7 @@ namespace Taskmaster.UI
 
 		readonly Extensions.Button exitButton;
 
-		int Loaded = 0, MaxLoad, SubLoaded = 0, MaxSubLoad = 1;
+		int Loaded, MaxLoad, SubLoaded, MaxSubLoad = 1;
 
 		public Splash(int itemsToLoad)
 			: base(centerOnScreen: true)
@@ -232,7 +233,7 @@ namespace Taskmaster.UI
 		}
 
 		#region IDispose
-		bool disposed = false;
+		bool disposed;
 
 		protected override void Dispose(bool disposing)
 		{

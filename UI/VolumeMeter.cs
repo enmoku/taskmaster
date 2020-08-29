@@ -174,10 +174,8 @@ namespace Taskmaster.UI
 			}
 		}
 
-		float PreviousOut = 0.0f;
-		float PreviousIn = 0.0f;
-		int SuspicionIn = 0;
-		int SuspicionOut = 0;
+		float PreviousOut, PreviousIn;
+		int SuspicionIn, SuspicionOut;
 
 		void UpdateVolumeTick(object sender, EventArgs e)
 		{
@@ -235,7 +233,7 @@ namespace Taskmaster.UI
 		#region IDispose
 		public event EventHandler<DisposedEventArgs>? OnDisposed;
 
-		bool disposed = false;
+		bool disposed;
 
 		protected override void Dispose(bool disposing)
 		{

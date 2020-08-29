@@ -26,6 +26,7 @@
 
 using System;
 using System.Diagnostics;
+using System.Globalization;
 using System.Runtime.InteropServices;
 
 using Windows = MKAh.Wrapper.Windows;
@@ -39,12 +40,12 @@ namespace Taskmaster
 		/// <summary>
 		/// Total physical system memory in bytes.
 		/// </summary>
-		public static long Total { get; private set; } = 0;
+		public static long Total { get; private set; }
 
 		/// <summary>
 		/// Memory used in bytes.
 		/// </summary>
-		public static long Used { get; private set; } = 0;
+		public static long Used { get; private set; }
 
 		/// <summary>
 		/// Private bytes.
@@ -57,7 +58,7 @@ namespace Taskmaster
 		/// </summary>
 		public static double Pressure => (double)Private / (double)Total;
 
-		public static ulong Standby = 0;
+		public static ulong Standby;
 
 		/*
 		/// <summary>
@@ -70,7 +71,7 @@ namespace Taskmaster
 		/// Free memory in bytes.
 		/// Update() required to match current state.
 		/// </summary>
-		public static long Free { get; private set; } = 0;
+		public static long Free { get; private set; }
 
 		static readonly Windows.PerformanceCounter pfcprivate = new Windows.PerformanceCounter("Process", "Private Bytes", "_Total"); // no p/invoke alternative?
 		//static Windows.PerformanceCounter pfccommit = new Windows.PerformanceCounter("Memory", "% Committed Bytes In Use", null);
@@ -139,7 +140,7 @@ namespace Taskmaster
 				Free = Convert.ToInt64(mem.ullAvailPhys);
 				Used = Total - Convert.ToInt64(mem.ullAvailPhys);
 
-				if (Trace && DebugMemory) Logging.DebugMsg($"MEMORY - Total: {Total.ToString()}, Free: {Free.ToString()}, Used: {Used.ToString()}");
+				if (Trace && DebugMemory) Logging.DebugMsg($"MEMORY - Total: {Total}, Free: {Free}, Used: {Used}");
 			}
 			catch (Exception ex)
 			{

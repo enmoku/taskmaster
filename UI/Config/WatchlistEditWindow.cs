@@ -30,6 +30,7 @@ using Serilog;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Globalization;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
@@ -41,7 +42,7 @@ namespace Taskmaster.UI.Config
 	{
 		public Process.Controller Controller;
 
-		readonly bool newPrc = false;
+		readonly bool newPrc;
 
 		// UI elements
 		readonly ToolTip tooltip;
@@ -897,7 +898,7 @@ namespace Taskmaster.UI.Config
 
 		readonly CheckBox logAdjusts, logStartNExit, declareParent, warning;
 
-		int cpumask = 0;
+		int cpumask;
 
 		readonly static char[] InvalidCharacters = new[] { ']', '#', ';' };
 

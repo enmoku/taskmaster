@@ -94,7 +94,7 @@ namespace Taskmaster.Power
 		}
 
 		#region IDisposable Support
-		bool disposed = false; // To detect redundant calls
+		bool disposed; // To detect redundant calls
 
 		protected override void Dispose(bool disposing)
 		{

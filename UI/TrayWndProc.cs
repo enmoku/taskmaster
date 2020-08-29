@@ -52,7 +52,7 @@ namespace Taskmaster.UI
 
 		readonly int hotkeymodifiers = (int)NativeMethods.KeyModifier.Control | (int)NativeMethods.KeyModifier.Shift | (int)NativeMethods.KeyModifier.Alt;
 
-		bool HotkeysRegistered = false;
+		bool HotkeysRegistered;
 
 		public void RegisterGlobalHotkeys()
 		{
@@ -220,7 +220,7 @@ namespace Taskmaster.UI
 		}
 
 		#region IDisposable Support
-		bool disposed = false;
+		bool disposed;
 
 		protected override void Dispose(bool disposing)
 		{

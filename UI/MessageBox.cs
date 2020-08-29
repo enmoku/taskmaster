@@ -63,8 +63,8 @@ namespace Taskmaster.UI
 			return msg.Result;
 		}
 
-		readonly Label? Message = null;
-		readonly RichTextBox? RichMessage = null;
+		readonly Label? Message;
+		readonly RichTextBox? RichMessage;
 
 		readonly Extensions.TableLayoutPanel layout, buttonlayout;
 		readonly Extensions.Button okbutton, cancelbutton, retrybutton, endbutton;
@@ -160,7 +160,7 @@ namespace Taskmaster.UI
 		}
 
 		#region IDisposable
-		private bool disposed = false;
+		private bool disposed;
 
 		protected override void Dispose(bool disposing)
 		{

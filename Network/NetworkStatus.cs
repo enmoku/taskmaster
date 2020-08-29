@@ -30,7 +30,7 @@ namespace Taskmaster.Network
 {
 	public class Status : EventArgs
 	{
-		public bool Available = false;
+		public bool Available;
 		public DateTimeOffset Start = DateTimeOffset.MinValue;
 		public TimeSpan Uptime = TimeSpan.MinValue;
 	}

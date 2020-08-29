@@ -42,7 +42,7 @@ namespace Taskmaster
 		public const string CoreConfigFilename = "Core.ini";
 		public const string UIConfigFilename = "UI.ini";
 
-		static TraceListener? tracelistener = null;
+		static TraceListener? tracelistener;
 
 		static System.Threading.Mutex Initialize(ref string[] args, ModuleManager modules)
 		{
@@ -206,7 +206,7 @@ namespace Taskmaster
 
 			Config.Flush(); // early save of configs
 
-			if (RestartCounter > 0 && Trace) Log.Debug($"<Core> Restarted {RestartCounter.ToString(CultureInfo.InvariantCulture)} time(s)");
+			if (RestartCounter > 0 && Trace) Log.Debug($"<Core> Restarted {RestartCounter} time(s)");
 			startTimer.Stop();
 
 			Log.Information($"<Core> Initialization complete ({startTimer.ElapsedMilliseconds} ms)...");
@@ -690,7 +690,9 @@ namespace Taskmaster
 				throw;
 			}
 
-			Task.WhenAll(tProcMon, tFgMon).ContinueWith(_ => { if (ActiveAppMonitorEnabled) modules.activeappmonitor?.Hook(modules.processmanager); }, cts.Token, TaskContinuationOptions.OnlyOnRanToCompletion, TaskScheduler.Default);
+			Task.WhenAll(tProcMon, tFgMon)
+				.ContinueWith(_ => { if (ActiveAppMonitorEnabled) modules.activeappmonitor?.Hook(modules.processmanager); }, cts.Token, TaskContinuationOptions.OnlyOnRanToCompletion, TaskScheduler.Default);
+
 			if (cts.IsCancellationRequested) throw new InitFailure("Initialization failed", (cex?[0]), cex);
 
 			try
@@ -828,7 +830,7 @@ namespace Taskmaster
 				*/
 
 				int selfAffMask = SelfAffinity.Replace(0, Process.Utility.FullCPUMask);
-				Log.Information($"<Core> Self-optimizing – Priority: {SelfPriority.ToString()}; Affinity: {Process.Utility.FormatBitMask(selfAffMask, Hardware.Utility.ProcessorCount, LogBitmask)}");
+				Log.Information($"<Core> Self-optimizing – Priority: {SelfPriority}; Affinity: {Process.Utility.FormatBitMask(selfAffMask, Hardware.Utility.ProcessorCount, LogBitmask)}");
 
 				self.ProcessorAffinity = new IntPtr(selfAffMask); // this should never throw an exception
 				self.PriorityClass = SelfPriority;
@@ -847,7 +849,7 @@ namespace Taskmaster
 
 			LoadEvent?.Invoke(null, new LoadEventArgs("UI loaded.", LoadEventType.Loaded));
 
-			Log.Information($"<Core> Component loading finished ({timer.ElapsedMilliseconds} ms). {DisposalChute.Count.ToString(CultureInfo.InvariantCulture)} initialized.");
+			Log.Information($"<Core> Component loading finished ({timer.ElapsedMilliseconds} ms). {DisposalChute.Count} initialized.");
 		}
 
 		static async Task CheckNGENAsync()
@@ -886,6 +888,7 @@ namespace Taskmaster
 			}
 		}
 
+		[System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1823:Avoid unused private fields", Justification = "Static finalizer")]
 		static StaticFinalizer finalizer = new StaticFinalizer();
 	}
 }

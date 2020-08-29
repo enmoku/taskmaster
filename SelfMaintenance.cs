@@ -65,7 +65,7 @@ namespace Taskmaster
 
 		readonly System.Timers.Timer timer = new System.Timers.Timer(86_400_000) { AutoReset = false }; // once a day
 
-		Process.Manager? processmanager = null;
+		Process.Manager? processmanager;
 
 		void Hook(Process.Manager procman)
 		{
@@ -77,7 +77,7 @@ namespace Taskmaster
 
 		async void MaintenanceTick(object _sender, System.Timers.ElapsedEventArgs _)
 		{
-			if (disposed) return;
+			if (isdisposed) return;
 
 			if (!Atomic.Lock(ref CallbackLimiter)) return;
 
@@ -129,7 +129,7 @@ namespace Taskmaster
 		}
 
 		#region IDisposable Support
-		private bool disposed = false; // To detect redundant calls
+		bool isdisposed; // To detect redundant calls
 
 		public event EventHandler<DisposedEventArgs>? OnDisposed;
 
@@ -141,8 +141,8 @@ namespace Taskmaster
 
 		protected virtual void Dispose(bool disposing)
 		{
-			if (disposed) return;
-			disposed = true;
+			if (isdisposed) return;
+			isdisposed = true;
 
 			if (disposing)
 			{

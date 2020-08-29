@@ -25,6 +25,7 @@
 // THE SOFTWARE.
 
 using System;
+using System.Globalization;
 
 namespace Taskmaster.Hardware
 {
@@ -33,7 +34,7 @@ namespace Taskmaster.Hardware
 		/// <summary>
 		/// Actual number of processor cores. You still want to use Environment.ProcessorCount when the accessible number (to .NET) matters.
 		/// </summary>
-		public static int ProcessorCount { get; private set; } = 0;
+		public static int ProcessorCount { get; private set; }
 
 		static Utility()
 		{

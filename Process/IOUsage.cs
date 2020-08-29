@@ -34,11 +34,11 @@ namespace Taskmaster.Process
 
 		readonly Stopwatch timer = new Stopwatch();
 
-		float oldIO = 0f;
+		float oldIO;
 
 		public IOUsage(System.Diagnostics.Process process) => prc = process;
 
-		NativeMethods.IO_COUNTERS counters = new NativeMethods.IO_COUNTERS();
+		NativeMethods.IO_COUNTERS counters;
 
 		/// <summary>
 		/// 

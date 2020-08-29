@@ -30,7 +30,7 @@ namespace Taskmaster
 {
 	public class InitFailure : Exception
 	{
-		public bool Voluntary { get; set; } = false;
+		public bool Voluntary { get; set; }
 
 		public Exception[] InnerExceptions { get; }
 

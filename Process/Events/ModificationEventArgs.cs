@@ -36,19 +36,23 @@ namespace Taskmaster.Process
 
 		public Process.ProcessEx Info { get; set; }
 
-		public ProcessPriorityClass? PriorityNew { get; set; } = null;
-		public ProcessPriorityClass? PriorityOld { get; set; } = null;
+		public ProcessPriorityClass? PriorityNew { get; set; }
+
+		public ProcessPriorityClass? PriorityOld { get; set; }
+
 		public int AffinityNew { get; set; } = -1;
+
 		public int AffinityOld { get; set; } = -1;
 
-		public bool AffinityFail { get; set; } = false;
-		public bool PriorityFail { get; set; } = false;
+		public bool AffinityFail { get; set; }
+
+		public bool PriorityFail { get; set; }
 
 		public Process.IOPriority NewIO { get; set; } = Process.IOPriority.Ignore;
 
 		/// <summary>
 		/// Text for end-users.
 		/// </summary>
-		public System.Text.StringBuilder? User { get; set; } = null;
+		public System.Text.StringBuilder? User { get; set; }
 	}
 }

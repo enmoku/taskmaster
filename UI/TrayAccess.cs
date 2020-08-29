@@ -31,8 +31,10 @@ using Serilog;
 using System;
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.Globalization;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
+using System.Windows;
 using System.Windows.Forms;
 
 namespace Taskmaster.UI
@@ -43,7 +45,7 @@ namespace Taskmaster.UI
 
 	public class TrayShownEventArgs : EventArgs
 	{
-		public bool Visible { get; set; } = false;
+		public bool Visible { get; set; }
 	}
 
 	/// <summary>
@@ -248,7 +250,7 @@ namespace Taskmaster.UI
 
 		public event EventHandler? RescanRequest;
 
-		Process.Manager? processmanager = null;
+		Process.Manager? processmanager;
 
 		public void Hook(Process.Manager pman)
 		{
@@ -258,7 +260,7 @@ namespace Taskmaster.UI
 			RegisterExplorerExit();
 		}
 
-		Power.Manager? powermanager = null;
+		Power.Manager? powermanager;
 
 		public void Hook(Power.Manager pman)
 		{
@@ -381,7 +383,7 @@ namespace Taskmaster.UI
 				BuildMainWindow(globalmodules, reveal: true, top: true);
 		}
 
-		MainWindow? mainwindow { get; set; } = null;
+		MainWindow? mainwindow { get; set; }
 
 		void UnloseWindow(object _, MouseEventArgs e)
 		{
@@ -422,7 +424,7 @@ namespace Taskmaster.UI
 			window.FormClosing += WindowClosed;
 		}
 
-		TimeSpan? ExplorerRestartHelpDelay { get; } = null;
+		TimeSpan? ExplorerRestartHelpDelay { get; }
 
 		async void ExplorerCrashEvent(object sender, EventArgs _2)
 		{
@@ -435,7 +437,7 @@ namespace Taskmaster.UI
 			{
 				KnownExplorerInstances.TryRemove(processId, out _);
 
-				if (KnownExplorerInstances.Count > 0)
+				if (!KnownExplorerInstances.IsEmpty)
 				{
 					if (Trace) Log.Verbose($"<Tray> Explorer #{processId} exited but is not the last known explorer instance.");
 					return;
@@ -535,7 +537,7 @@ namespace Taskmaster.UI
 						}
 					}
 
-					if (KnownExplorerInstances.Count > 0)
+					if (!KnownExplorerInstances.IsEmpty)
 					{
 						Log.Information("<Tray> Explorer (#" + string.Join(", #", KnownExplorerInstances.Keys) + ") being monitored for crashes.");
 					}
@@ -579,7 +581,7 @@ namespace Taskmaster.UI
 			}));
 		}
 
-		int ensuringvisibility = 0;
+		int ensuringvisibility = Atomic.Unlocked;
 
 		public async Task EnsureVisible()
 		{
@@ -652,7 +654,7 @@ namespace Taskmaster.UI
 			bool found = false;
 
 			const string schexe = "schtasks";
-			const string argsq = "/query /fo list /TN MKAh-Taskmaster";
+			const string argsq = "/Query /FO list /TN MKAh-Taskmaster";
 
 			try
 			{
@@ -689,7 +691,7 @@ namespace Taskmaster.UI
 
 				if (found && enabled)
 				{
-					string argstoggle = "/change /TN MKAh-Taskmaster /" + (enabled ? "ENABLE" : "DISABLE");
+					string argstoggle = "/Change /TN MKAh-Taskmaster /" + (enabled ? "ENABLE" : "DISABLE");
 					info.Arguments = argstoggle;
 					var proctoggle = System.Diagnostics.Process.Start(info);
 					bool toggled = proctoggle.WaitForExit(3000); // this will succeed as long as the task is there
@@ -705,7 +707,7 @@ namespace Taskmaster.UI
 				{
 					// This will solve the high privilege problem, but really? Do I want to?
 					var runtime = Environment.GetCommandLineArgs()[0];
-					string argscreate = "/Create /tn MKAh-Taskmaster /tr \"\\\"" + runtime + "\\\"\" /sc onlogon /it /RL HIGHEST";
+					string argscreate = "/Create /TN MKAh-Taskmaster /TR \"\\\"" + runtime + "\\\"\" /SC ONLOGON /IT /RL HIGHEST";
 					info.Arguments = argscreate;
 					var procnew = System.Diagnostics.Process.Start(info);
 					bool created = procnew.WaitForExit(3000);
@@ -754,7 +756,7 @@ namespace Taskmaster.UI
 		#region IDisposable Support
 		~TrayAccess() => Dispose(false);
 
-		public bool IsDisposed { get; internal set; } = false;
+		public bool IsDisposed { get; internal set; }
 
 		protected virtual void Dispose(bool disposing)
 		{

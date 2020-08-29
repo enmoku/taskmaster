@@ -28,10 +28,10 @@ namespace Taskmaster.Process
 {
 	public class ScanEndEventArgs
 	{
-		public int Found { get; set; } = 0;
+		public int Found { get; set; }
 
-		public int Ignored { get; set; } = 0;
+		public int Ignored { get; set; }
 
-		public int Modified { get; set; } = 0;
+		public int Modified { get; set; }
 	}
 }

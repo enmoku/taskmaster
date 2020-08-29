@@ -30,7 +30,7 @@ namespace Taskmaster.Network
 {
 	public class InternetStatus : Status
 	{
-		public bool IPChanged = false;
+		public bool IPChanged;
 
 		public OperationalStatus IPv4 = OperationalStatus.Unknown, IPv6 = OperationalStatus.Unknown;
 	}

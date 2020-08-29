@@ -58,7 +58,7 @@ namespace Taskmaster.Audio
 				var guid = HaveDefaultDevice ? Utility.DeviceIdToGuid(defaultDeviceId) : Guid.Empty;
 
 				if (DebugAudio && Trace)
-					Log.Verbose($"<Audio> Default device changed for {role.ToString()} ({flow.ToString()}): {(HaveDefaultDevice ? guid.ToString() : HumanReadable.Generic.NotAvailable)}");
+					Log.Verbose($"<Audio> Default device changed for {role} ({flow}): {(HaveDefaultDevice ? guid.ToString() : HumanReadable.Generic.NotAvailable)}");
 
 				DefaultDevice?.Invoke(guid, defaultDeviceId, role, flow);
 			}
