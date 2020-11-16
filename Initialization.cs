@@ -157,10 +157,11 @@ namespace Taskmaster
 
 			if (!NoLogging)
 			{
-				var logpathtemplate = System.IO.Path.Combine(LogPath, Name + "-{Date}.log");
+				var logpathtemplate = System.IO.Path.Combine(LogPath, Name + "-.log");
 
-				logconf = logconf.WriteTo.RollingFile(logpathtemplate, outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}",
-					levelSwitch: new Serilog.Core.LoggingLevelSwitch(Serilog.Events.LogEventLevel.Debug), retainedFileCountLimit: 3);
+				logconf = logconf.WriteTo.File(logpathtemplate, outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}",
+					rollingInterval: RollingInterval.Day, rollOnFileSizeLimit: true, fileSizeLimitBytes: MKAh.Units.Binary.Mega * 8, retainedFileCountLimit: 3,
+					levelSwitch: new Serilog.Core.LoggingLevelSwitch(Serilog.Events.LogEventLevel.Debug));
 			}
 
 			Serilog.Log.Logger = logconf.CreateLogger();
