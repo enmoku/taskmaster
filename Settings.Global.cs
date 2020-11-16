@@ -59,7 +59,6 @@ namespace Taskmaster
 		public static bool DebugMemory { get; set; } = false;
 
 		public static bool Trace { get; set; } = false;
-		public static bool UniqueCrashLogs { get; set; } = false;
 		public static bool ShowInaction { get; set; } = false;
 		public static bool ShowAgency { get; set; } = false;
 

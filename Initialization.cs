@@ -361,9 +361,7 @@ namespace Taskmaster
 					break;
 			}
 
-			UniqueCrashLogs = logsec.GetOrSet("Unique crash logs", false)
-				.InitComment("On crash instead of creating crash.log in Logs, create crash-YYYYMMDD-HHMMSS-FFF.log instead. These are not cleaned out automatically!")
-				.Bool;
+			logsec.TryRemove("Unique crash logs"); // DEPRECATED
 
 			ShowInaction = logsec.GetOrSet("Show inaction", false)
 				.InitComment("Log lack of action taken on processes.")

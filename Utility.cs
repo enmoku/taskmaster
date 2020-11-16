@@ -83,9 +83,6 @@ namespace Taskmaster
 
 				if (!System.IO.Directory.Exists(Application.LogPath)) System.IO.Directory.CreateDirectory(Application.LogPath);
 
-				string logfilename = Application.UniqueCrashLogs ? $"crash-{DateTime.Now.ToString("yyyyMMdd-HHmmss-fff", CultureInfo.InvariantCulture)}.log" : "crash.log";
-				var logfile = System.IO.Path.Combine(Application.LogPath, logfilename);
-
 				var now = DateTime.Now;
 
 				file = file.Replace(Properties.Resources.ProjectDirectory.Trim(), HumanReadable.Generic.Ellipsis + System.IO.Path.DirectorySeparatorChar);
@@ -126,6 +123,9 @@ namespace Taskmaster
 					}
 				}
 #endif
+
+				string logfilename = $"crash-{DateTime.Now.ToString("yyyyMMdd-HHmmss-fff", CultureInfo.InvariantCulture)}.log";
+				var logfile = System.IO.Path.Combine(Application.LogPath, logfilename);
 
 				System.IO.File.WriteAllText(logfile, sbs.ToString(), Encoding.Unicode);
 				DebugMsg("Crash log written to " + logfile);

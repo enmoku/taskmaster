@@ -5,6 +5,7 @@ Comprehensive changes can be found in Git change history:
 ## [0.14...]
 ### 2020-11-16
 	Changed: Removed the deprecated Serilog.RollingFile dependency and moved to use Serilog.File for the same purpose.
+	Changed: Unique crash logs are now enforced. The option to have non-unique crash logs has been removed.
 ### 2020-10-06
 	Changed: Internet outage notification has longer cooldown. TODO: Make this configurable.
 ### 2020-08-29
