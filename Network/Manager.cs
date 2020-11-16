@@ -958,7 +958,7 @@ namespace Taskmaster.Network
 
 			InternetStatusChange?.Invoke(this, new InternetStatus { Available = InternetAvailable, Start = LastUptimeStart, Uptime = Uptime, IPv4 = IPv4Status, IPv6 = IPv6Status });
 
-			if (!InternetAvailable && LastInetPopup.To(DateTimeOffset.UtcNow).TotalSeconds > 30)
+			if (!InternetAvailable && LastInetPopup.To(DateTimeOffset.UtcNow).TotalMinutes > 5f)
 			{
 				var t = LastDowntimeStart.ToLocalTime().LocalDateTime;
 				Tray.Tooltip(8000, "Internet unavailable!\nSince: " + t.ToLongTimeString() + " " + t.ToLongDateString(), Name, System.Windows.Forms.ToolTipIcon.Warning);

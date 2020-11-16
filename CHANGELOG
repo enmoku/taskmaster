@@ -3,6 +3,8 @@ Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
 ## [0.14...]
+### 2020-10-06
+	Changed: Internet outage notification has longer cooldown. TODO: Make this configurable.
 ### 2020-08-29
 	Fixed: Win7 was reported as only supported platform in app.config when this had not been the case for a while (Win10 is now that).
 	Fixed: Problems enabling audio control.
