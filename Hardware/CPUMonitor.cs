@@ -113,11 +113,13 @@ namespace Taskmaster.Hardware
 		{
 			return; // these are not modified at runtime YET
 
+			/*
 			using var corecfg = Config.Load(CoreConfigFilename);
 			// SAMPLING
 			var hwsec = corecfg.Config[HumanReadable.Hardware.Section];
 			hwsec[HumanReadable.Hardware.CPU.Settings.SampleInterval].Int = Convert.ToInt32(SampleInterval.TotalSeconds);
 			hwsec[HumanReadable.Hardware.CPU.Settings.SampleCount].Int = SampleCount;
+			*/
 		}
 
 		int sampler_lock = Atomic.Unlocked;

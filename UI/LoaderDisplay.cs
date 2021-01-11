@@ -603,7 +603,7 @@ namespace Taskmaster.UI
 			ignoredLabel.Text = $"{ignoredInstances} [{ignoredGroups}]";
 		}
 
-		const bool TrackUntracked = false;
+		bool TrackUntracked = false;
 
 		void UpdateListView(LoadListPair pair)
 		{

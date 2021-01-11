@@ -391,7 +391,7 @@ namespace Taskmaster.Process
 			RenewWatchlistCache();
 
 			// testing
-			if (false) LoadTimer = new Timer(InspectLoaders, null, System.Threading.Timeout.InfiniteTimeSpan, System.Threading.Timeout.InfiniteTimeSpan);
+			// LoadTimer = new Timer(InspectLoaders, null, System.Threading.Timeout.InfiniteTimeSpan, System.Threading.Timeout.InfiniteTimeSpan);
 
 			ScanTimer = new System.Timers.Timer(ScanFrequency.Value.TotalMilliseconds);
 			MaintenanceTimer = new System.Timers.Timer(1_000 * 60 * 60 * 3); // every 3 hours
@@ -2253,11 +2253,13 @@ namespace Taskmaster.Process
 			Log.Information(info.ToFullFormattedString() + " Exited; Resetting color (NOT REALLY, SORRY!).");
 			return;
 
+			/*
 			var buffer = new StringBuilder(4096);
 
 			IntPtr hdc = IntPtr.Zero; // hardware device context
 
 			bool got = Taskmaster.NativeMethods.GetICMProfile(hdc, Convert.ToUInt64(buffer.Capacity) + 1UL, buffer);
+			*/
 		}
 
 		public int HandlingCount => Handling;
