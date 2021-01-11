@@ -365,82 +365,59 @@ namespace Taskmaster.Audio
 				// TODO: Fetch cached copy from manager?
 				Process.ProcessEx? info;
 				bool cached = false;
-				if (cached = processmanager.GetCachedProcess(pid, out info) || Process.Utility.Construct(pid, out info, getPath: true, name: name))
+				if (!(cached = processmanager.GetCachedProcess(pid, out info) || Process.Utility.Construct(pid, out info, getPath: true, name: name)))
 				{
-					if (!cached) processmanager.CacheProcess(info); // just to be sure.
+					Log.Debug($"<Audio> Failed to get info for process #{pid}");
+					return;
+				}
 
-					// TODO: check for staleness
+				if (!cached) processmanager.CacheProcess(info); // just to be sure.
 
-					//info.Path
+				// TODO: check for staleness
 
-					float volume = session.SimpleAudioVolume.Volume;
+				//info.Path
 
-					//OnNewSession?.Invoke(this, info);
-					var prc = info.Controller;
-					if (prc != null || processmanager.GetController(info, out prc))
-					{
-						if (!info.IsPathFormatted) info.Controller.FormatPathName(info);
+				float volume = session.SimpleAudioVolume.Volume;
 
-						bool volAdjusted = false;
-						float oldvolume = session.SimpleAudioVolume.Volume;
-						switch (prc.VolumeStrategy)
-						{
-							default:
-							case VolumeStrategy.Ignore:
-								break;
-							case VolumeStrategy.Force:
-								session.SimpleAudioVolume.Volume = prc.Volume;
-								volAdjusted = true;
-								break;
-							case VolumeStrategy.Decrease:
-								if (oldvolume > prc.Volume)
-								{
-									session.SimpleAudioVolume.Volume = prc.Volume;
-									volAdjusted = true;
-								}
-								break;
-							case VolumeStrategy.Increase:
-								if (oldvolume < prc.Volume)
-								{
-									session.SimpleAudioVolume.Volume = prc.Volume;
-									volAdjusted = true;
-								}
-								break;
-							case VolumeStrategy.DecreaseFromFull:
-								if (oldvolume > prc.Volume && oldvolume > 0.99f)
-								{
-									session.SimpleAudioVolume.Volume = prc.Volume;
-									volAdjusted = true;
-								}
-								break;
-							case VolumeStrategy.IncreaseFromMute:
-								if (oldvolume < prc.Volume && oldvolume < 0.01f)
-								{
-									session.SimpleAudioVolume.Volume = prc.Volume;
-									volAdjusted = true;
-								}
-								break;
-						}
-
-						if (volAdjusted)
-						{
-							Log.Information($"{info.ToFullFormattedString()} Volume changed from {oldvolume * 100f:0.#} % to {prc.Volume * 100f:0.#} %");
-						}
-						else
-						{
-							if (ShowInaction && DebugAudio)
-								Log.Debug($"{info.ToFullFormattedString()} Volume at {volume * 100f:0.#} % – Already correct (Plan: {prc.VolumeStrategy})");
-						}
-					}
-					else
+				//OnNewSession?.Invoke(this, info);
+				var prc = info.Controller;
+				if (prc == null)
+				{
+					if (!processmanager.GetController(info, out prc))
 					{
 						if (ShowInaction && DebugAudio)
 							Log.Debug($"{info.ToFullFormattedString()}; Volume at {(volume * 100f):0.#} % – not watched: {info.Path}");
+						return;
 					}
+				}
+
+				if (!info.IsPathFormatted) info.Controller.FormatPathName(info);
+
+				float oldvolume = session.SimpleAudioVolume.Volume;
+
+				bool getNewVolume(float oldVolume, Process.Controller prc) => prc.VolumeStrategy switch
+				{
+					VolumeStrategy.Decrease => (oldVolume > prc.Volume),
+					VolumeStrategy.Increase => (oldVolume < prc.Volume),
+					VolumeStrategy.Force => (true),
+					VolumeStrategy.DecreaseFromFull => (oldVolume > prc.Volume && oldVolume > 0.99f),
+					VolumeStrategy.IncreaseFromMute => (oldVolume < prc.Volume && oldVolume < 0.01f),
+					_ => false,
+				};
+
+				bool adjustVol = getNewVolume(oldvolume, prc);
+
+				if (adjustVol)
+				{
+					session.SimpleAudioVolume.Volume = prc.Volume;
+
+					if (prc.LogAdjusts)
+						Log.Information($"{info.ToFullFormattedString()} Volume changed from {oldvolume * 100f:0.#} % to {prc.Volume * 100f:0.#} %");
 				}
 				else
 				{
-					Log.Debug($"<Audio> Failed to get info for process #{pid}");
+					if (ShowInaction && DebugAudio)
+						Log.Debug($"{info.ToFullFormattedString()} Volume at {volume * 100f:0.#} % – Already correct (Plan: {prc.VolumeStrategy})");
 				}
 			}
 			catch (OutOfMemoryException) { throw; }
