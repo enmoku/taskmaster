@@ -4,7 +4,7 @@ Comprehensive changes can be found in Git change history:
 
 ## [0.14...]
 ### 2021-01-11
-	Changed: Volume adjusts not respect log adjusts setting.
+	Changed: Volume adjusts do not respect log adjusts setting.
 ### 2020-11-16
 	Changed: Removed the deprecated Serilog.RollingFile dependency and moved to use Serilog.File for the same purpose.
 	Changed: Unique crash logs are now enforced. The option to have non-unique crash logs has been removed.
