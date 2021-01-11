@@ -7,7 +7,7 @@ using System.Runtime.CompilerServices;
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("")]
 [assembly: AssemblyProduct("Taskmaster!")]
-[assembly: AssemblyCopyright("Copyright © M.A., 2016–2020")]
+[assembly: AssemblyCopyright("Copyright © M.A., 2016–2021")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
