@@ -433,24 +433,6 @@ namespace Taskmaster.UI.Config
 
 			// EXPERIMENTS
 
-			if (IOPriorityEnabled)
-			{
-				ioPriority = new ComboBox()
-				{
-					DropDownStyle = ComboBoxStyle.DropDownList,
-					Items = { "Ignore", "Background", "Low", "Normal" },
-					SelectedIndex = ((int)Controller.IOPriority) + 1,
-					AutoSize = true,
-					Dock = DockStyle.Fill,
-				};
-
-				tooltip.SetToolTip(ioPriority, "EXPERIMENTAL\nDO NOT SET BACKGROUND FOR ANYTHING WITH USER INTERFACE\nBackground setting may delay I/O almost indefinitely.\nAffects HDD/SSD access and Networking\nNormal is the default.\nBackground is for things that do not interact with user.");
-
-				layout.Controls.Add(new Extensions.Label() { Text = "I/O priority", ForeColor = System.Drawing.Color.Red });
-				layout.Controls.Add(ioPriority);
-				layout.Controls.Add(new Extensions.Label() { Text = "EXPERIMENTAL", ForeColor = System.Drawing.Color.Red });
-			}
-
 			// ---------------------------------------------------------------------------------------------------------
 
 			// FOREGROUND
@@ -851,9 +833,6 @@ namespace Taskmaster.UI.Config
 
 				Controller.Volume = Convert.ToSingle(volume.Value / 100M);
 			}
-
-			if (IOPriorityEnabled)
-				Controller.IOPriority = (Process.IOPriority)((ioPriority?.SelectedIndex ?? 0) - 1);
 
 			Controller.LogAdjusts = logAdjusts.Checked;
 			Controller.LogStartAndExit = logStartNExit.Checked;

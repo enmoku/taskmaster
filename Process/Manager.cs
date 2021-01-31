@@ -1232,7 +1232,6 @@ namespace Taskmaster.Process
 						Analyze = (section.Get(Constants.Analyze)?.Bool ?? false),
 						DeclareParent = (section.Get(Constants.DeclareParent)?.Bool ?? false),
 						OrderPreference = (section.Get(Constants.Preference)?.Int.Constrain(0, 100) ?? 10),
-						IOPriority = (IOPriority)(section.Get(Constants.IOPriority)?.Int.Constrain(-1, 2) ?? -1), // 0-1 background, 2 = normal, anything else seems to have no effect
 						LogAdjusts = (section.Get(Application.Constants.Logging)?.Bool ?? true),
 						LogStartAndExit = (section.Get(Constants.LogStartAndExit)?.Bool ?? false),
 						Warn = (section.Get("Warn")?.Bool ?? false),
@@ -1769,28 +1768,6 @@ namespace Taskmaster.Process
 				Logging.Stacktrace(ex);
 				Log.Error("Unregistering foreground changed event");
 				activeappmonitor.ActiveChanged -= ForegroundAppChangedEvent;
-			}
-
-			if (IOPriorityEnabled)
-			{
-				bool disposeLocal = false;
-
-				try
-				{
-					if (process is null)
-					{
-						process = System.Diagnostics.Process.GetProcessById(ev.Id);
-						disposeLocal = true;
-					}
-					Utility.SetIO(process, 2, out _, decrease: false); // set foreground app I/O to highest possible
-				}
-				catch (Exception ex) when (ex is NullReferenceException || ex is OutOfMemoryException) { throw; }
-				catch (ArgumentException) { /* NOP */ }
-				catch (InvalidOperationException) { /* NOP */ }
-				finally
-				{
-					if (disposeLocal) process?.Dispose();
-				}
 			}
 		}
 

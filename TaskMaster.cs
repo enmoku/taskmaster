@@ -237,20 +237,7 @@ namespace Taskmaster
 		{
 			var self = System.Diagnostics.Process.GetCurrentProcess();
 
-			if (shown)
-			{
-				if (SelfOptimizeBGIO)
-					MKAh.Utility.DiscardExceptions(() => Process.Utility.UnsetBackground(self));
-
-				self.PriorityClass = ProcessPriorityClass.AboveNormal;
-			}
-			else
-			{
-				self.PriorityClass = SelfPriority;
-
-				if (SelfOptimizeBGIO)
-					MKAh.Utility.DiscardExceptions(() => Process.Utility.SetBackground(self));
-			}
+			self.PriorityClass = shown ? ProcessPriorityClass.AboveNormal : SelfPriority;
 		}
 
 		public static event EventHandler OnStart;
@@ -358,8 +345,6 @@ namespace Taskmaster
 				{
 					var self = System.Diagnostics.Process.GetCurrentProcess();
 					self.PriorityClass = ProcessPriorityClass.AboveNormal;
-					if (SelfOptimizeBGIO)
-						MKAh.Utility.DiscardExceptions(() => Process.Utility.SetBackground(self));
 				}
 
 				Log.Information("Exiting...");

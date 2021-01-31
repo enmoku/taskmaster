@@ -236,8 +236,6 @@ namespace Taskmaster.Process
 		/// </summary>
 		public System.Diagnostics.ProcessPriorityClass? Priority { get; set; }
 
-		public IOPriority IOPriority { get; set; } = IOPriority.Ignore; // Win7 only?
-
 		public PriorityStrategy PriorityStrategy { get; set; } = PriorityStrategy.Ignore;
 
 		/// <summary>
@@ -633,13 +631,7 @@ namespace Taskmaster.Process
 				app.TryRemove(HumanReadable.System.Process.AffinityStrategy);
 			}
 
-			if (IOPriority != IOPriority.Ignore)
-			{
-				var ioprio = app["IO priority"];
-				if (ioprio.TryInt != (int)IOPriority) ioprio.Int = (int)IOPriority;
-			}
-			else
-				app.TryRemove("IO priority");
+			app.TryRemove("IO priority"); // OBSOLETE; Cleanup
 
 			if (PowerPlan != Power.Mode.Undefined)
 			{
@@ -947,9 +939,6 @@ namespace Taskmaster.Process
 				}
 				else
 					newAffinity = -1;
-
-				if (IOPriorityEnabled)
-					nIO = (IOPriority)SetIO(info, DefaultForegroundIOPriority); // force these to always have normal I/O priority
 			}
 			catch (InvalidOperationException) // ID not available, probably exited
 			{
@@ -1370,10 +1359,6 @@ namespace Taskmaster.Process
 										Log.Debug($"[{FriendlyName}] {FormatPathName(info)} #{info.Id} is resisting being modified: Agency granted.");
 
 									ormt.Info.Process.Exited += ProcessExitEvent;
-
-									// Agency granted, restore I/O priority to normal
-									if (IOPriority != IOPriority.Ignore && (int)IOPriority < (int)DefaultForegroundIOPriority)
-										SetIO(info, DefaultForegroundIOPriority); // restore normal I/O for these in case we messed around with it
 								}
 
 								ormt.LastIgnored = now;
@@ -1468,9 +1453,6 @@ namespace Taskmaster.Process
 					}
 					catch (OutOfMemoryException) { throw; }
 					catch { failSetPriority = true; } // ignore errors, this is all we care of them
-
-					if (IOPriorityEnabled && IOPriority != IOPriority.Ignore)
-						nIO = (IOPriority)SetIO(info);
 				}
 				else
 				{
@@ -1693,53 +1675,6 @@ namespace Taskmaster.Process
 			}
 		}
 
-		const IOPriority DefaultForegroundIOPriority = IOPriority.Normal;
-
-		long SetIO(ProcessEx info, IOPriority overridePriority = IOPriority.Ignore)
-		{
-			long target = overridePriority == IOPriority.Ignore ? (long)IOPriority : (long)overridePriority;
-
-			long nIO = -1;
-
-			try
-			{
-				long original = Utility.SetIO(info.Process, target, out nIO);
-
-				if (original < 0)
-				{
-					if (Debug && Trace) Log.Debug(info.ToFullFormattedString() + " I/O priority access error");
-				}
-				else if (original == target)
-				{
-					if (Trace && Debug && ShowInaction)
-						Log.Debug(info.ToFullFormattedString() + " I/O priority ALREADY set to " + original.ToString(CultureInfo.InvariantCulture) + ", target: " + target.ToString(CultureInfo.InvariantCulture));
-					nIO = -1;
-				}
-				else
-				{
-					if (Debug && Trace)
-					{
-						if (nIO >= 0 && nIO != original)
-							Log.Debug($"{info.ToFullFormattedString()} I/O priority set from {original} to {nIO}, target: {target}");
-						else if (ShowInaction)
-							Log.Debug($"{info.ToFullFormattedString()} I/O priority NOT set from {original} to {target}");
-					}
-				}
-			}
-			catch (OutOfMemoryException) { throw; }
-			catch (ArgumentException)
-			{
-				if (Debug && ShowInaction && Trace) Log.Debug(info.ToFullFormattedString() + " I/O priority not set, failed to open process.");
-			}
-			catch (InvalidOperationException)
-			{
-				if (Debug && Trace)
-					Log.Debug(info.ToFullFormattedString() + " I/O priority access error");
-			}
-
-			return nIO;
-		}
-
 		/// <summary>
 		/// Sets new affinity mask. Returns true if the new mask differs from old.
 		/// </summary>
@@ -1845,9 +1780,6 @@ namespace Taskmaster.Process
 
 			if (PowerPlan != Power.Mode.Undefined)
 				sbs.Append("Power plan: ").AppendLine(Power.Utility.GetModeName(PowerPlan));
-
-			if (IOPriority != IOPriority.Ignore)
-				sbs.Append("I/O priority: ").AppendLine(IOPriority.ToString());
 
 			if (IgnoreList.Length > 0)
 				sbs.Append("Ignore: ").AppendLine(string.Join(", ", IgnoreList));

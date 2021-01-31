@@ -54,60 +54,6 @@ namespace Taskmaster.Process
 			return null;
 		}
 
-		public static bool SetIOPriority(SafeHandle handle, long priority)
-		{
-			// the functionality changed with Windows 8 drastically and likely does something else
-			if (MKAh.Execution.IsWin7)
-			{
-				try
-				{
-					var ioPrio = new IntPtr(priority);
-					NtSetInformationProcess(handle, PROCESS_INFORMATION_CLASS_WIN7.ProcessIoPriority, ref ioPrio, 4);
-
-					int error = Marshal.GetLastWin32Error();
-					//Logging.DebugMsg($"SetInformationProcess error code: {error} --- return value: {rv:X}");
-
-					return error == 0;
-				}
-				catch (Exception ex)
-				{
-					Logging.Stacktrace(ex);
-				}
-			}
-			return false;
-		}
-
-		public static long GetIOPriority(SafeHandle handle)
-		{
-			// the functionality changed with Windows 8 drastically and likely does something else
-			if (MKAh.Execution.IsWin7)
-			{
-				try
-				{
-					int resLen = 0;
-					var ioPrio = new IntPtr(0);
-					if (handle is null) return -1;
-					int rv = NtQueryInformationProcess(handle, PROCESS_INFORMATION_CLASS_WIN7.ProcessIoPriority, ref ioPrio, 4, ref resLen);
-
-					long error = Marshal.GetLastWin32Error();
-					//Logging.DebugMsg($"QueryInformationProcess error code: {error} --- return value: {rv:X}");
-
-					return error == 0 ? ioPrio.ToInt64() : -1;
-				}
-				catch (Exception ex)
-				{
-					Logging.Stacktrace(ex);
-				}
-			}
-			return 0;
-		}
-
-		[DllImport("ntdll.dll", SetLastError = true)]
-		internal static extern int NtSetInformationProcess(SafeHandle hProcess, PROCESS_INFORMATION_CLASS_WIN7 ProcessInformationClass, ref IntPtr ProcessInformation, uint ProcessInformationSize);
-
-		[DllImport("ntdll.dll", SetLastError = true)]
-		internal static extern int NtQueryInformationProcess(SafeHandle hProcess, PROCESS_INFORMATION_CLASS_WIN7 ProcessInformationClass, ref IntPtr ProcessInformation, uint ProcessInformationSize, ref int ReturnSize);
-
 		//const int SystemMemoryListInformation = 0x0050;
 
 		// It seems the contents of this enum were changed with Windows 8

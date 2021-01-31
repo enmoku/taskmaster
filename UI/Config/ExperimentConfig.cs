@@ -99,12 +99,6 @@ namespace Taskmaster.UI.Config
 			layout.Controls.Add(new Extensions.Label { Text = "Hardware monitor" });
 			layout.Controls.Add(hwmon);
 
-			var iopriority = new CheckBox() { Checked = Application.IOPriorityEnabled, Enabled = MKAh.Execution.IsWin7, };
-			tooltip.SetToolTip(iopriority, "Enable I/O priority adjstment\nWARNING: This can be REALLY BAD\nTake care what you do.\nOnly supported on Windows 7.");
-
-			layout.Controls.Add(new Extensions.Label { Text = "I/O priority" });
-			layout.Controls.Add(iopriority);
-
 			// NGEN Native Image
 
 			var process = System.Diagnostics.Process.GetCurrentProcess();
@@ -230,10 +224,7 @@ namespace Taskmaster.UI.Config
 				else
 					exsec.TryRemove("Record analysis");
 
-				if (iopriority.Checked && MKAh.Execution.IsWin7)
-					exsec["IO Priority"].Bool = true;
-				else
-					exsec.TryRemove("IO Priority");
+				exsec.TryRemove("IO Priority"); // DEPRECATED; Cleanup
 
 				if (autoUpdateNgen.Checked)
 					exsec[Application.Constants.AutoNGEN].Bool = true;

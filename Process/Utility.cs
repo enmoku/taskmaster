@@ -353,53 +353,6 @@ namespace Taskmaster.Process
 			return result;
 		}
 
-		/// <summary>
-		/// Throws: InvalidOperationException, ArgumentException
-		/// </summary>
-		/// <param name="target">0 = Background, 1 = Low, 2 = Normal, 3 = Elevated, 4 = High</param>
-		public static long SetIO(System.Diagnostics.Process process, long target, out long newIO, bool decrease = true)
-		{
-			Taskmaster.NativeMethods.HANDLE handle = null;
-			long original = -1;
-			System.Diagnostics.Debug.Assert(target >= 0 && target <= 2, "I/O target set to undefined value: " + target.ToString(CultureInfo.InvariantCulture));
-
-			target = target.Constrain(0, 2); // ensure no invalid data is used.
-
-			try
-			{
-				if (!((handle = NativeMethods.OpenProcessFully(process)) is null))
-				{
-					original = NativeMethods.GetIOPriority(handle);
-
-					if (original < 0)
-						newIO = -1;
-					else if (!decrease && target < original)
-						newIO = -1;
-					else if (original != target)
-					{
-						if (NativeMethods.SetIOPriority(handle, target))
-						{
-							newIO = NativeMethods.GetIOPriority(handle);
-							if (newIO != target)
-								Logging.DebugMsg($"{process.ProcessName} #{process.Id} - I/O not set correctly: {newIO} instead of {target}");
-						}
-						else
-							throw new InvalidOperationException("Failed to modify process I/O priority");
-					}
-					else
-						newIO = target;
-				}
-				else
-					throw new ArgumentException("Failed to open process");
-			}
-			finally
-			{
-				handle?.Close();
-			}
-
-			return original;
-		}
-
 		internal enum PriorityTypes
 		{
 			ABOVE_NORMAL_PRIORITY_CLASS = 0x00008000,
@@ -410,33 +363,6 @@ namespace Taskmaster.Process
 			PROCESS_MODE_BACKGROUND_BEGIN = 0x00100000,
 			PROCESS_MODE_BACKGROUND_END = 0x00200000,
 			REALTIME_PRIORITY_CLASS = 0x00000100
-		}
-
-		// Windows doesn't allow setting this for other processes
-		public static bool SetBackground(System.Diagnostics.Process process)
-			=> SafeSetIOPriority(process, PriorityTypes.PROCESS_MODE_BACKGROUND_BEGIN);
-
-		public static bool UnsetBackground(System.Diagnostics.Process process)
-			=> SafeSetIOPriority(process, PriorityTypes.PROCESS_MODE_BACKGROUND_END);
-
-		/// <summary>
-		/// Set disk I/O priority. Works only for setting own process priority.
-		/// Would require invasive injecting to other process to affect them.
-		/// </summary>
-		/// <exception>None</exception>
-		internal static bool SafeSetIOPriority(System.Diagnostics.Process process, PriorityTypes priority)
-		{
-			try
-			{
-				var rv = NativeMethods.SetPriorityClass(process.Handle, (uint)priority);
-				return rv;
-			}
-			catch (InvalidOperationException) { /* already exited */ }
-			catch (ArgumentException) { /* already exited? */ }
-			catch (OutOfMemoryException) { throw; }
-			catch (Exception ex) { Logging.Stacktrace(ex); }
-
-			return false;
 		}
 
 		public static bool Construct(int ProcessID, out ProcessEx? info, System.Diagnostics.Process? process = null, Process.Controller? controller = null, string name = default, string path = default, bool getPath = false)

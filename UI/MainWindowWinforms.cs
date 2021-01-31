@@ -3650,8 +3650,6 @@ namespace Taskmaster.UI
 						sbs.Append(HumanReadable.System.Process.AffinityStrategy).Append(" = ").Append((int)prc.AffinityStrategy).AppendLine();
 					}
 
-					if (prc.IOPriority != Process.IOPriority.Ignore) sbs.Append("IO priority = ").Append((int)prc.IOPriority).AppendLine();
-
 					if (prc.PowerPlan != Power.Mode.Undefined)
 						sbs.Append(HumanReadable.Hardware.Power.Plan).Append(" = ").AppendLine(Power.Utility.GetModeName(prc.PowerPlan));
 					if (prc.Recheck > 0) sbs.Append("Recheck = ").Append(prc.Recheck).AppendLine();

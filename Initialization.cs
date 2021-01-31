@@ -498,11 +498,11 @@ namespace Taskmaster
 			TempMonitorEnabled = exsec.Get("Temp Monitor")?.Bool ?? false;
 			int trecanalysis = exsec.Get("Record analysis")?.Int ?? 0;
 			RecordAnalysis = trecanalysis > 0 ? (TimeSpan?)TimeSpan.FromSeconds(trecanalysis.Constrain(0, 180)) : null;
-			IOPriorityEnabled = exsec.Get(Process.Constants.IOPriority)?.Bool ?? false;
-			if (IOPriorityEnabled && !MKAh.Execution.IsWin7)
+			var IOPriorityEnabled = exsec.Get(Process.Constants.IOPriority)?.Bool ?? false;
+			if (IOPriorityEnabled)
 			{
-				Log.Warning("<Core> I/O priority was enabled. Requires Win7 which you don't appear to be running.");
-				IOPriorityEnabled = false;
+				Log.Warning("<Core> I/O priority was enabled. This setting has been removed with removal of Win7 support.");
+				// TODO: Cleanup the setting in some later version.
 			}
 
 			using var uicfg = Config.Load(UIConfigFilename);
@@ -552,7 +552,6 @@ namespace Taskmaster
 			// above should result in 11
 
 			LoadEvent?.Invoke(null, new LoadEventArgs("Component loading starting.", LoadEventType.Info, 0, componentsToLoad));
-
 
 			using var cts = new System.Threading.CancellationTokenSource();
 			Process.Utility.InitializeCache(); // TODO: Cache initialization needs to be better and more contextual

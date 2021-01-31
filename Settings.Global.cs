@@ -66,7 +66,6 @@ namespace Taskmaster
 		public static bool TempMonitorEnabled { get; private set; } = false;
 		public static bool LastModifiedList { get; private set; } = false;
 		public static TimeSpan? RecordAnalysis { get; set; } = null;
-		public static bool IOPriorityEnabled { get; private set; } = false;
 
 		// DEBUG INFO
 		public static bool DebugCache { get; private set; } = false;

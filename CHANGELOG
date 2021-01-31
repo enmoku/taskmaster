@@ -2,6 +2,10 @@
 Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
+## [0.15...]
+### 2021-01-29
+	Removed: I/O priority support. This was only possible in Win7 and that OS is no longer supported.
+
 ## [0.14...]
 ### 2021-01-11
 	Changed: Volume adjusts do not respect log adjusts setting.
