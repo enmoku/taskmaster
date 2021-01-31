@@ -108,6 +108,8 @@ namespace Taskmaster
 		{
 			if (e is null) throw new ArgumentNullException(nameof(e));
 
+			Application.globalmodules?.healthmonitor?.ReportEvent(e);
+
 			if (e.Level == LogEventLevel.Fatal) Statistics.FatalErrors++;
 
 			if ((int)e.Level < (int)LevelSwitch.MinimumLevel) return;

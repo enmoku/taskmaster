@@ -30,6 +30,7 @@ using NAudio.CoreAudioApi;
 using Serilog;
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
@@ -366,7 +367,7 @@ namespace Taskmaster.Audio
 		/// Enumerate this instance.
 		/// </summary>
 		/// <returns>Enumeration of audio input devices as GUID/FriendlyName string pair.</returns>
-		public List<Device> Devices => new List<Device>(KnownDevices);
+		public ReadOnlyCollection<Device> Devices => new ReadOnlyCollection<Device>(KnownDevices);
 
 		List<Device> KnownDevices = new List<Device>();
 

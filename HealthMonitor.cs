@@ -375,6 +375,30 @@ namespace Taskmaster
 			}
 		}
 
+		internal void ReportEvent(Serilog.Events.LogEvent e)
+		{
+			var offset = Convert.ToInt32(Math.Floor(DateTimeOffset.UtcNow.Minute / 15d)); // 0 to 3
+			if (errorLastOffset != offset)
+			{
+				ErrorCounter[offset] = 0;
+				InfoCounter[offset] = 0;
+			}
+			errorLastOffset = offset;
+
+			switch (e.Level)
+			{
+				case Serilog.Events.LogEventLevel.Fatal:
+					ErrorCounter[offset]++;
+					break;
+				case Serilog.Events.LogEventLevel.Information:
+					break;
+			}
+		}
+
+		int errorLastOffset = 0;
+		int[] ErrorCounter = new int[] { 0, 0, 0, 0 };
+		int[] InfoCounter = new int[] { 0, 0, 0, 0 };
+
 		async Task CheckErrors()
 		{
 			if (disposed) throw new ObjectDisposedException(nameof(HealthMonitor), "CheckErrors called after HealthMonitor was disposed.");
@@ -383,9 +407,9 @@ namespace Taskmaster
 
 			await Task.Delay(0).ConfigureAwait(false);
 
-			// TODO: Maybe make this errors within timeframe instead of total...?
 			if (Statistics.FatalErrors >= Settings.FatalErrorThreshold)
 			{
+				// if (ErrorCounter[errorLastOffset] > 3) // TODO: Maybe make this errors within timeframe instead of total...?
 				Log.Fatal("<Auto-Doc> Fatal error count too high, exiting.");
 				UnifiedExit();
 			}

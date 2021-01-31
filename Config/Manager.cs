@@ -59,7 +59,7 @@ namespace Taskmaster.Configuration
 					// TODO: Hash filenames
 					foreach (var oldcfg in Loaded)
 					{
-						if (oldcfg.Filename.Equals(filename, StringComparison.InvariantCultureIgnoreCase))
+						if (oldcfg.Filename.Equals(filename, StringComparison.OrdinalIgnoreCase))
 							return oldcfg.AutoUnloader();
 					}
 
