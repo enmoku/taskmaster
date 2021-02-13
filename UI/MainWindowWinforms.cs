@@ -405,6 +405,34 @@ namespace Taskmaster.UI
 			});
 
 			// CONFIG -> LOGGING
+
+			// Date-time
+			var menu_config_logging_timestamps = new ToolStripMenuItem("Date-Time");
+
+			var menu_config_logging_timestamps_time = new ToolStripMenuItem("Time only") { Checked = !LogDateTime };
+			var menu_config_logging_timestamps_datetime = new ToolStripMenuItem("Date & Time") { Checked = LogDateTime };
+
+			void SetLogDating(bool datetime)
+			{
+				menu_config_logging_timestamps_time.Checked = !datetime;
+				menu_config_logging_timestamps_datetime.Checked = datetime;
+				LogDateTime = datetime;
+
+				MemorySink._instance.ChangeDateTimeFormat(LogDateTime);
+
+				using var corecfg = Application.Config.Load(CoreConfigFilename);
+				corecfg.Config[HumanReadable.Generic.Logging]["DateTime"].Bool = datetime;
+			}
+
+			menu_config_logging_timestamps_time.Click += (_, _2) => SetLogDating(false);
+			menu_config_logging_timestamps_datetime.Click += (_, _2) => SetLogDating(true);
+
+			menu_config_logging_timestamps.DropDownItems.AddRange(new ToolStripItem[] {
+				menu_config_logging_timestamps_time,
+				menu_config_logging_timestamps_datetime,
+			});
+
+			// Adjusts
 			var menu_config_logging_adjusts = new ToolStripMenuItem("Process adjusts")
 			{
 				Checked = ShowProcessAdjusts,
@@ -532,6 +560,8 @@ namespace Taskmaster.UI
 			});
 
 			menu_config_logging.DropDownItems.AddRange(new ToolStripItem[] {
+				menu_config_logging_timestamps,
+				new ToolStripSeparator(),
 				menu_config_logging_adjusts,
 				menu_config_logging_bitmask,
 				menu_config_logging_session,

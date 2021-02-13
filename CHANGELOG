@@ -3,6 +3,11 @@ Comprehensive changes can be found in Git change history:
 	https://github.com/mkahvi/taskmaster/commits/master
 
 ## [0.15...]
+### 2021-02-06
+	Changed: File logging now includes date.
+	Added: UI logging has option showing date on top of time.
+	Changed: Arbitrary version increment to signal ending of Win7 support.
+
 ### 2021-01-29
 	Removed: I/O priority support. This was only possible in Win7 and that OS is no longer supported.
 

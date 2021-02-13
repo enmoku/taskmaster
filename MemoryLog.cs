@@ -65,9 +65,12 @@ namespace Taskmaster
 		readonly StringWriter Output;
 		readonly object sinklock = new object();
 		//readonly IFormatProvider p_formatProvider;
-		readonly Serilog.Formatting.Display.MessageTemplateTextFormatter p_textFormatter;
+		Serilog.Formatting.Display.MessageTemplateTextFormatter textFormatter;
 		public LoggingLevelSwitch LevelSwitch;
-		const string p_DefaultOutputTemplate = "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}";
+		const string defaultOutputTemplate = "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}",
+			defaultOutputTemplateLong = "[{Timestamp:yyyy-MM-dd HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}";
+
+		IFormatProvider formatProvider;
 
 		public int Max = 200;
 		readonly object LogLock = new object();
@@ -76,17 +79,25 @@ namespace Taskmaster
 
 		//ConcurrentDictionary<ulong, LogEventArgs> LogMap { get; set; } = new ConcurrentDictionary<ulong, LogEventArgs>(2, 200);
 
-		public MemorySink(IFormatProvider formatProvider, string outputTemplate = p_DefaultOutputTemplate, LoggingLevelSwitch? levelSwitch = null)
+		public MemorySink(IFormatProvider formatProvider, LoggingLevelSwitch? levelSwitch = null)
 		{
+			this.formatProvider = formatProvider;
+
+			ChangeDateTimeFormat(false);
+
 			//p_formatProvider = formatProvider;
-			p_textFormatter = new Serilog.Formatting.Display.MessageTemplateTextFormatter(
-				outputTemplate ?? p_DefaultOutputTemplate,
-				formatProvider
-			);
 			Output = new System.IO.StringWriter();
 			LevelSwitch = levelSwitch;
 
 			MemoryLog.MemorySink = this;
+		}
+
+		public void ChangeDateTimeFormat(bool fullDateTime = false)
+		{
+			textFormatter = new Serilog.Formatting.Display.MessageTemplateTextFormatter(
+				fullDateTime ? defaultOutputTemplateLong : defaultOutputTemplate,
+				formatProvider
+			);
 		}
 
 #if DEBUG
@@ -120,7 +131,7 @@ namespace Taskmaster
 			{
 				try
 				{
-					p_textFormatter.Format(e, Output);
+					textFormatter.Format(e, Output);
 					formattedtext = Output.ToString();
 				}
 				catch (OutOfMemoryException) { throw; }
@@ -158,6 +169,8 @@ namespace Taskmaster
 			lock (LogLock) return Logs.ToArray();
 		}
 
+		public static MemorySink? _instance;
+
 		#region IDisposable
 		private bool isdisposed;
 
@@ -192,8 +205,7 @@ namespace Taskmaster
 		public static Serilog.LoggerConfiguration MemorySink(
 			this LoggerSinkConfiguration logConf,
 			IFormatProvider? formatProvider = null,
-			string? outputTemplate = null,
 			LoggingLevelSwitch? levelSwitch = null)
-			=> logConf.Sink(new MemorySink(formatProvider, outputTemplate, levelSwitch));
+			=> logConf.Sink(Taskmaster.MemorySink._instance = new MemorySink(formatProvider, levelSwitch));
 	}
 }

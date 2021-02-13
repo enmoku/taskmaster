@@ -159,7 +159,9 @@ namespace Taskmaster
 			{
 				var logpathtemplate = System.IO.Path.Combine(LogPath, Name + "-.log");
 
-				logconf = logconf.WriteTo.File(logpathtemplate, outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}",
+				var logtemplate = "[{Timestamp:yyyy-MM-dd HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}";
+
+				logconf = logconf.WriteTo.File(logpathtemplate, outputTemplate: logtemplate,
 					rollingInterval: RollingInterval.Day, rollOnFileSizeLimit: true, fileSizeLimitBytes: MKAh.Units.Binary.Mega * 8, retainedFileCountLimit: 3,
 					levelSwitch: new Serilog.Core.LoggingLevelSwitch(Serilog.Events.LogEventLevel.Debug));
 			}
@@ -389,6 +391,18 @@ namespace Taskmaster
 				// 0 =>
 				_ => BitmaskStyle.Bits,
 			};
+
+			LogDateTime = logsec.GetOrSet("DateTime", false)
+				.InitComment("Log date & time instead of time only")
+				.Bool;
+			try
+			{
+				MemorySink._instance.ChangeDateTimeFormat(LogDateTime);
+			}
+			catch (Exception ex)
+			{
+				Log.Error("Failed to set log datetime setting", ex);
+			}
 
 			var uisec = cfg[Constants.UserInterface];
 			ShowOnStart = uisec.GetOrSet(Constants.ShowOnStart, ShowOnStart).Bool;

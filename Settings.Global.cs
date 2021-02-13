@@ -46,6 +46,8 @@ namespace Taskmaster
 		public static bool ShowProcessAdjusts { get; set; } = true;
 		public static bool ShowSessionActions { get; set; } = true;
 
+		public static bool LogDateTime { get; set; } = false;
+
 		public static bool DebugAudio { get; set; } = false;
 
 		public static bool DebugForeground { get; set; } = false;
